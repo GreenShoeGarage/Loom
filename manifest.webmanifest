@@ -1,0 +1,9 @@
+{
+  "name": "LOOM — Systems Engineering Project Control",
+  "short_name": "LOOM",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#171a1f",
+  "theme_color": "#171a1f",
+  "description": "Trace requirements down. Build evidence back up."
+}
