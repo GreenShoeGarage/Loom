@@ -1,0 +1,395 @@
+{
+  "applicationVersion": "0.5.0",
+  "schemaVersion": "0.5.0",
+  "checks": [
+    {
+      "name": "Batch 3 version is visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact-review workspace opens from Baselines",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact summary exposes five actionable metrics",
+      "passed": true,
+      "detail": "5"
+    },
+    {
+      "name": "Sample has one open controlled change",
+      "passed": true,
+      "detail": "[\"1\", \"31\", \"1\", \"2\", \"3\"]"
+    },
+    {
+      "name": "Sample has 31 pending impact candidates",
+      "passed": true,
+      "detail": "[\"1\", \"31\", \"1\", \"2\", \"3\"]"
+    },
+    {
+      "name": "Sample identifies one critical inheritance concern",
+      "passed": true,
+      "detail": "[\"1\", \"31\", \"1\", \"2\", \"3\"]"
+    },
+    {
+      "name": "Sample identifies two inherited obligations for review",
+      "passed": true,
+      "detail": "[\"1\", \"31\", \"1\", \"2\", \"3\"]"
+    },
+    {
+      "name": "Sample identifies three potentially stale records",
+      "passed": true,
+      "detail": "[\"1\", \"31\", \"1\", \"2\", \"3\"]"
+    },
+    {
+      "name": "One durable impact-review record is shown",
+      "passed": true,
+      "detail": "1"
+    },
+    {
+      "name": "Impact review retains stable identifier IR-001",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review shows source revision transition",
+      "passed": true,
+      "detail": "IR-001\nOpen\nREQ-001 \u00b7 r1 \u2192 r2\n\nSample parent requirement target changed from 30 hours to 36 hours.\n\nAug 20, 2026, 3:10 AM \u00b7 31 pending"
+    },
+    {
+      "name": "Impact review explains its trigger",
+      "passed": true,
+      "detail": "IR-001\nOpen\nREQ-001 \u00b7 r1 \u2192 r2\n\nSample parent requirement target changed from 30 hours to 36 hours.\n\nAug 20, 2026, 3:10 AM \u00b7 31 pending"
+    },
+    {
+      "name": "Desktop impact workspace uses three non-overlapping panes",
+      "passed": true,
+      "detail": "[{\"height\": 998.390625, \"width\": 306.734375, \"x\": 302, \"y\": 439.5625}, {\"height\": 998.390625, \"width\": 447.328125, \"x\": 618.734375, \"y\": 439.5625}, {\"height\": 760, \"width\": 489.921875, \"x\": 1076.0625, \"y\": 439.5625}]"
+    },
+    {
+      "name": "Impact review presents all 31 affected records",
+      "passed": true,
+      "detail": "31"
+    },
+    {
+      "name": "Impact candidate count is bounded below the engine safety cap",
+      "passed": true,
+      "detail": "31"
+    },
+    {
+      "name": "Impact queue includes requirement context",
+      "passed": true,
+      "detail": "Requirement"
+    },
+    {
+      "name": "Impact queue includes function context",
+      "passed": true,
+      "detail": "Function"
+    },
+    {
+      "name": "Impact queue includes implementation context",
+      "passed": true,
+      "detail": "Implementation"
+    },
+    {
+      "name": "Impact queue includes interface context",
+      "passed": true,
+      "detail": "Interface"
+    },
+    {
+      "name": "Impact queue includes failure analysis context",
+      "passed": true,
+      "detail": "Failure Analysis"
+    },
+    {
+      "name": "Impact queue includes verification plan context",
+      "passed": true,
+      "detail": "Verification Plan"
+    },
+    {
+      "name": "Impact queue includes test result context",
+      "passed": true,
+      "detail": "Test Result"
+    },
+    {
+      "name": "Impact queue includes evidence context",
+      "passed": true,
+      "detail": "Evidence"
+    },
+    {
+      "name": "Impact queue includes schedule context",
+      "passed": true,
+      "detail": "Schedule"
+    },
+    {
+      "name": "Impact queue includes project budget context",
+      "passed": true,
+      "detail": "Project Budget"
+    },
+    {
+      "name": "Impact queue includes technical budget context",
+      "passed": true,
+      "detail": "Technical Budget"
+    },
+    {
+      "name": "Impact queue includes baseline context",
+      "passed": true,
+      "detail": "Baseline"
+    },
+    {
+      "name": "Impact queue includes change control context",
+      "passed": true,
+      "detail": "Change Control"
+    },
+    {
+      "name": "Impact review is a controlled revisioned record",
+      "passed": true,
+      "detail": "{\"revision\": 1, \"snapshots\": 1}"
+    },
+    {
+      "name": "Impact item identities are unique",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every impact item retains an explainable path",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Traversal paths are conservatively bounded to two links",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "Parent target changed to 36 hours",
+      "passed": true,
+      "detail": "{\"comparisonDirection\": \"at-least\", \"confidence\": 80, \"currentEstimate\": 27.5, \"evidenceDate\": \"2026-08-14\", \"measuredValue\": 22.8, \"measurementCondition\": \"Battery at 100 percent state of charge; 23 \\u00b0C ambient\", \"metric\": \"Continuous operating time\", \"operatingCondition\": \"10-second sampling, display at 50 percent brightness, radio sync every 5 minutes\", \"target\": 36, \"threshold\": 24, \"trend\": [{\"at\": \"2026-07-10T14:00:00.000Z\", \"kind\": \"estimate\", \"value\": 18.2}, {\"at\": \"2026-07-25T14:00:00.000Z\", \"kind\": \"estimate\", \"value\": 24.6}, {\"at\": \"2026-08-05T14:00:00.000Z\", \"kind\": \"estimate\", \"value\": 27.5}, {\"at\": \"2026-08-14T14:00:00.000Z\", \"kind\": \"measured\", \"value\": 22.8}], \"unit\": \"hours\"}"
+    },
+    {
+      "name": "Child requirements were not silently rewritten",
+      "passed": true,
+      "detail": "{\"child1\": \"The battery assembly shall provide at least 60 watt-hours of usable energy at the system cutoff voltage.\", \"child2\": \"The monitor shall consume no more than 2.5 watts average power during the defined monitoring profile.\", \"parent\": \"The monitor shall operate continuously for at least 24 hours without external power under the defined monitoring profile.\"}"
+    },
+    {
+      "name": "Exactly two verification results start potentially stale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exactly one evidence artifact starts potentially stale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Default critical item is OBJ-210",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Critical inherited-obligation item explains direct allocation path",
+      "passed": true,
+      "detail": "Affected record\nOBJ-210\n\nBattery Assembly\n\nCritical\nOpen record\nCreate action\nWhy this record appears\n\nOBJ-210 is connected to REQ-001 through allocated implementation object. REQ-001 changed from revision 1 to revision 2; this inherited obligation requires an explicit disposition.\n\n1\nREQ-001 \u2192 OBJ-210: allocated implementation object\nDirect Reference\nImpact disposition\nDisposition\nPending Review\nConfirmed\nDismissed\nDeferred\nResolved\nRationale\nApply disposition\nInherited obligation\n\nREQ-001 changed from revision 1 to revision 2; this inherited obligation requires an explicit disposition.\n\nDisposition\nAccepted As Written\nAccepted With Local Parameters\nTailored\nDecomposed\nSatisfied At Parent\nN"
+    },
+    {
+      "name": "Source-field comparison retains target before value",
+      "passed": true,
+      "detail": "[\"{\\n  \\\"metric\\\": \\\"Continuous operating time\\\",\\n  \\\"unit\\\": \\\"hours\\\",\\n  \\\"threshold\\\": 24,\\n  \\\"target\\\": 30,\\n  \\\"operatingCondition\\\": \\\"10-second sampling, display at 50 percent brightness, radio sync every 5 minutes\\\",\\n  \\\"measurementCondition\\\": \\\"Battery at 100 percent state of charge; 23 \\u00b0C ambient\\\",\\n  \\\"comparisonDirection\\\": \\\"at-least\\\",\\n  \\\"currentEstimate\\\": 27.5,\\n  \\\"measuredValue\\\": 22.8,\\n  \\\"confidence\\\": 80,\\n  \\\"evidenceDate\\\": \\\"2026-08-14\\\",\\n  \\\"trend\\\": [\\n    {\\n      \\\"at\\\": \\\"2026-07-10T14:00:00.000Z\\\",\\n      \\\"value\\\": 18.2,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-07-25T14:00:00.000Z\\\",\\n      \\\"value\\\": 24.6,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-05T14:00:00.000Z\\\",\\n      \\\"value\\\": 27.5,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-14T14:00:00.000Z\\\",\\n      \\\"value\\\": 22.8,\\n      \\\"kind\\\": \\\"measured\\\"\\n    }\\n  ]\\n}\", \"{\\n  \\\"metric\\\": \\\"Continuous operating time\\\",\\n  \\\"unit\\\": \\\"hours\\\",\\n  \\\"threshold\\\": 24,\\n  \\\"target\\\": 36,\\n  \\\"operatingCondition\\\": \\\"10-second sampling, display at 50 percent brightness, radio sync every 5 minutes\\\",\\n  \\\"measurementCondition\\\": \\\"Battery at 100 percent state of charge; 23 \\u00b0C ambient\\\",\\n  \\\"comparisonDirection\\\": \\\"at-least\\\",\\n  \\\"currentEstimate\\\": 27.5,\\n  \\\"measuredValue\\\": 22.8,\\n  \\\"confidence\\\": 80,\\n  \\\"evidenceDate\\\": \\\"2026-08-14\\\",\\n  \\\"trend\\\": [\\n    {\\n      \\\"at\\\": \\\"2026-07-10T14:00:00.000Z\\\",\\n      \\\"value\\\": 18.2,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-07-25T14:00:00.000Z\\\",\\n      \\\"value\\\": 24.6,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-05T14:00:00.000Z\\\",\\n      \\\"value\\\": 27.5,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-14T14:00:00.000Z\\\",\\n      \\\"value\\\": 22.8,\\n      \\\"kind\\\": \\\"measured\\\"\\n    }\\n  ]\\n}\"]"
+    },
+    {
+      "name": "Source-field comparison retains target after value",
+      "passed": true,
+      "detail": "[\"{\\n  \\\"metric\\\": \\\"Continuous operating time\\\",\\n  \\\"unit\\\": \\\"hours\\\",\\n  \\\"threshold\\\": 24,\\n  \\\"target\\\": 30,\\n  \\\"operatingCondition\\\": \\\"10-second sampling, display at 50 percent brightness, radio sync every 5 minutes\\\",\\n  \\\"measurementCondition\\\": \\\"Battery at 100 percent state of charge; 23 \\u00b0C ambient\\\",\\n  \\\"comparisonDirection\\\": \\\"at-least\\\",\\n  \\\"currentEstimate\\\": 27.5,\\n  \\\"measuredValue\\\": 22.8,\\n  \\\"confidence\\\": 80,\\n  \\\"evidenceDate\\\": \\\"2026-08-14\\\",\\n  \\\"trend\\\": [\\n    {\\n      \\\"at\\\": \\\"2026-07-10T14:00:00.000Z\\\",\\n      \\\"value\\\": 18.2,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-07-25T14:00:00.000Z\\\",\\n      \\\"value\\\": 24.6,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-05T14:00:00.000Z\\\",\\n      \\\"value\\\": 27.5,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-14T14:00:00.000Z\\\",\\n      \\\"value\\\": 22.8,\\n      \\\"kind\\\": \\\"measured\\\"\\n    }\\n  ]\\n}\", \"{\\n  \\\"metric\\\": \\\"Continuous operating time\\\",\\n  \\\"unit\\\": \\\"hours\\\",\\n  \\\"threshold\\\": 24,\\n  \\\"target\\\": 36,\\n  \\\"operatingCondition\\\": \\\"10-second sampling, display at 50 percent brightness, radio sync every 5 minutes\\\",\\n  \\\"measurementCondition\\\": \\\"Battery at 100 percent state of charge; 23 \\u00b0C ambient\\\",\\n  \\\"comparisonDirection\\\": \\\"at-least\\\",\\n  \\\"currentEstimate\\\": 27.5,\\n  \\\"measuredValue\\\": 22.8,\\n  \\\"confidence\\\": 80,\\n  \\\"evidenceDate\\\": \\\"2026-08-14\\\",\\n  \\\"trend\\\": [\\n    {\\n      \\\"at\\\": \\\"2026-07-10T14:00:00.000Z\\\",\\n      \\\"value\\\": 18.2,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-07-25T14:00:00.000Z\\\",\\n      \\\"value\\\": 24.6,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-05T14:00:00.000Z\\\",\\n      \\\"value\\\": 27.5,\\n      \\\"kind\\\": \\\"estimate\\\"\\n    },\\n    {\\n      \\\"at\\\": \\\"2026-08-14T14:00:00.000Z\\\",\\n      \\\"value\\\": 22.8,\\n      \\\"kind\\\": \\\"measured\\\"\\n    }\\n  ]\\n}\"]"
+    },
+    {
+      "name": "Impact source opens in Controlled Record Studio",
+      "passed": true,
+      "detail": "REQ-001"
+    },
+    {
+      "name": "Impact report downloads as Markdown",
+      "passed": true,
+      "detail": "ir-001-impact-review-req-001-r1-r2-change-impact.md"
+    },
+    {
+      "name": "Impact report identifies IR-001 and REQ-001",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact report preserves before and after revisions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact report includes explainable relationship paths",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Verification evidence exposes a currency-review control",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Currency decision requires rationale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Evidence currency can be confirmed without deleting the artifact",
+      "passed": true,
+      "detail": "reviewed-current"
+    },
+    {
+      "name": "Impact item retains the evidence currency disposition",
+      "passed": true,
+      "detail": "confirmed-current"
+    },
+    {
+      "name": "Potentially stale summary decreases after evidence review",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Stale result retains its historical outcome",
+      "passed": true,
+      "detail": "{\"after\": \"failed\", \"before\": \"failed\", \"currency\": \"stale\"}"
+    },
+    {
+      "name": "Stale result remains revisioned rather than overwritten",
+      "passed": true,
+      "detail": "{\"revision\": 3, \"snapshots\": 3}"
+    },
+    {
+      "name": "Affected implementation object exposes inherited-obligation review",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tailoring an inherited obligation requires rationale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Inherited obligation records a tailored disposition",
+      "passed": true,
+      "detail": "{\"revision\": 2, \"state\": \"tailored\"}"
+    },
+    {
+      "name": "Inherited obligation retains rationale, local parameters, and review history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Disposition resolves the corresponding impact item",
+      "passed": true,
+      "detail": "resolved"
+    },
+    {
+      "name": "Pending inherited-obligation summary decreases",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Dismissal requires an engineering rationale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Dismissed impact retains its rationale and reviewer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact item can create one linked corrective action",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Created action links source and affected records",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Action-created state is retained on the impact item",
+      "passed": true,
+      "detail": "action-created"
+    },
+    {
+      "name": "Impact review creates one linked change request",
+      "passed": true,
+      "detail": "{\"after\": 2, \"before\": 1}"
+    },
+    {
+      "name": "Change request carries complete affected-record coverage",
+      "passed": true,
+      "detail": "32"
+    },
+    {
+      "name": "Change request summarizes schedule, budget, risk, and verification impact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Pending review items are linked rather than silently resolved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Authoritative Requirement Coupon shows open impact review",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Requirement Coupon still shows the revised target",
+      "passed": true,
+      "detail": "REQ-001\nContinuous field endurance\nR2\n\nThe monitor shall operate continuously for at least 24 hours without external power under the defined monitoring profile.\n\nTHRESHOLD\n24 hours\nTARGET\n36 hours\nCURRENT\n22.8 hours\nMARGIN\n-1.20 hours\nDefinition\nApproved\nAllocation\nFully Allocated\nImplementation\nIn Progress\nVerification\nFailed\nValidation\nPlanned\nEvidence\nComplete\nExplainable readiness\n53%\nPower Lead\nSep 15, 2026\n2\nBlocked\nOver budget\n1 impact review\n1 result need currency review\nNext\nReduce display and radio power before rerunning the system endurance test."
+    },
+    {
+      "name": "Verification results expose stale currency state",
+      "passed": true,
+      "detail": "RUN-004 \u00b7 System\nSystem endurance test \u2014 Run 1\nFailed\nStale\n\n22.8 hours operating time; 3.04 W average input power\n\nTest\nMETHOD\n1\nEVIDENCE\n8/14\nCLOSURE\nApproved verification plan\nVER-001 is approved\nCompleted verification execution\nRUN-004 result: failed\nAcceptable result\nResult failed; reviewer disposition rejected\nResult remains current\nCurrency: stale\nMethod-specific record complete\ntest record complete\nAcceptance criteria defined\nOperating time is at least 24 hours and average input power is no greater than 2.5 W.\nAcceptance criteria satisfied\nNot yet recorded as satisfied\nAs-run configuration recorded\nPrototype P3, firmware 0.8.2, software 1.2.0\nConfiguration conformity accepted\nConfiguration: conforming\nExact plan, case, and setup revisions recorded\nPlan exact; case exact/not applicable; setup exact/not applicable\nReviewer disposition accepted\nSystems Engineering Lead \u00b7 rejected\nDeviations, anomalies, and defects resolved\n0/1 exception(s) dispositioned\nRequired retest complete or waived\nRetest: required \u00b7 The failed acceptance criterion requires corrective action and a controlled rerun.\nEvidence attached and current\n1/1 execution evidence artifact(s) are current\nOpen execution\nOpen requirement\nPlan rerun"
+    },
+    {
+      "name": "Evidence view exposes reviewed-current currency state",
+      "passed": true,
+      "detail": "DOC-003\nEndurance Test Data Package \u2014 Run 1\nPower log, observations, configuration record, and signed disposition for the failed run.\n\tTest data\tr3\tCurrent\nApproved\n\tReviewed Current\nThe endurance data package remains directly applicable because the ta\u2026\n\tVerification Lead\tAug 14, 2026\tendurance-run-1-data.zip\n2.4 MB\n\t5\t\nOpen"
+    },
+    {
+      "name": "Impact-review dispositions persist into a new browser document",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact workspace remains available in dark theme",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact workspace stacks cleanly at narrow width",
+      "passed": true,
+      "detail": "{\"children\": [{\"height\": 179.734375, \"width\": 696, \"x\": 12, \"y\": 738.828125}, {\"height\": 561.390625, \"width\": 696, \"x\": 12, \"y\": 928.5625}, {\"height\": 953.25, \"width\": 696, \"x\": 12, \"y\": 1499.953125}], \"layout\": {\"height\": 1714.375, \"width\": 696, \"x\": 12, \"y\": 738.828125}}"
+    },
+    {
+      "name": "No Batch 3 browser page exceptions",
+      "passed": true,
+      "detail": "[]"
+    },
+    {
+      "name": "No Batch 3 browser console errors",
+      "passed": true,
+      "detail": "[]"
+    }
+  ],
+  "failures": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "generatedAt": "2026-08-20T03:11:03.162640Z",
+  "summary": {
+    "total": 76,
+    "passed": 76,
+    "failed": 0
+  }
+}

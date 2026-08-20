@@ -1,5 +1,5 @@
 {
-  "applicationVersion": "0.3.0",
+  "applicationVersion": "0.5.0",
   "checks": [
     {
       "name": "Batch 2 application version is visible",
@@ -22,9 +22,9 @@
       "detail": ""
     },
     {
-      "name": "Record Studio exposes all 17 controlled collections",
+      "name": "Record Studio exposes all 22 controlled collections",
       "passed": true,
-      "detail": "17"
+      "detail": "22"
     },
     {
       "name": "Requirements are the initial controlled collection",
@@ -190,7 +190,7 @@
   "failures": [],
   "pageErrors": [],
   "consoleErrors": [],
-  "generatedAt": "2026-08-20T00:00:16.052153Z",
+  "generatedAt": "2026-08-20T03:10:47.577139Z",
   "summary": {
     "total": 37,
     "passed": 37,

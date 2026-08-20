@@ -1,22 +1,23 @@
-# LOOM v0.3.0 Architecture
+# LOOM v0.5.0 Architecture
 
 ## Architectural intent
 
-LOOM keeps the authoritative project model separate from the views that present it. A Requirement Coupon, Kanban card, Gantt row, verification queue entry, hierarchy node, Controlled Record Studio row, evidence-gap row, and baseline comparison row are projections of shared controlled records rather than independent copies.
+LOOM is organized around one authoritative, normalized digital engineering thread. A Requirement Coupon, hierarchy row, verification queue item, Kanban card, Gantt row, evidence gap, impact item, readiness factor, baseline comparison row, and Controlled Record Studio entry are projections of shared records rather than independent copies.
 
-The v0.3.0 architecture extends the normalized engineering-thread and Batch 1 data-safety model with:
+The v0.5.0 architecture extends the earlier releases with a complete verification, validation, and readiness domain while retaining:
 
-- a controlled collection registry
-- immutable record revision snapshots
-- a shared controlled-record lifecycle service
-- central before/after reconciliation
+- local-first project persistence
+- schema-safe import and migration
+- controlled record identity and revision history
 - archive protection
-- field-level revision comparison
-- relationship authoring
-- session undo and redo that preserves formal history
-- a shared Controlled Record Studio
+- typed relationships
+- bounded change-impact traversal
+- inherited-obligation review
+- result and evidence currency
+- session undo and redo
+- semantic report generation
 
-The application follows five layers:
+The implementation follows five layers:
 
 1. domain
 2. persistence and exchange
@@ -30,30 +31,31 @@ The application follows five layers:
 
 ## 1.1 Normalized project model
 
-`src/domain/types.ts` defines the project schema and controlled engineering entities.
+`src/domain/types.ts` defines the project schema and the controlled engineering records. The project root contains:
 
-The project root includes:
-
-- application version
-- schema version
+- application and schema versions
 - migration history
 - stable project identity
-- project revision
-- timestamps
-- project settings
+- project revision and timestamps
+- settings
 - requirements
 - functions
 - implementation objects
 - interfaces
 - verification plans
+- verification setups
 - test cases
-- test executions
+- verification executions
+- verification exceptions
+- readiness policies
+- readiness overrides
 - failure modes
 - work items
 - schedule dependencies
 - project budget lines
 - technical budgets
 - evidence documents
+- impact reviews
 - decisions
 - assumptions
 - issues and actions
@@ -61,596 +63,682 @@ The project root includes:
 - change requests
 - typed traceability links
 
-Stable generated identifiers are authoritative identity. Visible identifiers such as `REQ-001`, `VP-001`, or `WORK-001` are human-readable labels and are not database keys. Array positions, titles, and table row numbers are never treated as identity.
+Stable generated identifiers are authoritative. Human-readable identifiers such as `REQ-001`, `VP-001`, `RUN-001`, or `GATE-001` are labels and are not database keys. Array positions, titles, and visible row numbers are never treated as identity.
 
 ## 1.2 Common controlled-record contract
 
-Every principal controlled record implements the common `ControlledRecord` fields:
+Every principal controlled record implements the shared `ControlledRecord` fields:
 
-- stable identifier
+- stable identity
 - visible identifier
 - title
 - owner
 - lifecycle state
 - current revision
-- created date
-- updated date
-- history events
-- revision snapshots
+- created and updated dates
+- event history
+- immutable revision snapshots
 - notes
 - tags
 - archive state
-- archive date
-- archive actor
+- archive actor and date
 
-Domain-specific fields remain on the concrete record type. A requirement retains requirement states and allocations; a test execution retains as-run configuration and result; a failure mode retains causes, effects, and criticality; a budget retains units and allocations.
+Domain-specific fields remain on the concrete record. For example:
 
-Archive state does not replace the domain-specific lifecycle state.
+- a requirement retains separate definition, allocation, implementation, verification, validation, and evidence states
+- a verification setup retains equipment, environment, personnel, calibration, and configuration
+- an execution retains exact plan, case, and setup revisions plus the as-run condition
+- an exception retains severity, disposition, retest state, and evidence
+- a readiness policy retains level-specific factor rules
+- a readiness override retains approval, rationale, target, factor scope, and expiration
 
-## 1.3 Controlled revision snapshots
+Archive state remains orthogonal to the domain lifecycle state.
 
-`RecordRevisionSnapshot` provides immutable field history.
+## 1.3 Controlled collection registry
 
-A snapshot contains:
+`src/domain/recordLifecycle.ts` defines `controlledCollectionDescriptors` for 22 collections:
+
+1. requirements
+2. functions
+3. implementation objects
+4. interfaces
+5. verification plans
+6. verification setups
+7. test cases
+8. verification executions
+9. verification exceptions
+10. readiness policies
+11. readiness overrides
+12. failure modes
+13. work items
+14. project budget lines
+15. technical budgets
+16. evidence documents
+17. impact reviews
+18. decisions
+19. assumptions
+20. issues and actions
+21. baselines
+22. change requests
+
+The registry drives:
+
+- Controlled Record Studio navigation
+- record creation
+- visible identifier allocation
+- global search
+- active and archived counts
+- destination-module navigation
+- reconciliation
+- validation coverage
+
+## 1.4 Record creation and revision snapshots
+
+`createDefaultControlledRecord` creates a valid draft for every controlled collection. It:
+
+- generates stable identity
+- allocates the next human-readable identifier
+- initializes common controlled fields
+- applies safe domain defaults
+- initializes empty references
+- creates the first immutable revision snapshot
+
+`RecordRevisionSnapshot` stores:
 
 - snapshot identity
 - record revision
-- capture time
-- actor label
+- capture date
+- actor
 - action
 - summary
 - changed field paths
 - controlled record data
 
-The snapshot data is generated by `snapshotRecordData` in `src/domain/factory.ts`.
+Snapshot generation removes recursive history and selected large or volatile payloads while retaining enough information for deterministic field comparison.
 
-The snapshot service:
+## 1.5 Shared reconciliation boundary
 
-- clones controlled data
-- removes `revisionHistory` to prevent recursion
-- removes volatile or derived fields where required
-- summarizes baseline snapshots rather than recursively embedding complete baseline contents
-- omits repeated large evidence-file data payloads while retaining metadata
-- produces comparable plain data
+`reconcileProjectControlledRecords` in `src/domain/factory.ts` is the lifecycle boundary for project mutations. It compares the project before and after a mutation and handles:
 
-A snapshot is appended only after a material change. Snapshot objects already stored in history are never edited during later reconciliation.
+- unchanged records without false revisions
+- new records at revision one
+- material changes with exactly one revision increment
+- changed-field calculation
+- event and snapshot creation
+- accidental omission as archive rather than silent deletion
 
-## 1.4 Controlled collection registry
+All specialist views pass mutations through the same boundary, so editing a requirement in Requirements, a test execution in Verification, or a decision in Record Studio produces the same controlled lifecycle behavior.
 
-`src/domain/recordLifecycle.ts` defines `controlledCollectionDescriptors`.
+## 1.6 Typed traceability relationships
 
-Each descriptor identifies:
-
-- project collection key
-- singular name
-- plural name
-- visible identifier prefix
-- icon
-- destination application section
-
-The registry covers 17 collections and drives:
-
-- Record Studio navigation
-- record creation
-- human identifier allocation
-- global controlled-record search
-- active and archived counts
-- destination-module navigation
-- reconciliation iteration
-- validation coverage
-
-This removes repeated hard-coded collection lists from presentation components.
-
-## 1.5 Record factory
-
-`createDefaultControlledRecord` creates a valid draft for each controlled collection.
-
-The factory:
-
-- generates stable identity
-- allocates the next visible identifier
-- sets common controlled fields
-- sets safe domain defaults
-- initializes empty reference arrays
-- initializes the first revision snapshot
-
-Visible identifiers are checked before commit. Duplicate visible identifiers within the same collection are rejected.
-
-## 1.6 Reconciliation service
-
-`reconcileProjectControlledRecords` in `src/domain/factory.ts` is the central lifecycle boundary for project mutations.
-
-It receives:
-
-- the project state before a mutation
-- the project state after a mutation
-- the actor label
-- a revision summary
-
-For each controlled collection, it determines whether a record was:
-
-- unchanged
-- newly created
-- materially changed
-- removed
-
-### Unchanged record
-
-The previous revision history is retained exactly. No false revision is created.
-
-### New record
-
-The record is normalized and receives a revision-one snapshot.
-
-### Materially changed record
-
-The service:
-
-1. compares normalized snapshot data
-2. calculates changed field paths
-3. increments the current revision once
-4. updates the modified date
-5. appends a history event
-6. appends one immutable revision snapshot
-
-### Removed controlled record
-
-The service restores the previous record to the collection and marks it archived. This converts accidental deletion through a specialist mutation into an archive revision.
-
-Project-level permanent deletion remains a separate persistence operation protected by recovery snapshots.
-
-## 1.7 Explicit lifecycle service
-
-`src/domain/recordLifecycle.ts` provides operations used by Controlled Record Studio and tests:
-
-- `createDefaultControlledRecord`
-- record lookup
-- collection lookup
-- record search text
-- controlled commit
-- archive
-- restore
-- historical-value recovery
-- revision field comparison
-- typed relationship creation
-- typed relationship removal
-- direct-reference synchronization
-
-The service mutates the provided project draft. The application state layer then passes the complete before/after projects through the reconciliation service.
-
-## 1.8 Revision comparison
-
-Revision comparison flattens two selected snapshot data structures into field paths and compares values.
-
-It reports:
-
-- field path
-- earlier value
-- later value
-
-Nested arrays and objects are represented in a deterministic serializable form suitable for a local field-level comparison. The comparison does not claim semantic equivalence; it reports materially different stored controlled values.
-
-## 1.9 Historical-value recovery
-
-Historical recovery does not decrement the current revision or replace revision history.
-
-The selected snapshot data is copied into the current record while preserving:
+Typed links remain first-class project records. A link includes:
 
 - stable identity
-- current revision basis
-- later revision history
-- created date
-- archive policy where applicable
-
-Reconciliation then records the recovered values as a new revision.
-
-## 1.10 Typed traceability relationships
-
-Typed links remain first-class project records.
-
-A link includes:
-
-- stable identity
-- source record identity
-- target record identity
+- source identity
+- target identity
 - relationship type
 - rationale
-- creation time
+- creation date
+- creator
 
-Supported relationship semantics include:
+Supported semantics include derivation, decomposition, refinement, constraint, dependency, conflict, allocation, performance, realization, interface, verification, validation, evidence support, mitigation, scheduling, funding, change, supersession, blocking, and impact.
 
-- derives from
-- decomposes into
-- refines
-- constrains
-- depends on
-- conflicts with
-- allocated to
-- performed by
-- realized by
-- interfaces with
-- verified by
-- validated by
-- supported by
-- mitigated by
-- scheduled by
-- funded by
-- changed by
-- supersedes
-- blocks
-- impacts
+The lifecycle service validates endpoints, prevents equivalent duplicate links, and synchronizes compatible direct-reference arrays used by frequently traversed views.
 
-Relationship creation validates endpoints and prevents duplicate equivalent links. Where the project model includes a frequently traversed direct-reference array, the lifecycle service synchronizes that direct reference.
+---
 
-The validation suite checks both typed endpoints and direct references.
+# 2. Verification, validation, and readiness domain
 
-## 1.11 Status model
+## 2.1 Verification is method-neutral
 
-A requirement does not use one overloaded status field. It retains separate dimensions for:
+`src/domain/verification.ts` treats verification as broader than testing. The domain supports:
 
-- definition
-- allocation
-- implementation
-- verification
-- validation
+- test
+- analysis
+- inspection
+- demonstration
+- similarity
+- certification
+- combination
+- not yet determined
+
+`VerificationMethodDetails` provides structured method-specific fields:
+
+### Analysis
+
+- model
+- tool
+- assumptions
+- calculation summary
+
+### Inspection
+
+- inspected item
+- method
+- sample inspected
+
+### Demonstration
+
+- scenario
+- participants
+
+### Similarity
+
+- reference
+- basis
+- relevant differences
+
+### Certification
+
+- authority
+- certificate reference
+- scope
+- expiration
+
+### Combination
+
+- selected constituent methods
+- method-specific details for the applicable constituents
+
+`methodSpecificRequirements` and `methodSpecificCompleteness` determine whether the selected as-run method record contains the required information.
+
+## 2.2 Verification plans
+
+A `VerificationPlan` records:
+
+- covered requirements
+- method
+- level
+- objective
+- acceptance criteria
+- preconditions
+- configuration
+- environment
+- equipment
+- instrumentation
+- personnel
+- safety considerations
+- procedure
+- data to collect
+- sample size
+- pass/fail logic
+- owner and reviewer
+- planned date
+- dependencies
+- supporting documents
+- approval state
+- reusable setup reference
+- inherited-environment and inherited-acceptance flags
+- required reviewer disposition
+- conditional-acceptance policy
+- linked test cases
+
+The plan revision is captured exactly by each execution.
+
+## 2.3 Reusable verification setups
+
+A `VerificationSetup` is a controlled, revisioned record containing reusable:
+
+- configuration
+- environment
+- equipment
+- instrumentation
+- personnel
+- safety considerations
+- calibration requirements
+- documents
+- applicable verification methods
+
+Plans and cases reference setup identity. Executions record the exact setup revision, preserving the as-run basis even after the reusable setup is later revised.
+
+## 2.4 Parameterized test cases
+
+A `TestCase` contains:
+
+- linked plan
+- optional reusable setup
+- shared setup description
+- ordered steps and expected results
+- parameter definitions
+- parameter values
+- expected evidence
+- inherited-acceptance-rule state
+
+A parameter definition includes identity, name, description, unit, data type, default value, and required state. Execution-specific parameter values are stored on the execution, so one case can support controlled reruns or scenario variations without duplicating the case.
+
+## 2.5 As-run verification executions
+
+A `TestExecution` is the general as-run verification record despite retaining the historical collection name. It supports every verification method and stores:
+
+- plan identity and exact revision
+- method and level
+- case identity and exact revision when applicable
+- setup identity and exact revision when applicable
+- requirement identities
+- execution number
+- rerun source and rerun sequence
+- execution date and time
+- operator and reviewer
+- system configuration
+- hardware revision
+- software version
+- firmware version
+- environment
+- equipment
+- calibration reference
+- input and output data
+- observations and deviations
+- parameter values
+- method-specific record
+- operational-validation record
+- acceptance-criteria disposition
+- configuration conformance
+- reviewer disposition, date, and notes
+- exception identities
+- retest state and reason
+- result
+- evidence identities
+- currency state and stale-source trace
+
+Failed, blocked, inconclusive, conditional, waived, and superseded executions remain available after later reruns.
+
+## 2.6 Structured exceptions and retest control
+
+A `VerificationException` captures a deviation, anomaly, defect, or observation. It links to an execution and records:
+
+- severity
+- description
+- affected requirements
+- owner
+- due date
+- status
+- disposition
+- retest requirement
 - evidence
 
-Other record types retain domain-specific lifecycle state. Archive is a common orthogonal property.
+`exceptionsForExecution` and `unresolvedExceptions` provide deterministic closure inputs. Accepted, corrected, and closed exceptions are dispositioned; open and under-review records remain blocking where required.
 
-Views may calculate a concise summary, but changing one workflow dimension does not silently change unrelated dimensions.
+Executions separately retain `retestState` and `retestReason`. A required or scheduled retest prevents closure until completed or waived.
 
-## 1.12 Reproducible calculations
+## 2.7 Controlled reruns
 
-`src/domain/calculations.ts` contains pure or reproducible services for:
+A rerun creates a new execution. It copies the applicable plan, case, setup, configuration, method, level, parameters, and requirement context, then receives an independent as-run result and evidence set.
+
+The original execution remains unchanged. The rerun increments sequence and execution number and references the source execution.
+
+Execution creation is a special mutation boundary: adding a new as-run record necessarily adds traceability references to requirements and evidence. `VerificationView` suppresses automatic change-impact generation for that creation transaction with `{ generateImpact: false }`. This prevents the new execution or its newly attached evidence from being marked stale merely because its own traceability links were created. Later substantive edits still pass through ordinary impact generation.
+
+## 2.8 Operational validation
+
+`OperationalValidationContext` stores:
+
+- stakeholder need
+- operational scenario
+- representative user
+- mission or use objective
+- suitability observations
+- acceptance recommendation
+
+`operationalValidationCompleteness` requires the applicable context for operational-level closure. Recommendations include accept, conditional, reject, additional evaluation, and not assessed.
+
+Operational validation remains distinct from lower-level technical verification, but uses the same controlled execution, evidence, exception, review, and readiness infrastructure.
+
+## 2.9 Verification closure
+
+`verificationExecutionClosure` derives closure from records. It evaluates sixteen visible conditions:
+
+1. approved verification plan
+2. completed execution
+3. acceptable result
+4. current result
+5. complete method-specific record
+6. defined acceptance criteria
+7. acceptance criteria satisfied
+8. as-run configuration recorded
+9. configuration conformance accepted
+10. exact plan, case, and setup revisions
+11. accepted reviewer disposition
+12. resolved deviations, anomalies, and defects
+13. completed or waived retest
+14. attached and current evidence
+15. complete operational context when applicable
+16. acceptable operational recommendation when applicable
+
+The first fourteen are always blocking. The final two become blocking for operational-level executions. The result contains the full condition list and the unmet blocking subset.
+
+A manually selected status label cannot close a requirement.
+
+## 2.10 Readiness factors
+
+Readiness is calculated from sixteen `ReadinessFactorKey` values:
+
+- allocation coverage
+- inherited obligations
+- implementation complete
+- lower-level verification
+- interfaces verified
+- high-criticality failures addressed
+- approved verification plan
+- configuration defined
+- verification closure
+- deviations resolved
+- evidence current
+- blocking work resolved
+- schedule ready
+- budget available
+- impact reviews dispositioned
+- operational validation
+
+`rawReadinessFactors` evaluates each factor and returns:
+
+- met state
+- explanation
+- related record identities
+
+## 2.11 Readiness policies
+
+A `ReadinessPolicy` is a controlled record for one verification level. It contains:
+
+- minimum score
+- whether every required factor must pass
+- enabled factor rules
+- required/optional state
+- factor weight
+- approval state
+
+`evaluateRequirementReadiness` selects the newest approved policy for the level, calculates a weighted score, identifies required failures, and returns explicit next actions.
+
+A requirement is ready only when:
+
+- its score meets the policy threshold, and
+- all required factors pass when the policy requires them.
+
+The current design deliberately uses controlled templates and weights rather than an unrestricted expression or scripting language.
+
+## 2.12 Lower-level roll-up
+
+`descendantRequirements`, `verificationLevelRank`, and the readiness factor service connect lower-level verification to higher-level readiness.
+
+For levels above unit, derived requirements are inspected for closed executions at lower verification levels. A failed or incomplete child result therefore prevents an unexplained parent-ready state.
+
+## 2.13 Readiness overrides
+
+A `ReadinessOverride` records:
+
+- target record
+- verification level
+- waiver, conditional approval, or manual override kind
+- rationale
+- requester
+- reviewer
+- approval state
+- optional expiration
+- affected records
+- affected factor keys
+
+`activeReadinessOverride` considers only approved, unexpired records. An active override changes the displayed readiness disposition to overridden or conditionally ready but does not modify the underlying factor results.
+
+---
+
+# 3. Change impact and inheritance domain
+
+## 3.1 Impact graph
+
+`src/domain/impact.ts` constructs a directional engineering graph from:
+
+- typed links
+- direct references
+- requirement hierarchy
+- function and object allocation
+- interfaces
+- inheritance
+- verification plans, cases, executions, and evidence
+- failure analysis
+- work and schedule
+- project and technical budgets
+- assumptions
+- baselines and changes
+
+Propagation is bounded and conservative. The current policy limits traversal depth and item count, avoids archived records, and prevents uncontrolled rebound into unrelated siblings.
+
+## 3.2 Explainable impact reviews
+
+An impact review preserves:
+
+- changed source identity
+- source revisions before and after
+- changed fields and values
+- affected records
+- first accepted relationship path
+- category and severity
+- item disposition
+- staleness candidate state
+- inherited-obligation review state
+- linked actions and change requests
+
+Impact traversal does not rewrite downstream records.
+
+## 3.3 Inherited obligations
+
+Inherited obligations retain their source requirement revision, disposition, local parameters, rationale, review state, and history. Parent changes place affected obligations into review. Tailored, superseded, and not-applicable dispositions require rationale.
+
+## 3.4 Result and evidence currency
+
+Verification executions and evidence documents retain a currency state independent of pass/fail or approval state:
+
+- current
+- potentially stale
+- stale
+- reviewed current
+- superseded
+
+Potential staleness records the change source and rationale. A potentially stale result does not satisfy closure as unquestionably current.
+
+---
+
+# 4. Calculation services
+
+`src/domain/calculations.ts` provides reproducible calculations for:
 
 - requirement completeness
 - threshold and target margin
 - allocation state
 - latest verification state
 - evidence state
-- verification closure
+- verification closure integration
 - failure criticality
-- requirement readiness
-- object readiness
-- financial budget roll-up
-- technical budget roll-up and margin
+- requirement and object readiness summaries
+- project-budget roll-up
+- technical-budget roll-up and margin
 - baseline comparison
 - Cockpit exceptions
+
+`src/domain/verification.ts` provides the full Batch 4 verification and readiness calculations.
 
 `src/domain/schedule.ts` calculates:
 
 - dependency order
 - earliest and latest dates
-- schedule slack
+- slack
 - critical path
 - cycle detection
 
-Derived status is not stored as an unexplained manually selected label where it can be reproduced from controlled facts.
+Derived status is not stored as an unexplained manual label when it can be reproduced from controlled facts.
 
-## 1.13 Verification closure
+---
 
-Verification closure requires the applicable combination of:
+# 5. Migration and validation
 
-- approved verification plan
-- completed execution
-- passing result
-- acceptance criteria
-- attached evidence
-- reviewer disposition
-- tested configuration
+## 5.1 Schema migration
 
-A manually changed status label alone cannot close a requirement.
+`src/domain/migrations.ts` is the supported entry point for imported or previously stored projects.
 
-## 1.14 Baselines
+LOOM v0.5.0 supports:
 
-A baseline stores an exact snapshot of controlled engineering collections and relationships at a project revision.
-
-Baseline comparison:
-
-- ignores selected volatile timestamps and history noise
-- identifies added records
-- identifies removed records
-- identifies materially changed records
-- identifies changed fields
-- keeps original and changed records navigable
-
-Baseline snapshot data embedded inside a controlled baseline record is summarized in the baseline record's own revision history to avoid recursive expansion.
-
-## 1.15 Validation and migration
-
-`src/domain/validation.ts` validates project shape and controlled relationships.
-
-It checks:
-
-- required project fields
-- duplicate stable identities
-- all principal direct references
-- typed relationship endpoints
-- hierarchy references
-- verification references
-- evidence references
-- schedule and dependency references
-- budget references
-- inheritance references
-- baseline and change references
-
-`src/domain/migrations.ts` is the only supported path for imported or previously stored project candidates.
-
-LOOM v0.3.0 supports:
-
-- v0.1.0 to v0.3.0 migration
-- v0.2.0 to v0.3.0 migration
-- native v0.3.0 loading
+- v0.1.0 to v0.5.0
+- v0.2.0 to v0.5.0
+- v0.3.0 to v0.5.0
+- v0.4.0 to v0.5.0
+- native v0.5.0
 
 Migration:
 
 - preserves stable project and record identity
-- preserves unknown top-level project fields
-- records source and destination schema versions
-- fills missing v0.3.0 defaults
-- initializes revision history
-- retains prior event history
+- preserves relationships
+- preserves event and revision history
+- preserves baselines and impact reviews
+- preserves unknown top-level extension fields
+- initializes all Batch 4 collections and fields
+- records source and destination schemas
 - rejects unsupported future schemas
+
+## 5.2 Relationship validation
+
+`src/domain/validation.ts` checks:
+
+- required project shape
+- duplicate stable identities
+- duplicate visible identifiers where controlled
+- revision-snapshot identity
+- direct requirement, function, object, interface, verification, failure, evidence, work, dependency, budget, inheritance, baseline, change, readiness, and exception references
+- typed-link endpoints
+- no dangling controlled references
+
+Malformed or unsupported imported projects are rejected before active-project replacement.
 
 ---
 
-# 2. Persistence and exchange layer
+# 6. Persistence and exchange layer
 
-## 2.1 IndexedDB database
+## 6.1 IndexedDB and fallback storage
 
-`src/services/db.ts` stores complete project objects transactionally in IndexedDB.
-
-The Batch 1 database includes separate stores for:
+`src/services/db.ts` stores complete project objects transactionally in IndexedDB. Separate stores retain:
 
 - projects
 - recovery snapshots
 
-A complete project write is committed within one IndexedDB transaction. An intentionally aborted transaction does not change the authoritative record.
+A local browser storage fallback supports recovery when IndexedDB is unavailable. The interface reports the backend used for the latest save.
 
-## 2.2 Local browser storage fallback
+## 6.2 Serialized saves
 
-When IndexedDB is unavailable, LOOM attempts local browser storage as a recovery fallback.
+The application state layer serializes persistence writes so an older asynchronous save cannot complete after and overwrite a newer revision.
 
-The fallback supports:
+## 6.3 Recovery snapshots
 
-- project save
-- project load
-- project listing
-- recovery snapshot save
-- recovery snapshot listing
-- recovery restoration
-
-The interface reports which backend completed the latest save.
-
-## 2.3 Serialized save queue
-
-The application state layer queues saves so an older asynchronous write cannot complete after and overwrite a newer project revision.
-
-Each public save returns an outcome containing:
-
-- backend
-- save time
-
-The interface uses that result to update save state and storage diagnostics.
-
-## 2.4 Recovery snapshots
-
-Recovery snapshots are separate from controlled record revisions.
-
-- A controlled record revision explains how one engineering record changed.
-- A recovery snapshot protects the entire local project before a destructive or replacement operation.
-
-Automatic snapshots are created before:
+Recovery snapshots protect the whole project independently of controlled-record revisions. Automatic snapshots are created before:
 
 - Fresh Start
-- sample-project replacement
-- imported-project replacement
-- snapshot restoration
+- sample replacement
+- project import replacement
+- recovery restoration
 - permanent project deletion
 
 Manual snapshots are also supported. The newest eight snapshots are retained per project.
 
-## 2.5 Project replacement
+## 6.4 Project exchange
 
-Project replacement follows this sequence:
+`src/services/files.ts` produces a versioned JavaScript Object Notation exchange package containing application identity, versions, export time, and the complete project.
 
-1. clear pending autosave timer
-2. persist the current project
-3. optionally create a recovery snapshot
-4. validate and normalize the replacement project
-5. persist the replacement project
-6. change the active interface project
-7. clear session undo/redo
-8. refresh project and recovery summaries
-
-The interface does not switch to a replacement project before storage commit.
-
-## 2.6 Project exchange
-
-`src/services/files.ts` builds and reads the versioned JSON exchange package.
-
-The package records:
-
-- exchange format
-- format version
-- export time
-- application identity
-- application version
-- schema version
-- complete project
-
-Before replacement, import performs:
+Import performs:
 
 - file-size guard
-- JSON parse
-- package extraction
-- structural validation
-- migration
+- parse and structural validation
+- schema review and migration
 - duplicate-identity validation
 - relationship validation
-- current-project save
+- current-project preservation
 - recovery snapshot
 - replacement commit
 
-Unknown project fields are retained. Unknown fields are not silently discarded during migration.
+Unknown top-level project fields are preserved.
 
-## 2.7 Evidence files
+## 6.5 Evidence files
 
-Local evidence files are converted into locally stored project data and retain:
+Evidence attachments retain:
 
-- file name
-- Multipurpose Internet Mail Extensions (MIME) type
+- filename
+- Multipurpose Internet Mail Extensions type
 - size
 - local data reference
 - Secure Hash Algorithm 256-bit fingerprint
-- attachment revision metadata
+- revision metadata
+- currency state
+- stale-source references
 
-Evidence replacement creates a new evidence revision rather than silently changing the previous record.
+Replacing evidence creates a new evidence revision rather than silently modifying the former artifact.
 
-Controlled record revision snapshots omit repeated large local file payloads while retaining identifying metadata.
+## 6.6 Reports
 
-## 2.8 Semantic reports
-
-`src/services/reports.ts` constructs reports from project records rather than screenshots.
-
-Current output includes:
+`src/services/reports.ts` constructs semantic reports from domain records rather than screen captures. Current outputs include:
 
 - project status
 - requirement dossier
 - Requirements Traceability Matrix
-- FMECA export
+- Failure Modes, Effects, and Criticality Analysis
 - evidence index
+- change impact
+- verification cross-reference
+- verification exceptions
+- verification status
+- V-model readiness
+- operational validation
 - verification-level summaries
 
 ---
 
-# 3. Application state layer
-
-## 3.1 Project context
+# 7. Application state layer
 
 `src/hooks/ProjectContext.tsx` owns:
 
 - active project
-- project library summaries
+- project library
 - loading state
-- save state
+- autosave state
 - last save time
 - notifications
 - storage diagnostics
 - recovery snapshots
-- session undo and redo
+- current-session undo and redo
 
-It provides operations for:
+Every meaningful in-application mutation uses `updateProject`. The sequence is:
 
-- project mutation
-- setting mutation
-- project replacement
-- Fresh Start
-- sample loading
-- duplication
-- archive and restore
-- permanent deletion
-- project switching
-- manual recovery snapshot
-- recovery restoration
-- recovery removal
-- storage-persistence request
+1. clone current state
+2. optionally record undo state
+3. apply the specialist mutation
+4. reconcile controlled records
+5. optionally generate bounded impact review
+6. increment project revision and timestamps
+7. clear redo after a forward change
+8. update React state
+9. schedule serialized autosave
 
-## 3.2 Central authoritative mutation path
+Options allow narrowly justified behavior such as suppressing impact generation during new execution creation while retaining ordinary revision reconciliation.
 
-Every meaningful in-application edit uses `updateProject`.
-
-The mutation path:
-
-1. clones the current project
-2. optionally records an undo state
-3. applies the specialist mutator
-4. reconciles controlled records
-5. increments project revision
-6. updates project timestamps
-7. clears redo after a new forward change
-8. updates React state
-9. schedules autosave
-
-This is the key connection between specialist modules and the common lifecycle.
-
-## 3.3 Session undo and redo
-
-Undo entries contain:
-
-- complete project state before the action
-- action summary
-- capture time
-- optional coalescing key
-
-The stack retains up to 50 entries.
-
-### Undo
-
-Undo:
-
-1. moves the current project to redo history
-2. restores the selected earlier project values
-3. reconciles the current and restored controlled records
-4. creates new controlled revisions for affected records
-5. touches the project revision and timestamps
-6. saves the result
-
-### Redo
-
-Redo performs the corresponding forward restoration through the same reconciliation path.
-
-Undo and redo are cleared when:
-
-- switching projects
-- replacing the project
-- loading a sample
-- importing
-- creating a Fresh Start
-- restoring a recovery snapshot
-
-This prevents a state from one project being applied to another.
-
-The stack is intentionally not persisted. Controlled record revisions, project event history, baselines, and recovery snapshots are the durable history mechanisms.
-
-## 3.4 Autosave
-
-After a meaningful mutation, autosave progresses through:
-
-```text
-Unsaved → Saving → Saved
-```
-
-Error, unavailable, and recovery states are also supported.
-
-Debouncing reduces unnecessary writes while the serialized save queue preserves write order.
+Project replacement saves and snapshots the current project before switching the interface to the replacement. Project switching, import, Fresh Start, sample replacement, and recovery restoration clear session undo/redo to prevent cross-project state application.
 
 ---
 
-# 4. Presentation layer
+# 8. Presentation layer
 
-## 4.1 Application shell
+## 8.1 Application shell
 
 `src/App.tsx` contains:
 
 - eight-section navigation
-- project selector
-- project menu
-- mode controls
-- theme controls
+- project selector and project menu
+- Easy and Advanced modes
+- theme control
 - global thread search
-- Record Studio launch
+- Controlled Record Studio launch
 - undo and redo controls
 - save state
 - inspector coordination
 - report shortcuts
-- About panel
+- About and data-safety workspaces
 
-The visible application version is displayed in the shell and About content.
+## 8.2 Primary views
 
-## 4.2 Primary views
-
-The eight work areas are:
+The stable primary views are:
 
 - `CockpitView.tsx`
 - `RequirementsView.tsx`
@@ -661,242 +749,132 @@ The eight work areas are:
 - `EvidenceView.tsx`
 - `BaselinesView.tsx`
 
-These views continue to mutate the same authoritative project through the project context.
+## 8.3 Verification workbench
 
-## 4.3 Controlled Record Studio
+`VerificationView.tsx` provides the Batch 4 workflows:
 
-`src/components/ControlledRecordStudio.tsx` is a shared lifecycle workspace rather than a replacement for specialist modules.
+- plan creation and revision
+- reusable setup authoring
+- parameterized case authoring
+- as-run execution creation
+- method-specific record editing
+- exact revision capture
+- reviewer and configuration disposition
+- evidence selection
+- result history
+- exception creation and disposition
+- controlled rerun creation
+- operational-validation authoring
+- readiness evaluation
+- readiness-policy revision
+- readiness override creation
+- semantic report actions
 
-The layout contains:
+The specialist view uses the same authoritative records shown in Record Studio and other LOOM modules.
 
-1. record-type navigation
-2. searchable record library
-3. record workspace
+## 8.4 Controlled Record Studio
 
-The workspace has:
+`ControlledRecordStudio.tsx` remains a global lifecycle workspace rather than a replacement for specialist engineering workflows. It provides:
 
-- Details
-- Relationships
-- Revisions
+- collection navigation
+- search
+- active and archived filters
+- common and record-specific editing
+- typed relationship authoring
+- revision comparison
+- historical-value restoration
+- archive and restore
 
-### Details
+## 8.5 Impact workspace
 
-Details combines:
-
-- common controlled fields
-- descriptor-specific engineering fields
-- revision note
-- save action
-- archive or restore action
-- module navigation
-
-### Relationships
-
-Relationships displays:
-
-- direct references
-- typed links involving the selected record
-- target search and selection
-- relationship type
-- rationale
-- confirmed removal
-
-### Revisions
-
-Revisions displays:
-
-- ordered immutable snapshots
-- current revision marker
-- revision summaries
-- changed field counts
-- field-level comparison
-- historical-value recovery
-- audit events
-
-## 4.4 Deep linking
-
-The Studio accepts a target containing:
-
-- controlled collection
-- stable record identifier
-
-Targets can be supplied by:
-
-- global search
-- Requirement Dossier
-- application events
-- future specialist views
-
-The target opens the matching authoritative record, not a copy.
-
-## 4.5 Shared modal
-
-`src/components/Modal.tsx` provides:
-
-- focus placement
-- focus trap
-- Escape behavior
-- focus restoration
-- modal sizing
-- accessible dialog semantics
-
-Record Studio uses the full-width modal variant while retaining viewport margins and footer containment.
-
-## 4.6 Requirement Coupon
-
-Requirement Coupons remain projections of authoritative requirement records.
-
-Dragging or editing a coupon can update a selected workflow field but cannot:
-
-- create a duplicate requirement
-- discard revision history
-- remove traceability
-- alter unrelated state dimensions
-- silently close verification
-
-## 4.7 Visual system
-
-`src/styles.css` defines:
-
-- light and dark themes
-- accessible contrast
-- status badges with text
-- stable navigation
-- dense but legible tables
-- Record Studio three-pane layout
-- revision timeline
-- field comparison table
-- responsive behavior
-- non-overlap constraints
-
-Color is not the only indication of state.
+`ImpactReviewWorkspace.tsx` provides source comparison, explainable paths, item disposition, inherited-obligation review, currency review, action creation, and change-request creation.
 
 ---
 
-# 5. Deployment and validation layer
+# 9. Deployment layer
 
-## 5.1 Standard development path
+## 9.1 Conventional development path
 
-The source is prepared for:
-
-- React
-- TypeScript
-- Vite
-- Vite React plug-in
-
-Commands:
+The repository includes a conventional React, TypeScript, and Vite path:
 
 ```bash
 npm install
-npm run dev
 npm run check
+npm run dev
 npm run build
 ```
 
-The release environment could not install package-registry dependencies, so this path is included but not claimed as executed for v0.3.0.
+This path requires registry-installed dependencies and type declarations.
 
-## 5.2 Offline-oriented build
+## 9.2 Offline-oriented build
 
-`scripts/build-offline.mjs`:
-
-- transpiles the modular source
-- uses the checked-in React runtime
-- bundles the application
-- copies styles
-- copies service worker
-- copies manifest
-- copies icons
-- copies third-party notices
-- creates the production entry point
-
-Command:
+`scripts/build-offline.mjs` builds the production application from the modular source and checked-in React runtime without a runtime content-delivery-network dependency:
 
 ```bash
 npm run build:offline
 ```
 
-## 5.3 Service worker
+The generated bundle contains:
 
-`public/sw.js` uses v0.3.0 cache names.
+- `dist/index.html`
+- `dist/assets/vendor.js`
+- `dist/assets/app.js`
+- `dist/assets/styles.css`
+- `dist/manifest.webmanifest`
+- `dist/sw.js`
+- application icons
+- third-party notices
+- operator readme
 
-It:
+## 9.3 Service worker
+
+`public/sw.js` uses v0.5.0 shell and runtime cache names. It:
 
 - precaches the application shell
-- removes obsolete LOOM caches
+- removes older LOOM caches on activation
 - claims open clients
-- handles navigation through network-first fallback
-- handles same-origin assets through cache with refresh
+- uses network-first navigation with cached fallback
+- serves local assets from cache while refreshing when possible
 - ignores cross-origin requests
-
-## 5.4 Manifest
-
-`public/manifest.webmanifest` defines:
-
-- application name
-- short name
-- stable identifier
-- start URL
-- scope
-- standalone display
-- theme and background colors
-- categories
-- 192-pixel icon
-- 512-pixel icon
-
-## 5.5 Validation suites
-
-### Domain suite
-
-`scripts/test-domain.mjs` validates the domain, lifecycle, relationships, migration, sample data, calculations, and safety behavior.
-
-### General browser suite
-
-`scripts/browser-smoke.py` validates application rendering, regression interactions, Record Studio behavior, persistence fallback, and layout.
-
-### Focused lifecycle suite
-
-`scripts/browser-batch2.py` performs one connected controlled-record lifecycle from revision through undo/redo, relationship authoring, archive/restore, and deep linking.
-
-### Deployment-origin suite
-
-`scripts/browser-origin.py` serves the built application over HTTP and tests real browser-origin storage, service workers, files, downloads, offline restart, recovery, and project transfer.
-
-The current managed Chromium environment blocked the loopback origin before application load. The suite remains included for deployment acceptance on a permitted origin.
 
 ---
 
-# Architectural invariants
+# 10. Validation architecture
 
-The following invariants should remain true in future development.
+## 10.1 Deterministic domain suite
 
-## Authoritative identity
+`scripts/test-domain.mjs` validates:
 
-One stable generated identifier represents one controlled record. Visible labels and row positions are never identity.
+- schema and sample counts
+- stable identity and references
+- migration
+- controlled lifecycle
+- calculations
+- impact and inheritance
+- result and evidence currency
+- every verification method
+- method-specific completeness
+- exact revision capture
+- exceptions and retest
+- retained failed results and reruns
+- operational validation
+- closure conditions
+- readiness factors and policies
+- overrides
+- lower-level roll-up
+- reports
+- source transpilation
 
-## One record, many views
+## 10.2 Browser suites
 
-Views project shared records. They do not create disconnected copies.
+- `browser-smoke.py` — general interaction, layout, persistence fallback, themes, modes, navigation, and prior workflows
+- `browser-batch2.py` — controlled record lifecycle regression
+- `browser-batch3.py` — impact and inheritance regression
+- `browser-batch4.py` — verification, validation, rerun, exceptions, operational validation, readiness policy, and override acceptance
+- `browser-origin.py` — real-origin IndexedDB, service worker, cache, offline, file, download, import, recovery, and transfer behavior when loopback navigation is permitted
 
-## Material revisions only
+`run-browser-suite.py` loads the built production assets into a controlled Chromium document for deterministic interface suites in environments where direct loopback navigation is restricted.
 
-A revision represents a material controlled change. Opening, sorting, filtering, selecting, or saving without a change does not create a revision.
+## 10.3 Current validation boundary
 
-## History is additive
-
-Revision recovery, undo, redo, archive, and restore add history. They do not erase later history.
-
-## Archive is not lifecycle
-
-Archive state controls active visibility. It does not overwrite approval, implementation, verification, result, mitigation, or workflow state.
-
-## Derived states are explainable
-
-Readiness, closure, margin, criticality, schedule, and budget results must be reproducible from stored facts.
-
-## Replacement is safe
-
-Imported or restored projects are validated and committed before the active interface changes.
-
-## Local-first remains primary
-
-Optional future collaboration must not make cloud storage, an account, or telemetry mandatory.
+The accepted v0.5.0 suites exercise the offline-generated production bundle. The managed browser blocked a fresh real-origin run before application load, and the constrained package environment lacked the complete registry-installed toolchain required for conventional type-check and Vite build acceptance. Those limitations are recorded rather than converted into passes.

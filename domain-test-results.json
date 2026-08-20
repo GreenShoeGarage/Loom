@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-20T00:02:25.670Z",
-  "applicationVersion": "0.3.0",
-  "schemaVersion": "0.3.0",
+  "generatedAt": "2026-08-20T03:09:47.902Z",
+  "applicationVersion": "0.5.0",
+  "schemaVersion": "0.5.0",
   "passed": true,
   "summary": {
-    "total": 148,
-    "passed": 148,
+    "total": 250,
+    "passed": 250,
     "failed": 0
   },
   "transpileDiagnostics": [],
@@ -36,14 +36,34 @@
       "detail": "expected 5, received 5"
     },
     {
+      "name": "Sample verificationSetups count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
       "name": "Sample testCases count",
       "passed": true,
-      "detail": "expected 0, received 0"
+      "detail": "expected 3, received 3"
     },
     {
       "name": "Sample testExecutions count",
       "passed": true,
+      "detail": "expected 6, received 6"
+    },
+    {
+      "name": "Sample verificationExceptions count",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Sample readinessPolicies count",
+      "passed": true,
       "detail": "expected 5, received 5"
+    },
+    {
+      "name": "Sample readinessOverrides count",
+      "passed": true,
+      "detail": "expected 1, received 1"
     },
     {
       "name": "Sample failureModes count",
@@ -73,12 +93,12 @@
     {
       "name": "Sample documents count",
       "passed": true,
-      "detail": "expected 6, received 6"
+      "detail": "expected 7, received 7"
     },
     {
       "name": "Sample links count",
       "passed": true,
-      "detail": "expected 96, received 96"
+      "detail": "expected 97, received 97"
     },
     {
       "name": "Sample decisions count",
@@ -106,14 +126,19 @@
       "detail": "expected 1, received 1"
     },
     {
+      "name": "Sample impactReviews count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
       "name": "Sample schema version",
       "passed": true,
-      "detail": "expected \"0.3.0\", received \"0.3.0\""
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
     },
     {
       "name": "Sample application version",
       "passed": true,
-      "detail": "expected \"0.3.0\", received \"0.3.0\""
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
     },
     {
       "name": "Sample is identified as sample data",
@@ -123,7 +148,7 @@
     {
       "name": "Stable identifiers are unique across the active project model",
       "passed": true,
-      "detail": "181 identifiers checked"
+      "detail": "230 identifiers checked"
     },
     {
       "name": "Controlled record identifiers are present",
@@ -168,7 +193,7 @@
     {
       "name": "All controlled collection descriptors are represented",
       "passed": true,
-      "detail": "17 descriptors found"
+      "detail": "22 descriptors found"
     },
     {
       "name": "Typed traceability links have no dangling endpoints",
@@ -236,7 +261,162 @@
       "detail": "all references resolve"
     },
     {
-      "name": "Sample includes REQ-001, REQ-002, and REQ-004",
+      "name": "Impact-review source records resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Impact-review affected records resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Impact-review path endpoints resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Potentially stale test sources resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Potentially stale evidence sources resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification-plan setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification-plan test-case references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Test-case plan references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Test-case setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution plan references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution test-case references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution exception references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution rerun references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification-exception execution references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification-exception retest references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Readiness-override targets resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification plan setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification plan test-case references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification setup document references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Test-case plan references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Test-case setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution plan references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution test-case references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution setup references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution exception references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Execution rerun references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification exception execution references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification exception requirement references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Verification exception evidence references resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Readiness override targets and affected records resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Sample includes the principal Batch 4 requirements",
       "passed": true,
       "detail": ""
     },
@@ -373,12 +553,12 @@
     {
       "name": "Cockpit unverified count",
       "passed": true,
-      "detail": "expected 3, received 3"
+      "detail": "expected 6, received 6"
     },
     {
       "name": "Cockpit evidence-gap count",
       "passed": true,
-      "detail": "expected 2, received 2"
+      "detail": "expected 4, received 4"
     },
     {
       "name": "Cockpit open high-criticality failure count",
@@ -393,7 +573,22 @@
     {
       "name": "Cockpit stale-evidence count",
       "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Cockpit potentially stale result count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Cockpit open impact-review count",
+      "passed": true,
       "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit pending impact-item count",
+      "passed": true,
+      "detail": "expected 31, received 31"
     },
     {
       "name": "Cockpit pending-review count",
@@ -401,9 +596,284 @@
       "detail": "expected 1, received 1"
     },
     {
+      "name": "Cockpit open verification-exception count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit pending readiness-override count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit operational acceptance count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit identifies requirements that are not ready",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "Cockpit active change-request count",
       "passed": true,
       "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Sample contains one controlled Batch 3 impact review",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review retains the changed requirement as its source",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review retains old and new source revisions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review records the changed requirement metric",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review remains bounded to a relevant engineering thread",
+      "passed": true,
+      "detail": "31 impact items generated"
+    },
+    {
+      "name": "Every impact item retains an explainable path",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact traversal includes both derived child requirements",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact traversal does not rebound into unrelated requirements",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact traversal reaches functions, objects, verification, evidence, schedule, budgets, baselines, and change control",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Parent change creates a critical inherited-obligation review item",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Inherited obligation retains previous and target source revisions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Parent change does not silently rewrite an approved child requirement",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Affected parent and child verification results are marked potentially stale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Unrelated verification results remain current",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Affected verification evidence is marked potentially stale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Unrelated verification evidence remains current",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A significant controlled change generates one impact review",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Impact generation key prevents duplicate reviews for the same source revision",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Metadata-only changes do not create engineering impact noise",
+      "passed": true,
+      "detail": "expected 0, received 0"
+    },
+    {
+      "name": "Dismissal without rationale is rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact-item disposition retains rationale and reviewer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Currency review can confirm a result current without deleting history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Inherited-obligation disposition records review history and clears the review flag",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Inherited-obligation disposition resolves its impact-review item",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact item creates a linked controlled action",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Impact review creates one linked change request",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 4 includes reusable laboratory and field verification setups",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every verification plan can reference an authoritative reusable setup",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 4 includes parameterized reusable test cases",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every required sample parameter has an as-run value",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every execution records the exact verification-plan revision",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every execution records exact test-case and setup revisions when applicable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Combination verification requires named contributing methods and analysis detail",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing method-specific analysis content prevents combination completeness",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Operational validation captures stakeholder need, scenario, representative user, suitability, and recommendation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Operational validation derives an accepted validation state",
+      "passed": true,
+      "detail": "expected \"accepted\", received \"accepted\""
+    },
+    {
+      "name": "A failed verification result remains retained after a later passing rerun",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "The original failed execution records that its required retest was completed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A corrected verification exception points to the controlled rerun",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "An unresolved endurance exception continues to block closure and require retest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "The original timing failure remains unclosed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "The controlled timing rerun closes only after exact revisions, review, current evidence, and exception disposition",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "The successful timing rerun has a current approved evidence artifact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "REQ-003 derives passed only from the latest closed rerun while preserving the failed history",
+      "passed": true,
+      "detail": "expected \"passed\", received \"passed\""
+    },
+    {
+      "name": "REQ-003 becomes integration-ready after the controlled rerun closes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A required stale-evidence factor removes integration readiness",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "All five readiness levels have approved controlled policies",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "An under-review readiness override has no effect",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "An approved effective override is visible and applies only to named factors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A failed lower-level result removes parent readiness roll-up",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relationship validation rejects dangling impact-review targets",
+      "passed": true,
+      "detail": ""
     },
     {
       "name": "Fresh Start produces an empty requirements collection",
@@ -433,7 +903,7 @@
     {
       "name": "Migration upgrades the schema version",
       "passed": true,
-      "detail": "expected \"0.3.0\", received \"0.3.0\""
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
     },
     {
       "name": "Migration supplies all missing collection arrays",
@@ -441,14 +911,14 @@
       "detail": ""
     },
     {
-      "name": "Migration records the v0.1.0 to v0.3.0 transition",
+      "name": "Migration records the v0.1.0 source schema",
       "passed": true,
       "detail": "expected \"0.1.0\", received \"0.1.0\""
     },
     {
       "name": "Migration history records the destination schema",
       "passed": true,
-      "detail": "expected \"0.3.0\", received \"0.3.0\""
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
     },
     {
       "name": "Migration preserves unknown top-level fields",
@@ -623,7 +1093,7 @@
     {
       "name": "Editing an archived record preserves the original archive timestamp",
       "passed": true,
-      "detail": "expected \"2026-08-20T00:02:25.625Z\", received \"2026-08-20T00:02:25.625Z\""
+      "detail": "expected \"2026-08-20T03:09:47.796Z\", received \"2026-08-20T03:09:47.796Z\""
     },
     {
       "name": "Restoring old field values does not reactivate an archived record",
@@ -701,22 +1171,62 @@
       "detail": ""
     },
     {
-      "name": "A v0.2.0 project migrates to the Batch 2 schema",
+      "name": "A v0.4.0 project migrates to the Batch 4 schema",
       "passed": true,
-      "detail": "expected \"0.3.0\", received \"0.3.0\""
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
     },
     {
-      "name": "Batch 2 migration seeds revision history for every controlled record",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "Batch 2 migration preserves unknown project extensions",
+      "name": "Batch 4 migration initializes setups, exceptions, policies, and overrides",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "Batch 2 migration records the exact source and destination schemas",
+      "name": "Batch 4 migration initializes exact as-run and closure fields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 4 migration records the v0.4.0 source and v0.5.0 destination",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A v0.3.0 project migrates through Batch 3 and Batch 4 to the current schema",
+      "passed": true,
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
+    },
+    {
+      "name": "Batch 3 migration initializes impact-review and record-currency fields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 3 migration initializes inherited-obligation review history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Current migration records the v0.3.0 source and v0.5.0 destination",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A v0.2.0 project migrates to the Batch 4 schema",
+      "passed": true,
+      "detail": "expected \"0.5.0\", received \"0.5.0\""
+    },
+    {
+      "name": "Batch 3 migration seeds revision history for every controlled record",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 3 migration preserves unknown project extensions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 4 migration records the exact source and destination schemas",
       "passed": true,
       "detail": ""
     },

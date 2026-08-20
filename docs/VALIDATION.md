@@ -1,26 +1,34 @@
-# LOOM v0.3.0 Validation Record
+# LOOM v0.5.0 Validation Record
 
-**Validation date:** August 19, 2026  
+**Validation date:** August 20, 2026  
 **Validated artifact:** modular source and offline-generated `dist` production bundle  
-**Release focus:** Batch 2 — Controlled Record Lifecycle
+**Release focus:** Batch 4 — Verification, Validation, and Readiness Closure
 
 ## Result summary
 
 | Validation group | Result |
 |---|---:|
-| Offline production build | Passed |
-| Domain, migration, relationship, lifecycle, calculation, and source-transpile checks | **148 of 148 passed** |
+| Offline production build | **Passed** |
+| Generated JavaScript syntax | **Passed** |
+| Domain, migration, lifecycle, impact, verification, readiness, calculation, and source-transpile checks | **250 of 250 passed** |
 | General Chromium interaction and layout checks | **67 of 67 passed** |
-| Dedicated Batch 2 controlled-record lifecycle checks | **37 of 37 passed** |
-| Browser page exceptions | **0** |
-| Browser console errors | **0** |
-| Real loopback-origin v0.3.0 rerun | Blocked by browser administrator policy |
+| Controlled-record lifecycle regression checks | **37 of 37 passed** |
+| Batch 3 impact and inheritance regression checks | **76 of 76 passed** |
+| Dedicated Batch 4 verification, validation, and readiness checks | **91 of 91 passed** |
+| **Total accepted automated checks** | **521 of 521 passed** |
+| Browser page exceptions across accepted browser suites | **0** |
+| Browser console errors across accepted browser suites | **0** |
+| Real loopback-origin navigation | **Blocked by administrator policy; not accepted** |
+| Conventional TypeScript check | **Attempted; unavailable registry dependencies prevented completion** |
+| Conventional Vite build | **Attempted; unavailable registry dependencies prevented completion** |
 
 Machine-readable results:
 
 - `domain-test-results.json`
 - `browser-smoke-results.json`
 - `record-lifecycle-results.json`
+- `impact-review-results.json`
+- `verification-readiness-results.json`
 - `origin-acceptance-results.json`
 
 ## Production build validation
@@ -44,9 +52,15 @@ The builder generated:
 - `dist/THIRD_PARTY_LICENSES.txt`
 - `dist/README.txt`
 
-The build completed without source-transpile diagnostics. Generated JavaScript files passed syntax checks, the manifest parsed as valid JavaScript Object Notation (JSON), and delivered asset references resolved.
+The build completed without offline source-transpile diagnostics. Generated application JavaScript passed:
 
-## Domain and lifecycle validation
+```bash
+node --check dist/assets/app.js
+```
+
+The manifest parsed as valid JavaScript Object Notation (JSON), and production Hypertext Markup Language (HTML) asset references resolved to delivered files.
+
+## Deterministic domain validation
 
 Command:
 
@@ -57,96 +71,233 @@ npm test
 Result:
 
 ```text
-148 of 148 passed
+250 of 250 passed
 ```
 
-### Identity and project-model checks
+### Project model and identity
 
 The deterministic suite validates:
 
-- application and schema version 0.3.0
-- exact sample-data collection counts
+- application and schema version v0.5.0
 - unique stable record identities
-- unique visible identifiers within each controlled collection
-- retained history and current revision snapshots
-- no dangling requirement, function, object, interface, verification, failure, execution, evidence, budget, inheritance, or typed-link references
-- rejection of corrupted revision snapshot identity
-- preservation of unknown top-level imported fields
+- unique visible identifiers within controlled collections
+- 22 controlled record collections
+- controlled revision history
+- immutable revision snapshots
+- no dangling direct references
+- no dangling typed-traceability endpoints
+- archive and restore identity retention
+- no-op revision protection
+- historical-value recovery
+- unknown top-level imported-field preservation
 
-### Controlled-record lifecycle checks
-
-The suite validates:
-
-- all 17 controlled collections can be created through one registry
-- new records begin at revision one
-- creation produces one immutable snapshot
-- snapshots do not recursively embed history
-- material edits increment exactly one revision
-- changed root fields are retained
-- untouched records keep their revisions
-- no-op edits create no false revision or audit event
-- duplicate visible identifiers are rejected
-- earlier snapshots remain immutable
-- field comparison identifies changed values
-- archive retains identity, history, lifecycle state, actor, and timestamp
-- editing an archived record preserves the original archive actor and time
-- restoring old fields does not reactivate an archived record
-- restore clears archive metadata and preserves lifecycle disposition
-- revision recovery creates a new revision and retains intervening history
-- missing controlled records are reinserted as archived revisions
-- specialist-view edits use the shared reconciler
-
-### Relationship checks
+### Batch 4 schema and sample data
 
 The suite validates:
 
-- typed link creation
-- duplicate-link reuse
-- compatible direct-reference synchronization
-- reciprocal requirement/function allocation
-- controlled revision generation after relationship-driven changes
-- typed link removal
-- direct-array cleanup after removal
+- two reusable sample setups
+- five controlled verification plans
+- three parameterized sample cases
+- six retained as-run sample executions
+- three structured verification exceptions
+- five readiness policies
+- one controlled readiness request
+- exact plan, case, and setup revision references
+- method-specific execution structures
+- operational-validation structures
+- reviewer-disposition structures
+- configuration-conformance structures
+- retest and rerun lineage
 
-### Session-history support calculations
+### Verification methods
 
-Domain reconciliation checks used by session undo and redo validate:
+The suite validates completeness behavior for:
 
-- controlled state restoration creates new revisions
-- archive state remains orthogonal
-- record identity remains stable
-- project revision continues forward
+- test
+- analysis
+- inspection
+- demonstration
+- similarity
+- certification
+- combination
+- not yet determined
 
-### Engineering calculations retained from earlier releases
+The method-specific service checks required fields for each method and contributing methods for combination records.
+
+### Parameterized cases and reusable setups
+
+The suite validates:
+
+- controlled setup identity and revisions
+- setup applicability by method
+- case-to-plan references
+- case-to-setup references
+- typed parameter definitions
+- required parameter detection
+- default values
+- as-run parameter values
+- exact case and setup revision capture
+
+### As-run execution records
+
+The suite validates:
+
+- exact plan revision
+- exact case revision
+- exact setup revision
+- method and level
+- execution number and rerun sequence
+- as-run configuration
+- hardware, software, and firmware versions
+- environment, equipment, and calibration
+- operator and reviewer
+- reviewer disposition
+- configuration conformance
+- input and output data
+- observations and deviations
+- evidence references
+- result and currency separation
+
+### Failure retention and controlled reruns
+
+The suite validates:
+
+- original failed result retention
+- separate passing rerun identity
+- source-run linkage
+- monotonic execution numbering
+- exact revision retention in the rerun
+- source retest-state update without source-result overwrite
+- corrective-exception linkage
+- corrected exception disposition after a passing rerun
+- current rerun currency when the creation transaction adds bookkeeping traceability
+
+### Structured exceptions
+
+The suite validates:
+
+- deviation, anomaly, defect, and observation kinds
+- severity
+- originating execution
+- affected requirements
+- status and disposition
+- evidence
+- retest requirement
+- corrective-rerun reference
+- originating-execution exception references
+
+### Operational validation
+
+The suite validates:
+
+- stakeholder need
+- operational scenario
+- representative user
+- mission or use objective
+- suitability observations
+- acceptance recommendation
+- separation of verification and validation state
+- operational completeness requirements
+
+### Verification closure
+
+The suite validates the fourteen closure conditions:
+
+1. approved verification plan
+2. completed execution
+3. acceptable result
+4. current or reviewed-current result
+5. complete method-specific record
+6. acceptance criteria defined
+7. acceptance criteria satisfied
+8. as-run configuration recorded
+9. configuration conformity accepted
+10. exact plan, case, and setup revisions recorded
+11. reviewer disposition accepted
+12. exceptions resolved
+13. retest complete or waived
+14. current evidence attached
+
+Operational-level executions add two applicable blocking checks: operational-context completeness and an accept or conditional operational recommendation.
+
+It also validates:
+
+- a status label alone cannot close a requirement
+- potentially stale, stale, and superseded results do not satisfy current-result closure
+- failed results remain in history after later passes
+- unresolved exceptions and retest obligations hold closure open
+- missing current evidence holds closure open
+
+### Readiness governance
+
+The suite validates:
+
+- unit, integration, subsystem, system, and operational policies
+- default factor rules by level
+- enabled and disabled factors
+- required factors
+- weighted score
+- minimum-score behavior
+- all-required-factor behavior
+- textual readiness state
+- supporting record identifiers
+- next-action generation
+- lower-level failure roll-up
+- interface verification
+- high-criticality failure status
+- configuration, work, schedule, budget, impact, evidence, and operational factors
+
+### Readiness exceptions
+
+The suite validates:
+
+- waiver
+- conditional approval
+- manual override
+- target and level
+- factor keys
+- affected records
+- rationale
+- requester and reviewer
+- under-review, approved, and rejected states
+- effective dates
+- revision and audit history
+- approved override presentation without removal of factor evidence
+
+### Migration
+
+The suite validates:
+
+- v0.1.0 to v0.5.0
+- v0.2.0 to v0.5.0
+- v0.3.0 to v0.5.0
+- v0.4.0 to v0.5.0
+- native v0.5.0 loading
+- Batch 4 collection initialization
+- Batch 4 field initialization
+- controlled revision-history initialization
+- stable identity preservation
+- relationship preservation
+- impact-review preservation
+- migration-history recording
+- unsupported future-schema rejection
+
+### Retained engineering calculations
 
 The suite also validates:
 
-- threshold and target margin behavior
-- allocation, verification, and evidence states
-- seven-condition verification closure
-- explainable readiness factors
-- FMECA criticality categories
-- financial project-budget roll-up and variance
-- mass and power technical-budget roll-up, margin, and utilization
-- dependency schedule, slack, critical path, and cycle detection
-- baseline difference detection
-- cockpit exception counts
-- exact-value and range metrics
+- requirement completeness
+- Technical Performance Measure threshold and target behavior
+- allocation state
+- result and evidence currency
+- Failure Modes, Effects, and Criticality Analysis criticality
+- financial project-budget roll-up
+- technical-budget roll-up and margin
+- schedule dependencies, slack, critical path, and cycle detection
+- baseline comparison
+- impact propagation and dispositions
+- Cockpit exception counts
 - genuinely empty Fresh Start behavior
-
-### Migration checks
-
-The suite validates:
-
-- schema v0.1.0 to v0.3.0 migration
-- schema v0.2.0 to v0.3.0 migration
-- schema v0.3.0 loading
-- migration-history source and destination versions
-- revision-history initialization for every controlled record
-- recovery of historical snapshots from available baselines where possible
-- stable identity preservation
-- unknown-field preservation
-- unsupported future-schema rejection
 
 ## General Chromium interaction and layout validation
 
@@ -166,47 +317,38 @@ The built Cascading Style Sheets (CSS) and JavaScript were loaded into Chromium 
 
 Coverage includes:
 
-- initial render and visible v0.3.0 version
+- visible v0.5.0 version
 - all eight primary sections
 - sample project selection
-- desktop requirement-filter layout
-- evidence summary alignment and non-overlap
-- baseline inspector spacing and chevron containment
+- requirement-filter layout
+- evidence summary alignment
+- baseline inspector containment
 - nine-step requirement wizard
-- requirement creation
-- autosave feedback
-- local fallback persistence and recovery in a second browser document
+- requirement creation and autosave
+- local fallback persistence
 - Easy and Advanced modes
 - light and dark themes
-- six Kanban lanes and shared sample work records
-- project export, Fresh Start, sample, duplication, and archive controls
-- Record Studio launch from project actions
-- 17 controlled record types
-- three-pane layout
-- decision creation and second revision
-- field-level revision comparison
+- Kanban lanes and sample work records
+- project actions
+- Controlled Record Studio launch
+- all 22 controlled record types
+- record creation and revision
+- revision comparison
 - typed relationship creation and removal
 - archive and restore
-- revision recovery
+- historical-value recovery
 - session undo and redo
-- Record Studio keyboard shortcut
-- controlled revision persistence in a second browser document
-- no page or console errors
+- keyboard shortcut
+- second-document recovery
+- zero page exceptions
+- zero console errors
 
-Representative screenshots:
-
-- `docs/screenshots/validation-cockpit.png`
-- `docs/screenshots/validation-evidence.png`
-- `docs/screenshots/validation-baselines.png`
-- `docs/screenshots/validation-execution.png`
-- `docs/screenshots/validation-record-studio-revisions.png`
-
-## Dedicated Batch 2 browser validation
+## Controlled-record lifecycle regression
 
 Command:
 
 ```bash
-npm run test:batch2
+npm run test:lifecycle
 ```
 
 Result:
@@ -217,31 +359,140 @@ Result:
 
 Coverage includes:
 
-- undo and redo initially disabled
-- Record Studio open and close behavior
-- all 17 controlled collections
-- initial authoritative requirement projection
-- three non-overlapping work panes
-- stable visible identifier and current revision
-- material requirement edit
-- exactly one new revision
-- immediate authoritative-list refresh
-- immutable snapshots
-- title and owner field comparison
-- revision-note audit display
-- undo restoring earlier values as a new revision
-- redo restoring edited values as a new revision
-- decision creation through the same lifecycle
-- typed relationship and rationale authoring
-- archive and restore with text status
-- archive and restore audit events
-- global search of a new record
-- direct opening of the authoritative record
-- no page or console errors
+- Record Studio layout
+- all controlled collections
+- controlled requirement edit
+- no-op protection
+- revision comparison
+- undo and redo
+- decision creation
+- relationship rationale
+- archive and restore
+- audit history
+- global search
+- authoritative record opening
+- zero page exceptions
+- zero console errors
 
-Representative screenshot:
+## Batch 3 impact and inheritance regression
 
-- `docs/screenshots/validation-record-studio-lifecycle.png`
+Command:
+
+```bash
+npm run test:batch3
+```
+
+Result:
+
+```text
+76 of 76 passed
+```
+
+Coverage includes:
+
+- impact-review workspace
+- source revision comparison
+- changed fields
+- bounded explainable paths
+- inherited-obligation review
+- result and evidence currency disposition
+- action and change-request creation
+- Requirement Coupon integration
+- dark theme
+- narrow layout
+- persistence
+- zero page exceptions
+- zero console errors
+
+Batch 4 retains the Batch 3 behavior and updates the regression expectations to account for the additional verification, exception, readiness, and traceability records now reached by the bounded graph.
+
+## Dedicated Batch 4 browser validation
+
+Command:
+
+```bash
+npm run test:batch4
+```
+
+Result:
+
+```text
+91 of 91 passed
+```
+
+Coverage includes:
+
+- eight Verification tabs
+- verification coverage metrics
+- sample collection counts
+- reusable setup presentation
+- creation of `SETUP-003`
+- parameterized-case presentation
+- creation of `TC-004`
+- exact case/setup persistence
+- retained `RUN-003` timing failure
+- separate `RUN-006` passing timing rerun
+- exact plan, case, and setup revisions
+- controlled rerun form
+- creation of `RUN-007`
+- preservation of `RUN-004` as failed
+- source retest-state update
+- corrective-exception linkage
+- current rerun currency
+- fourteen-condition result presentation
+- operational validation context
+- creation of `EXC-004`
+- readiness score and textual state
+- at least fourteen displayed applicable factors
+- required lower-level factor
+- next-action display
+- controlled policy edit and second revision
+- approval of `OVR-001`
+- creation and approval of `OVR-002`
+- visible overridden factor without hidden evidence
+- five new semantic report entries
+- Markdown verification-status download
+- second-document persistence
+- dark theme
+- narrow-width stacking
+- zero page exceptions
+- zero console errors
+
+Representative screenshots:
+
+- `docs/screenshots/validation-verification-executions.png`
+- `docs/screenshots/validation-verification-readiness.png`
+
+## Important defect found and corrected during validation
+
+The initial Batch 4 browser pass found that recording a new rerun added requirement references that the Batch 3 impact engine interpreted as a material requirement change. The just-created rerun and its evidence could therefore be marked potentially stale immediately.
+
+The corrected implementation suppresses automatic impact generation only for the transaction that records a new as-run execution. The controlled record, requirement references, and typed links are still created and reconciled. Substantive source changes continue to generate impact review.
+
+The final Batch 4 suite confirms `RUN-007` remains current after creation.
+
+## Semantic-report validation
+
+The Batch 4 browser suite confirms the Evidence work area lists:
+
+- Verification and Validation Status Report
+- Verification Cross-Reference
+- Verification Exception Register
+- V-Model Readiness Report
+- Operational Validation Summary
+
+It downloads the verification-status report and confirms the report includes:
+
+- method
+- level
+- verification state
+- validation state
+- latest activity
+- result
+- reviewer
+- currency
+- unmet closure conditions
+- control statement
 
 ## Real-origin deployment attempt
 
@@ -251,47 +502,73 @@ Command:
 npm run test:origin
 ```
 
-The test attempted to serve the actual production bundle at:
+The suite started its static server at:
 
 ```text
 http://127.0.0.1:4195
 ```
 
-The managed Chromium environment blocked navigation with an administrator policy before the application could be exercised. The result file records:
+Managed Chromium returned:
 
-- `originNavigationBlockedByPolicy: true`
-- no successful v0.3.0 real-origin application acceptance
-- the exact fatal environment explanation
+```text
+ERR_BLOCKED_BY_ADMINISTRATOR
+```
 
-This validation record does not convert the block into a pass.
+The machine-readable result records:
 
-The historical `docs/BATCH-1-ACCEPTANCE.md` documents a v0.2.0 48-check real-origin Chromium pass covering IndexedDB, service workers, Cache Storage, offline restart, evidence files, downloads, import rejection, recovery, transaction abort, and cross-profile transfer. Those foundations remain in the v0.3.0 codebase, but final-origin acceptance should be rerun for this release.
+- server startup success
+- browser-harness startup success
+- origin navigation failure caused by administrator policy
+- no successful v0.5.0 application-origin acceptance
 
-## Conventional package-build limitation
+The result is not converted into a pass. Repeat the suite in an unrestricted browser environment or on the final hosted origin.
 
-The execution environment could not install package-registry dependencies. The local `node_modules` directory therefore did not contain React type declarations, Vite, or the Vite React plug-in, and `npm run check` could not complete the conventional project type check.
+The historical Batch 1 acceptance record remains included because it documents a successful prior real-origin Chromium pass for the underlying Indexed Database Application Programming Interface (IndexedDB), service worker, offline restart, file handling, download, recovery, interrupted transaction, malformed import, and cross-profile transfer foundations. The complete v0.5.0 application still requires a fresh final-origin pass.
 
-This record does not claim a successful conventional `npm run build` or `npm run check` in the current environment.
+## Conventional TypeScript and Vite attempts
 
-The release instead used:
+Commands:
 
-- the checked-in React runtime
-- the offline builder
-- TypeScript source transpilation with no source-transpile diagnostics
-- deterministic domain execution
-- two independent Chromium interaction suites
+```bash
+npm run check
+npm run build
+```
 
-Run `npm install`, `npm run check`, and `npm run build` in a normal development environment before publishing changes made after this release.
+Both commands were attempted. The environment did not contain registry-installed:
+
+- React type declarations
+- React DOM type declarations
+- Vite
+- Vite React plug-in
+
+TypeScript consequently reported missing JavaScript Syntax Extension (JSX) intrinsic definitions, implicit event types caused by the missing React declarations, and unresolved Vite modules.
+
+This validation record does not claim a successful conventional check or Vite build in this environment.
+
+The accepted release instead uses:
+
+- modular TypeScript source
+- checked-in React runtime
+- deterministic offline builder
+- generated-JavaScript syntax validation
+- 250 deterministic domain checks
+- four independent Chromium interaction suites
+
+Run `npm install`, `npm run check`, and `npm run build` in a normal development environment before publishing later source changes.
 
 ## Reproduction
 
-### Standard Batch 2 release validation
+### Complete accepted Batch 4 validation
 
 ```bash
-npm run validate:batch2
+npm run validate:batch4
 ```
 
-This rebuilds the offline bundle, checks the generated application JavaScript syntax, runs the 148-check deterministic suite, and runs the 67-check general Chromium suite. The focused 37-check lifecycle suite is intentionally invoked separately to avoid browser-startup contention when two automated Chromium suites are chained in constrained environments.
+### Offline build only
+
+```bash
+npm run build:offline
+```
 
 ### Domain suite only
 
@@ -299,34 +576,48 @@ This rebuilds the offline bundle, checks the generated application JavaScript sy
 npm test
 ```
 
-### General browser suite only
+### General browser suite
 
 ```bash
 npm run test:browser
 ```
 
-### Controlled-record lifecycle suite only
+### Controlled lifecycle suite
 
 ```bash
-npm run test:batch2
+npm run test:lifecycle
 ```
 
-### Deployment-origin suite in an unrestricted environment
+### Impact and inheritance suite
+
+```bash
+npm run test:batch3
+```
+
+### Verification and readiness suite
+
+```bash
+npm run test:batch4
+```
+
+### Real-origin suite
 
 ```bash
 npm run test:origin
 ```
 
-### Combined deployment validation
+### Conventional source checks in an environment with installed dependencies
 
 ```bash
-npm run validate:deployment
+npm install
+npm run check
+npm run build
 ```
 
 ## Conclusion
 
-The Batch 2 controlled-record scope is accepted based on 252 passing automated checks across the domain and browser suites, with zero browser page exceptions and zero console errors.
+The accepted Batch 4 release passed 521 of 521 automated checks across deterministic domain execution and four Chromium interaction suites, with zero page exceptions and zero console errors.
 
-The accepted result covers controlled record creation, material revision, field comparison, typed relationships, archive, restore, revision recovery, safe deletion behavior, migration, specialist-view reconciliation, and current-session undo and redo.
+The accepted result covers verification methods, reusable setups, parameterized cases, exact as-run records, failure retention, controlled reruns, structured exceptions, operational validation, closure, readiness policies, controlled exceptions, migration, reporting, persistence, dark theme, and responsive layout.
 
-Real-origin deployment acceptance remains an explicit external gate because the current browser environment blocked loopback navigation.
+Real-origin acceptance and the conventional registry-dependent build remain explicit external gates and are not claimed as completed.

@@ -1,4 +1,4 @@
-const VERSION = '0.3.0';
+const VERSION = '0.5.0';
 const CACHE_PREFIX = 'loom-';
 const SHELL_CACHE = `${CACHE_PREFIX}shell-v${VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v${VERSION}`;

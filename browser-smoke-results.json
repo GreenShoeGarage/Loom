@@ -18,7 +18,7 @@
     {
       "name": "Sample project selected",
       "passed": true,
-      "detail": "project_mt0r9i7i_z9p50yki"
+      "detail": "project_mt0xzoav_netnnbzx"
     },
     {
       "name": "Navigate: Cockpit",
@@ -93,12 +93,12 @@
     {
       "name": "Baseline inspector has padded sections",
       "passed": true,
-      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 890.375}, {'x': 804.1875, 'y': 369.796875, 'width': 760.8125, 'height': 172.984375}, {'x': 819.1875, 'y': 383.796875, 'width': 730.8125, 'height': 20.296875})"
+      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 908}, {'x': 804.1875, 'y': 369.796875, 'width': 760.8125, 'height': 172.984375}, {'x': 819.1875, 'y': 383.796875, 'width': 730.8125, 'height': 20.296875})"
     },
     {
       "name": "Baseline header remains inside inspector",
       "passed": true,
-      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 890.375}, {'x': 804.1875, 'y': 274.171875, 'width': 760.8125, 'height': 95.625})"
+      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 908}, {'x': 804.1875, 'y': 274.171875, 'width': 760.8125, 'height': 95.625})"
     },
     {
       "name": "Baseline metadata uses four cards",
@@ -123,7 +123,7 @@
     {
       "name": "Autosave writes a local project fallback",
       "passed": true,
-      "detail": "['loom-project:project_mt0r9i7i_z9p50yki', 'loom-last-project-id']"
+      "detail": "['loom-project:project_mt0xzoav_netnnbzx', 'loom-last-project-id']"
     },
     {
       "name": "Save indicator reaches Saved",
@@ -163,7 +163,7 @@
     {
       "name": "Kanban final lane is visible at desktop width",
       "passed": true,
-      "detail": "({'x': 1377, 'y': 252.875, 'width': 205, 'height': 750.125}, {'width': 1600, 'height': 1000})"
+      "detail": "({'x': 1377, 'y': 252.875, 'width': 205, 'height': 749.125}, {'width': 1600, 'height': 1000})"
     },
     {
       "name": "Project menu includes full-fidelity export",
@@ -191,9 +191,9 @@
       "detail": ""
     },
     {
-      "name": "Record Studio exposes all 17 controlled record types",
+      "name": "Record Studio exposes all 22 controlled record types",
       "passed": true,
-      "detail": "17"
+      "detail": "22"
     },
     {
       "name": "Record Studio uses a non-overlapping three-column desktop layout",
@@ -238,7 +238,7 @@
     {
       "name": "Relationship author offers controlled records as targets",
       "passed": true,
-      "detail": "[{'value': '', 'text': 'Choose a controlled record\u2026'}, {'value': 'req_mt0r9i7i_mndg2v1f', 'text': 'REQ-001 \u00b7 Continuous field endurance \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_y3c5i3a9', 'text': 'REQ-002 \u00b7 Temperature accuracy \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_deqfylfs', 'text': 'REQ-003 \u00b7 Display update interval \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_brs4i0j9', 'text': 'REQ-004 \u00b7 Environmental enclosure protection \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_saamzsyu', 'text': 'REQ-005 \u00b7 Readable local status \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_w9rel8r8', 'text': 'REQ-101 \u00b7 Battery usable energy \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_9yvcok0w', 'text': 'REQ-102 \u00b7 Average system power \u00b7 Requirement'}]"
+      "detail": "[{'value': '', 'text': 'Choose a controlled record\u2026'}, {'value': 'req_mt0xzoav_9wqirhtf', 'text': 'REQ-001 \u00b7 Continuous field endurance \u00b7 Requirement'}, {'value': 'req_mt0xzoav_5bp0igw2', 'text': 'REQ-002 \u00b7 Temperature accuracy \u00b7 Requirement'}, {'value': 'req_mt0xzoav_ok8wtbon', 'text': 'REQ-003 \u00b7 Display update interval \u00b7 Requirement'}, {'value': 'req_mt0xzoav_vt3orcnr', 'text': 'REQ-004 \u00b7 Environmental enclosure protection \u00b7 Requirement'}, {'value': 'req_mt0xzoav_6t6lwhtp', 'text': 'REQ-005 \u00b7 Readable local status \u00b7 Requirement'}, {'value': 'req_mt0xzoav_clo7vyg9', 'text': 'REQ-101 \u00b7 Battery usable energy \u00b7 Requirement'}, {'value': 'req_mt0xzoav_3114utez', 'text': 'REQ-102 \u00b7 Average system power \u00b7 Requirement'}]"
     },
     {
       "name": "Record Studio creates an explainable typed relationship",
@@ -339,8 +339,8 @@
   "page_errors": [],
   "console_errors": [],
   "failures": [],
-  "generatedAt": "2026-08-20T00:01:55.262637Z",
-  "applicationVersion": "0.3.0",
+  "generatedAt": "2026-08-20T03:10:14.795861Z",
+  "applicationVersion": "0.5.0",
   "summary": {
     "total": 67,
     "passed": 67,

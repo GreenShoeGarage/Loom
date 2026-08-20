@@ -1,4 +1,4 @@
-/* LOOM v0.3.0 production application bundle. */
+/* LOOM v0.5.0 production application bundle. */
 (function (global) {
   'use strict';
   var vendor = global.__LOOM_VENDOR__;
@@ -560,7 +560,8 @@ const commonKeys = new Set([
     'history', 'revisionHistory', 'notes', 'tags', 'archived', 'archivedAt', 'archivedBy'
 ]);
 const hiddenDetailKeys = new Set([
-    'contentDataUrl', 'integrityFingerprint', 'fileName', 'fileSize', 'mimeType', 'snapshot'
+    'contentDataUrl', 'integrityFingerprint', 'fileName', 'fileSize', 'mimeType', 'snapshot',
+    'items', 'sourceChanges', 'sourceChangedFields', 'generationKey'
 ]);
 const descriptiveKeys = new Set([
     'statement', 'description', 'rationale', 'context', 'alternatives', 'objective', 'acceptanceCriteria',
@@ -572,13 +573,17 @@ const descriptiveKeys = new Set([
     'verificationImpact', 'resolution', 'basis', 'validationMethod', 'localParameters', 'requiredConfiguration',
     'requiredEnvironment', 'requiredEquipment', 'requiredEvidence', 'operatingCondition', 'measurementCondition',
     'performanceExpectation', 'mechanicalCharacteristics', 'electricalCharacteristics', 'dataCharacteristics',
-    'timingCharacteristics', 'customFormula'
+    'timingCharacteristics', 'customFormula', 'staleReason', 'reviewReason', 'triggerSummary', 'dispositionRationale', 'stalenessReason', 'calibrationRequirements', 'expectedEvidence',
+    'dispositionNotes', 'retestReason', 'analysisModel', 'analysisTool', 'calculationSummary', 'inspectionItem',
+    'inspectionMethod', 'sampleInspected', 'demonstrationScenario', 'participants', 'similarityReference',
+    'similarityBasis', 'differences', 'certificationAuthority', 'certificateReference', 'certificationScope',
+    'stakeholderNeed', 'operationalScenario', 'representativeUser', 'missionObjective', 'suitabilityObservations'
 ]);
 const relationshipArrayKeys = new Set([
     'childIds', 'dependencyIds', 'decisionIds', 'baselineIds', 'functionIds', 'objectIds', 'interfaceIds',
     'failureModeIds', 'verificationPlanIds', 'testExecutionIds', 'evidenceIds', 'workItemIds', 'requirementIds',
     'documentIds', 'testCaseIds', 'predecessorIds', 'successorIds', 'budgetLineIds', 'linkedRecordIds',
-    'affectedRecordIds', 'blockingRecordIds', 'resultingRevisionIds'
+    'affectedRecordIds', 'blockingRecordIds', 'resultingRevisionIds', 'impactReviewIds', 'staleSourceIds', 'exceptionIds', 'affectedRecordIds'
 ]);
 function labelForKey(key) {
     const known = {
@@ -600,7 +605,17 @@ function labelForKey(key) {
         reviewStatus: 'Review status', percentComplete: 'Percent complete', durationDays: 'Duration (days)',
         plannedStart: 'Planned start', plannedFinish: 'Planned finish', actualStart: 'Actual start',
         actualFinish: 'Actual finish', forecastFinish: 'Forecast finish', baselineStart: 'Baseline start',
-        baselineFinish: 'Baseline finish', dueDate: 'Due date', reviewDate: 'Review date', plannedDate: 'Planned date'
+        baselineFinish: 'Baseline finish', dueDate: 'Due date', reviewDate: 'Review date', plannedDate: 'Planned date',
+        currencyState: 'Currency state', staleDetectedAt: 'Staleness detected at', reviewRequiredAt: 'Review required at',
+        targetSourceRequirementRevision: 'Target source revision', previousSourceRequirementRevision: 'Previous source revision',
+        sourceRevisionBefore: 'Source revision before', sourceRevisionAfter: 'Source revision after', generatedAt: 'Generated at',
+        generationKey: 'Generation key', sourceCollection: 'Source collection', sourceRecordId: 'Source record',
+        setupId: 'Verification setup', setupRevision: 'Setup revision', verificationPlanRevision: 'Verification plan revision',
+        testCaseRevision: 'Test case revision', rerunOfId: 'Rerun source', rerunSequence: 'Rerun sequence',
+        executionId: 'Verification execution', retestExecutionId: 'Retest execution', reviewerDisposition: 'Reviewer disposition',
+        configurationConformance: 'Configuration conformance', acceptanceCriteriaSatisfied: 'Acceptance criteria satisfied',
+        retestState: 'Retest state', acceptanceRecommendation: 'Acceptance recommendation', targetRecordId: 'Override target',
+        effectiveAt: 'Effective at', expiresAt: 'Expires at', minimumScore: 'Minimum score', requireAllRequiredFactors: 'Require all required factors'
     };
     return known[key] ?? (0, text_1.humanize)(key.replace(/([a-z])([A-Z])/g, '$1-$2'));
 }
@@ -618,7 +633,10 @@ function enumOptions(collection, key) {
         implementation: ['not-started', 'in-progress', 'implemented', 'blocked', 'rework-required'],
         verification: ['unplanned', 'planned', 'ready', 'running', 'passed', 'failed', 'blocked', 'waived'],
         validation: ['not-applicable', 'unplanned', 'planned', 'running', 'accepted', 'rejected', 'conditional'],
-        evidence: ['missing', 'incomplete', 'complete', 'stale', 'under-review'],
+        evidence: ['missing', 'incomplete', 'complete', 'potentially-stale', 'stale', 'under-review'],
+        currencyState: ['current', 'potentially-stale', 'stale', 'reviewed-current', 'superseded'],
+        stalenessDisposition: ['not-applicable', 'potentially-stale', 'confirmed-current', 'stale', 'superseded'],
+        severity: ['information', 'watch', 'critical'],
         domain: ['hardware', 'software', 'firmware', 'human-process', 'facility', 'external-system'],
         direction: ['A-to-B', 'B-to-A', 'bidirectional'],
         interfaceType: ['mechanical', 'electrical', 'data', 'software', 'thermal', 'fluid', 'optical', 'radio-frequency', 'human', 'organizational', 'user-defined'],
@@ -634,6 +652,30 @@ function enumOptions(collection, key) {
         state: ['accepted-as-written', 'accepted-with-local-parameters', 'tailored', 'decomposed', 'satisfied-at-parent', 'not-applicable', 'superseded', 'pending-review'],
         comparisonKind: ['estimate', 'measured']
     };
+    if (key === 'kind' && collection === 'verificationExceptions')
+        return ['deviation', 'anomaly', 'defect', 'observation'];
+    if (key === 'severity' && collection === 'verificationExceptions')
+        return ['information', 'minor', 'major', 'critical'];
+    if (key === 'status' && collection === 'verificationExceptions')
+        return ['open', 'under-review', 'accepted', 'corrected', 'closed'];
+    if (key === 'kind' && collection === 'readinessOverrides')
+        return ['waiver', 'conditional-approval', 'manual-override'];
+    if (key === 'approvalState' && collection === 'readinessOverrides')
+        return ['draft', 'under-review', 'approved', 'rejected', 'expired'];
+    if (key === 'approvalState' && collection === 'readinessPolicies')
+        return ['draft', 'approved', 'superseded'];
+    if (key === 'reviewerDisposition')
+        return ['pending-review', 'accepted', 'rejected', 'conditionally-accepted', 'waived'];
+    if (key === 'configurationConformance')
+        return ['not-assessed', 'conforming', 'deviation-approved', 'nonconforming'];
+    if (key === 'retestState')
+        return ['not-required', 'required', 'scheduled', 'completed', 'waived'];
+    if (key === 'acceptanceRecommendation')
+        return ['not-assessed', 'accept', 'conditional', 'reject', 'additional-evaluation'];
+    if (key === 'disposition' && collection === 'impactReviews')
+        return ['pending-review', 'confirmed', 'dismissed', 'deferred', 'action-created', 'change-request-linked', 'resolved'];
+    if (key === 'status' && collection === 'impactReviews')
+        return ['open', 'in-review', 'resolved'];
     if (common[key])
         return common[key];
     if (key === 'implementationStatus') {
@@ -652,7 +694,8 @@ function enumOptions(collection, key) {
             workItems: ['backlog', 'ready', 'in-progress', 'review', 'blocked', 'done'],
             documents: ['draft', 'current', 'superseded', 'stale', 'under-review'],
             assumptions: ['open', 'validated', 'invalidated', 'retired'],
-            issuesActions: ['open', 'in-progress', 'blocked', 'resolved', 'closed']
+            issuesActions: ['open', 'in-progress', 'blocked', 'resolved', 'closed'],
+            impactReviews: ['open', 'in-review', 'resolved']
         };
         return byCollection[collection];
     }
@@ -723,10 +766,18 @@ function emptyStructuredItem(key, existing) {
     }
     if (key === 'steps')
         return { id: (0, id_1.createId)('step'), instruction: '', expectedResult: '' };
+    if (key === 'parameterDefinitions')
+        return { id: (0, id_1.createId)('parameter'), name: '', description: '', unit: '', dataType: 'text', defaultValue: '', required: true };
+    if (key === 'factorRules')
+        return { key: 'verification-closure', label: 'Verification closure', enabled: true, required: true, weight: 10 };
     if (key === 'allocations')
         return { id: (0, id_1.createId)('allocation'), label: '', allocation: 0, estimate: 0, uncertainty: 0, confidence: 50, evidenceIds: [] };
     if (key === 'inheritedObligations')
-        return { id: (0, id_1.createId)('obligation'), requirementId: '', sourceRequirementRevision: 1, state: 'pending-review', localParameters: '', rationale: '', affectedByParentChange: false };
+        return { id: (0, id_1.createId)('obligation'), requirementId: '', sourceRequirementRevision: 1, state: 'pending-review', localParameters: '', rationale: '', affectedByParentChange: false, reviewHistory: [] };
+    if (key === 'items')
+        return { id: (0, id_1.createId)('impact-item'), affectedRecordId: '', affectedCollection: '', affectedRevisionAtDetection: 1, categories: ['other'], severity: 'information', reason: '', path: [], disposition: 'pending-review', dispositionRationale: '', owner: 'Unassigned', reviewedBy: '', stalenessCandidate: false, stalenessReason: '', stalenessDisposition: 'not-applicable' };
+    if (key === 'path')
+        return { fromId: '', toId: '', relationship: '', label: '', source: 'direct-reference' };
     if (key === 'trend')
         return { at: (0, dates_1.todayIso)(), value: 0, kind: 'estimate' };
     return { id: (0, id_1.createId)('row') };
@@ -740,12 +791,13 @@ function referenceCandidates(project, key, currentCollection) {
         objectId: 'objects', objectIds: 'objects',
         interfaceId: 'interfaces', interfaceIds: 'interfaces',
         verificationPlanId: 'verificationPlans', verificationPlanIds: 'verificationPlans',
+        setupId: 'verificationSetups', verificationSetupId: 'verificationSetups',
         testCaseId: 'testCases', testCaseIds: 'testCases',
-        testExecutionId: 'testExecutions', testExecutionIds: 'testExecutions',
-        failureModeId: 'failureModes', failureModeIds: 'failureModes',
+        testExecutionId: 'testExecutions', testExecutionIds: 'testExecutions', executionId: 'testExecutions', retestExecutionId: 'testExecutions', rerunOfId: 'testExecutions',
+        failureModeId: 'failureModes', failureModeIds: 'failureModes', exceptionId: 'verificationExceptions', exceptionIds: 'verificationExceptions',
         workItemId: 'workItems', workItemIds: 'workItems',
         budgetLineId: 'projectBudgetLines', budgetLineIds: 'projectBudgetLines',
-        evidenceId: 'documents', evidenceIds: 'documents', documentIds: 'documents', linkedRecordIds: 'documents',
+        evidenceId: 'documents', evidenceIds: 'documents', documentIds: 'documents',
         decisionId: 'decisions', decisionIds: 'decisions', baselineIds: 'baselines', supersededById: 'documents'
     };
     const collection = collectionForKey[key];
@@ -1573,6 +1625,306 @@ function Icon({ name, size = 18, ...props }) {
 }
 
 },
+"src/components/ImpactReviewWorkspace.tsx": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ImpactReviewWorkspace = ImpactReviewWorkspace;
+const react_1 = require("react");
+const impact_1 = require("../domain/impact");
+const recordLifecycle_1 = require("../domain/recordLifecycle");
+const ProjectContext_1 = require("../hooks/ProjectContext");
+const dates_1 = require("../utils/dates");
+const reports_1 = require("../services/reports");
+const text_1 = require("../utils/text");
+const StatusBadge_1 = require("./StatusBadge");
+const ui_1 = require("./ui");
+const dispositions = [
+    'pending-review', 'confirmed', 'dismissed', 'deferred', 'resolved'
+];
+const stalenessDispositions = [
+    'potentially-stale', 'confirmed-current', 'stale', 'superseded'
+];
+const obligationStates = [
+    'accepted-as-written', 'accepted-with-local-parameters', 'tailored', 'decomposed',
+    'satisfied-at-parent', 'not-applicable', 'superseded', 'pending-review'
+];
+function displayValue(value) {
+    if (value === undefined)
+        return 'Not present';
+    if (value === null)
+        return 'None';
+    if (typeof value === 'string')
+        return value || 'Empty';
+    if (typeof value === 'number' || typeof value === 'boolean')
+        return String(value);
+    try {
+        return JSON.stringify(value, null, 2);
+    }
+    catch {
+        return String(value);
+    }
+}
+function recordLabel(project, id) {
+    const reference = (0, recordLifecycle_1.findControlledRecord)(project, id);
+    return reference ? `${reference.record.identifier} · ${(0, recordLifecycle_1.recordPrimaryText)(reference.record)}` : id;
+}
+function openControlledRecord(collection, recordId) {
+    window.dispatchEvent(new CustomEvent('loom:open-record', { detail: { collection, id: recordId } }));
+}
+function ImpactReviewWorkspace() {
+    const { project, updateProject, notify } = (0, ProjectContext_1.useProject)();
+    const summary = (0, react_1.useMemo)(() => (0, impact_1.impactReviewSummary)(project), [project]);
+    const [query, setQuery] = (0, react_1.useState)('');
+    const [showResolved, setShowResolved] = (0, react_1.useState)(false);
+    const [selectedReviewId, setSelectedReviewId] = (0, react_1.useState)(project.impactReviews.find((review) => review.status !== 'resolved')?.id ?? project.impactReviews[0]?.id ?? '');
+    const [selectedItemId, setSelectedItemId] = (0, react_1.useState)('');
+    const [disposition, setDisposition] = (0, react_1.useState)('pending-review');
+    const [dispositionRationale, setDispositionRationale] = (0, react_1.useState)('');
+    const [stalenessDisposition, setStalenessDisposition] = (0, react_1.useState)('potentially-stale');
+    const [stalenessRationale, setStalenessRationale] = (0, react_1.useState)('');
+    const [obligationState, setObligationState] = (0, react_1.useState)('pending-review');
+    const [obligationRationale, setObligationRationale] = (0, react_1.useState)('');
+    const [localParameters, setLocalParameters] = (0, react_1.useState)('');
+    const reviews = (0, react_1.useMemo)(() => project.impactReviews
+        .filter((review) => showResolved || review.status !== 'resolved')
+        .filter((review) => {
+        if (!query.trim())
+            return true;
+        const search = query.trim().toLowerCase();
+        const source = (0, recordLifecycle_1.findControlledRecord)(project, review.sourceRecordId)?.record;
+        return `${review.identifier} ${review.title} ${review.triggerSummary} ${source?.identifier ?? ''} ${source ? (0, recordLifecycle_1.recordPrimaryText)(source) : ''}`.toLowerCase().includes(search);
+    })
+        .sort((a, b) => b.generatedAt.localeCompare(a.generatedAt)), [project, query, showResolved]);
+    const selectedReview = project.impactReviews.find((review) => review.id === selectedReviewId) ?? reviews[0];
+    const selectedItem = selectedReview?.items.find((item) => item.id === selectedItemId) ?? selectedReview?.items[0];
+    const sourceReference = selectedReview ? (0, recordLifecycle_1.findControlledRecord)(project, selectedReview.sourceRecordId) : undefined;
+    const affectedReference = selectedItem ? (0, recordLifecycle_1.findControlledRecord)(project, selectedItem.affectedRecordId) : undefined;
+    const obligationObject = selectedItem?.obligationId && affectedReference?.collection === 'objects'
+        ? project.objects.find((object) => object.id === selectedItem.affectedRecordId)
+        : undefined;
+    const obligation = obligationObject?.inheritedObligations.find((candidate) => candidate.id === selectedItem?.obligationId);
+    (0, react_1.useEffect)(() => {
+        if (!selectedReview && reviews[0])
+            setSelectedReviewId(reviews[0].id);
+    }, [reviews, selectedReview]);
+    (0, react_1.useEffect)(() => {
+        if (!selectedReview)
+            return;
+        if (!selectedReview.items.some((item) => item.id === selectedItemId))
+            setSelectedItemId(selectedReview.items[0]?.id ?? '');
+    }, [selectedReview?.id, selectedReview?.revision]);
+    (0, react_1.useEffect)(() => {
+        if (!selectedItem)
+            return;
+        setDisposition(selectedItem.disposition);
+        setDispositionRationale(selectedItem.dispositionRationale);
+        setStalenessDisposition(selectedItem.stalenessDisposition);
+        setStalenessRationale(selectedItem.stalenessReason);
+        setObligationState(obligation?.state ?? 'pending-review');
+        setObligationRationale(obligation?.rationale ?? '');
+        setLocalParameters(obligation?.localParameters ?? '');
+    }, [selectedItem?.id, selectedItem?.disposition, selectedItem?.stalenessDisposition, obligation?.state]);
+    const mutate = (callback, changeSummary, success) => {
+        try {
+            updateProject(callback, changeSummary, { generateImpact: false });
+            notify(success, 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'Unable to update the impact review.', 'danger');
+        }
+    };
+    const applyDisposition = () => {
+        if (!selectedReview || !selectedItem)
+            return;
+        if (['dismissed', 'deferred', 'resolved'].includes(disposition) && !dispositionRationale.trim()) {
+            return notify(`${(0, text_1.humanize)(disposition)} requires a rationale.`, 'warning');
+        }
+        mutate((draft) => (0, impact_1.setImpactItemDisposition)(draft, selectedReview.id, selectedItem.id, disposition, dispositionRationale, 'Local user'), `Dispositioned ${selectedReview.identifier} item`, `${selectedReview.identifier} item marked ${(0, text_1.humanize)(disposition)}.`);
+    };
+    const applyStaleness = () => {
+        if (!selectedReview || !selectedItem)
+            return;
+        if (['confirmed-current', 'stale', 'superseded'].includes(stalenessDisposition) && !stalenessRationale.trim()) {
+            return notify('Record currency disposition requires a rationale.', 'warning');
+        }
+        mutate((draft) => (0, impact_1.setImpactItemStaleness)(draft, selectedReview.id, selectedItem.id, stalenessDisposition, stalenessRationale, 'Local user'), `Reviewed ${selectedReview.identifier} record currency`, `${recordLabel(project, selectedItem.affectedRecordId)} currency reviewed.`);
+    };
+    const applyObligation = () => {
+        if (!selectedReview || !selectedItem || !obligationObject || !obligation)
+            return;
+        if (['tailored', 'superseded', 'not-applicable'].includes(obligationState) && !obligationRationale.trim()) {
+            return notify(`${(0, text_1.humanize)(obligationState)} requires a rationale.`, 'warning');
+        }
+        mutate((draft) => {
+            (0, impact_1.reviewInheritedObligation)(draft, obligationObject.id, obligation.id, obligationState, obligationRationale, localParameters, 'Local user');
+            if (obligationState === 'pending-review') {
+                (0, impact_1.setImpactItemDisposition)(draft, selectedReview.id, selectedItem.id, 'deferred', obligationRationale || 'Inherited-obligation review deferred.', 'Local user');
+            }
+        }, `Dispositioned inherited obligation for ${selectedReview.identifier}`, `Inherited obligation marked ${(0, text_1.humanize)(obligationState)}.`);
+    };
+    const createAction = () => {
+        if (!selectedReview || !selectedItem)
+            return;
+        mutate((draft) => (0, impact_1.createActionFromImpactItem)(draft, selectedReview.id, selectedItem.id, 'Local user'), `Created action from ${selectedReview.identifier}`, 'A linked action was created from the impact item.');
+    };
+    const createChangeRequest = () => {
+        if (!selectedReview)
+            return;
+        mutate((draft) => (0, impact_1.createChangeRequestFromImpactReview)(draft, selectedReview.id, 'Local user'), `Created change request from ${selectedReview.identifier}`, 'A change request was created and linked to the impact review.');
+    };
+    const pendingInReview = (review) => review.items.filter((item) => ['pending-review', 'deferred'].includes(item.disposition)).length;
+    return React.createElement("div", { className: "impact-workspace", "data-testid": "impact-review-workspace" },
+        React.createElement("div", { className: "impact-summary-grid" },
+            React.createElement("div", null,
+                React.createElement("span", null, "Open reviews"),
+                React.createElement("strong", null, summary.openReviews),
+                React.createElement("small", null, "Controlled source changes")),
+            React.createElement("div", null,
+                React.createElement("span", null, "Pending items"),
+                React.createElement("strong", null, summary.pendingItems),
+                React.createElement("small", null, "Require disposition")),
+            React.createElement("div", null,
+                React.createElement("span", null, "Critical items"),
+                React.createElement("strong", null, summary.criticalItems),
+                React.createElement("small", null, "Inheritance or closure concerns")),
+            React.createElement("div", null,
+                React.createElement("span", null, "Inherited obligations"),
+                React.createElement("strong", null, summary.pendingObligations),
+                React.createElement("small", null, "Pending review")),
+            React.createElement("div", null,
+                React.createElement("span", null, "Potentially stale"),
+                React.createElement("strong", null, summary.potentiallyStaleResults + summary.potentiallyStaleEvidence),
+                React.createElement("small", null, "Results and evidence"))),
+        React.createElement("div", { className: "impact-toolbar" },
+            React.createElement("div", null,
+                React.createElement("strong", null, "Impact-review queue"),
+                React.createElement("span", null, "Every result is an explainable candidate for engineering review\u2014not an automatic downstream rewrite.")),
+            React.createElement("div", { className: "impact-toolbar__controls" },
+                React.createElement(ui_1.Input, { "aria-label": "Search impact reviews", placeholder: "Search reviews\u2026", value: query, onChange: (event) => setQuery(event.target.value) }),
+                React.createElement(ui_1.Button, { variant: showResolved ? 'secondary' : 'ghost', onClick: () => setShowResolved((value) => !value) }, showResolved ? 'Hide resolved' : 'Show resolved'))),
+        reviews.length ? React.createElement("div", { className: "impact-review-layout" },
+            React.createElement(ui_1.Panel, { className: "impact-review-library" },
+                React.createElement("div", { className: "impact-pane-heading" },
+                    React.createElement("span", null, "Controlled changes"),
+                    React.createElement("strong", null, reviews.length)),
+                React.createElement("div", { className: "impact-review-list" }, reviews.map((review) => {
+                    const source = (0, recordLifecycle_1.findControlledRecord)(project, review.sourceRecordId)?.record;
+                    return React.createElement("button", { type: "button", key: review.id, "data-testid": `impact-review-${review.identifier}`, className: `impact-review-row ${review.id === selectedReview?.id ? 'is-selected' : ''}`, onClick: () => { setSelectedReviewId(review.id); setSelectedItemId(review.items[0]?.id ?? ''); } },
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "record-id" }, review.identifier),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: review.status })),
+                        React.createElement("strong", null,
+                            source?.identifier ?? 'Unavailable source',
+                            " \u00B7 r",
+                            review.sourceRevisionBefore,
+                            " \u2192 r",
+                            review.sourceRevisionAfter),
+                        React.createElement("p", null, (0, text_1.truncate)(review.triggerSummary || review.title, 100)),
+                        React.createElement("small", null,
+                            (0, dates_1.formatDateTime)(review.generatedAt),
+                            " \u00B7 ",
+                            pendingInReview(review),
+                            " pending"));
+                }))),
+            React.createElement(ui_1.Panel, { className: "impact-item-library" }, selectedReview ? React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "impact-source-card" },
+                    React.createElement("div", null,
+                        React.createElement("span", { className: "record-id" }, selectedReview.identifier),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: selectedReview.status })),
+                    React.createElement("h2", null,
+                        sourceReference?.record.identifier ?? 'Unavailable source',
+                        " \u00B7 ",
+                        sourceReference ? (0, recordLifecycle_1.recordPrimaryText)(sourceReference.record) : selectedReview.title),
+                    React.createElement("p", null, selectedReview.triggerSummary),
+                    React.createElement("div", { className: "impact-source-meta" },
+                        React.createElement("span", null,
+                            "r",
+                            selectedReview.sourceRevisionBefore,
+                            " \u2192 r",
+                            selectedReview.sourceRevisionAfter),
+                        React.createElement("span", null,
+                            selectedReview.sourceChangedFields.length,
+                            " changed field(s)"),
+                        React.createElement("span", null,
+                            selectedReview.items.length,
+                            " affected record(s)")),
+                    React.createElement("div", { className: "impact-source-actions" },
+                        sourceReference ? React.createElement(ui_1.Button, { size: "small", icon: "external", onClick: () => openControlledRecord(sourceReference.collection, sourceReference.record.id) }, "Open source") : null,
+                        React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.downloadChangeImpactReport)(project, selectedReview.id) }, "Export impact report"),
+                        React.createElement(ui_1.Button, { size: "small", icon: "edit", onClick: createChangeRequest }, "Create or open change request"))),
+                React.createElement("div", { className: "impact-pane-heading" },
+                    React.createElement("span", null, "Affected records"),
+                    React.createElement("strong", null, selectedReview.items.length)),
+                React.createElement("div", { className: "impact-item-list" }, selectedReview.items.map((item) => React.createElement("button", { type: "button", key: item.id, "data-testid": `impact-item-${item.id}`, className: `impact-item-row ${item.id === selectedItem?.id ? 'is-selected' : ''}`, onClick: () => setSelectedItemId(item.id) },
+                    React.createElement("div", null,
+                        React.createElement(StatusBadge_1.StatusBadge, { value: item.severity }),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: item.disposition }),
+                        item.stalenessCandidate ? React.createElement(StatusBadge_1.StatusBadge, { value: item.stalenessDisposition }) : null),
+                    React.createElement("strong", null, recordLabel(project, item.affectedRecordId)),
+                    React.createElement("p", null, (0, text_1.truncate)(item.reason, 135)),
+                    React.createElement("small", null,
+                        item.categories.map(text_1.humanize).join(' · '),
+                        " \u00B7 ",
+                        item.path.length,
+                        " link",
+                        item.path.length === 1 ? '' : 's'))))) : null),
+            React.createElement("aside", { className: "impact-inspector", "data-testid": "impact-review-inspector" }, selectedReview && selectedItem ? React.createElement(React.Fragment, null,
+                React.createElement("header", null,
+                    React.createElement("div", null,
+                        React.createElement("span", { className: "record-id" }, "Affected record"),
+                        React.createElement("h2", null, affectedReference?.record.identifier ?? selectedItem.affectedRecordId),
+                        React.createElement("p", null, affectedReference ? (0, recordLifecycle_1.recordPrimaryText)(affectedReference.record) : 'The linked record is unavailable.')),
+                    React.createElement(StatusBadge_1.StatusBadge, { value: selectedItem.severity })),
+                React.createElement("div", { className: "impact-inspector__actions" },
+                    affectedReference ? React.createElement(ui_1.Button, { size: "small", icon: "external", onClick: () => openControlledRecord(affectedReference.collection, affectedReference.record.id) }, "Open record") : null,
+                    React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: createAction, disabled: Boolean(selectedItem.actionId) }, selectedItem.actionId ? 'Action linked' : 'Create action')),
+                React.createElement("section", null,
+                    React.createElement("h3", null, "Why this record appears"),
+                    React.createElement("p", null, selectedItem.reason),
+                    React.createElement("div", { className: "impact-path" }, selectedItem.path.map((step, index) => React.createElement("div", { key: `${step.fromId}-${step.toId}-${index}` },
+                        React.createElement("span", null, index + 1),
+                        React.createElement("div", null,
+                            React.createElement("strong", null, step.label),
+                            React.createElement("small", null, (0, text_1.humanize)(step.source))))))),
+                React.createElement("section", null,
+                    React.createElement("h3", null, "Impact disposition"),
+                    React.createElement(ui_1.Field, { label: "Disposition" },
+                        React.createElement(ui_1.Select, { "data-testid": "impact-disposition", value: disposition, onChange: (event) => setDisposition(event.target.value) }, dispositions.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                    React.createElement(ui_1.Field, { label: "Rationale" },
+                        React.createElement(ui_1.Textarea, { "data-testid": "impact-disposition-rationale", rows: 3, value: dispositionRationale, onChange: (event) => setDispositionRationale(event.target.value), placeholder: "Required for dismissal, deferral, or resolution." })),
+                    React.createElement(ui_1.Button, { variant: "primary", size: "small", onClick: applyDisposition }, "Apply disposition")),
+                selectedItem.stalenessCandidate ? React.createElement("section", { "data-testid": "impact-staleness-control" },
+                    React.createElement("h3", null, "Result or evidence currency"),
+                    React.createElement("p", null, "LOOM marked this record potentially stale. Its historical result or file remains intact until an engineer dispositions its applicability."),
+                    React.createElement(ui_1.Field, { label: "Currency decision" },
+                        React.createElement(ui_1.Select, { value: stalenessDisposition, onChange: (event) => setStalenessDisposition(event.target.value) }, stalenessDispositions.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                    React.createElement(ui_1.Field, { label: "Rationale" },
+                        React.createElement(ui_1.Textarea, { rows: 3, value: stalenessRationale, onChange: (event) => setStalenessRationale(event.target.value) })),
+                    React.createElement(ui_1.Button, { size: "small", onClick: applyStaleness }, "Apply currency decision")) : null,
+                obligationObject && obligation ? React.createElement("section", { "data-testid": "impact-inheritance-control" },
+                    React.createElement("h3", null, "Inherited obligation"),
+                    React.createElement("p", null, obligation.reviewReason || `Review the obligation inherited from ${recordLabel(project, obligation.requirementId)}.`),
+                    React.createElement(ui_1.Field, { label: "Disposition" },
+                        React.createElement(ui_1.Select, { value: obligationState, onChange: (event) => setObligationState(event.target.value) }, obligationStates.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                    React.createElement(ui_1.Field, { label: "Local parameters" },
+                        React.createElement(ui_1.Input, { value: localParameters, onChange: (event) => setLocalParameters(event.target.value), placeholder: "Optional local threshold, setup, or parameter" })),
+                    React.createElement(ui_1.Field, { label: "Rationale" },
+                        React.createElement(ui_1.Textarea, { rows: 3, value: obligationRationale, onChange: (event) => setObligationRationale(event.target.value) })),
+                    React.createElement(ui_1.Button, { size: "small", variant: "primary", onClick: applyObligation }, "Disposition obligation")) : null,
+                React.createElement("section", null,
+                    React.createElement("h3", null, "Source-field changes"),
+                    React.createElement("div", { className: "impact-field-changes" }, selectedReview.sourceChanges.map((change) => React.createElement("details", { key: change.path },
+                        React.createElement("summary", null, (0, text_1.humanize)(change.path)),
+                        React.createElement("div", null,
+                            React.createElement("span", null, "Before"),
+                            React.createElement("pre", null, displayValue(change.before)),
+                            React.createElement("span", null, "After"),
+                            React.createElement("pre", null, displayValue(change.after)))))))) : React.createElement(ui_1.EmptyState, { icon: "warning", title: "Select an impact item", description: "Choose a controlled change and affected record to review its path and disposition." }))) : React.createElement(ui_1.EmptyState, { icon: "check", title: "No impact reviews in this view", description: showResolved ? 'No controlled change has generated an impact review.' : 'All generated impact reviews are resolved. Show resolved reviews to inspect their retained history.' }));
+}
+
+},
 "src/components/Modal.tsx": function (module, exports, require) {
 'use strict';
 const React = require('react');
@@ -1711,6 +2063,8 @@ function RequirementCoupon({ project, requirement, onOpen, compact = false, drag
     const linkedWork = project.workItems.filter((item) => requirement.workItemIds.includes(item.id));
     const late = linkedWork.some((item) => item.status !== 'done' && item.plannedFinish && item.plannedFinish < new Date().toISOString().slice(0, 10));
     const blocked = requirement.blockers.length > 0 || linkedWork.some((item) => item.status === 'blocked');
+    const openImpacts = project.impactReviews.filter((review) => !review.archived && review.status !== 'resolved' && (review.sourceRecordId === requirement.id || review.items.some((item) => item.affectedRecordId === requirement.id)));
+    const staleResults = project.testExecutions.filter((execution) => requirement.testExecutionIds.includes(execution.id) && ['potentially-stale', 'stale'].includes(execution.currencyState ?? 'current'));
     const stopPropagation = (event) => event.stopPropagation();
     void stopPropagation;
     return (React.createElement("button", { type: "button", className: `requirement-coupon ${compact ? 'requirement-coupon--compact' : ''} ${className}`.trim(), onClick: () => onOpen?.(requirement), draggable: draggable, onDragStart: onDragStart },
@@ -1790,7 +2144,20 @@ function RequirementCoupon({ project, requirement, onOpen, compact = false, drag
                 " Blocked") : null,
             budgetStatus === 'over-budget' ? React.createElement("span", { className: "coupon-flag coupon-flag--warning" },
                 React.createElement(Icon_1.Icon, { name: "budget", size: 13 }),
-                " Over budget") : null),
+                " Over budget") : null,
+            openImpacts.length ? React.createElement("span", { className: "coupon-flag coupon-flag--danger" },
+                React.createElement(Icon_1.Icon, { name: "warning", size: 13 }),
+                " ",
+                openImpacts.length,
+                " impact review",
+                openImpacts.length === 1 ? '' : 's') : null,
+            staleResults.length ? React.createElement("span", { className: "coupon-flag coupon-flag--warning" },
+                React.createElement(Icon_1.Icon, { name: "verification", size: 13 }),
+                " ",
+                staleResults.length,
+                " result",
+                staleResults.length === 1 ? '' : 's',
+                " need currency review") : null),
         !compact && requirement.nextAction ? React.createElement("div", { className: "requirement-coupon__next" },
             React.createElement("span", null, "Next"),
             requirement.nextAction) : null));
@@ -1897,6 +2264,8 @@ function RequirementInspector({ requirementId, onClose }) {
     const failures = project.failureModes.filter((record) => requirement.failureModeIds.includes(record.id));
     const evidence = (0, calculations_1.evidenceForRequirement)(project, requirement);
     const work = project.workItems.filter((record) => requirement.workItemIds.includes(record.id));
+    const impactReviews = project.impactReviews.filter((review) => !review.archived && (review.sourceRecordId === requirement.id || review.items.some((item) => item.affectedRecordId === requirement.id)));
+    const openImpactReviews = impactReviews.filter((review) => review.status !== 'resolved');
     const parent = project.requirements.find((record) => record.id === requirement.parentId);
     const children = project.requirements.filter((record) => requirement.childIds.includes(record.id));
     const metric = requirement.metric;
@@ -1913,11 +2282,13 @@ function RequirementInspector({ requirementId, onClose }) {
         React.createElement("div", { className: "inspector__summary-strip" },
             React.createElement(StatusBadge_1.StatusBadge, { value: requirement.statuses.definition, compact: true }),
             React.createElement(StatusBadge_1.StatusBadge, { value: (0, calculations_1.deriveVerificationState)(project, requirement), compact: true }),
-            React.createElement(StatusBadge_1.StatusBadge, { value: (0, calculations_1.deriveEvidenceState)(project, requirement), compact: true })),
+            React.createElement(StatusBadge_1.StatusBadge, { value: (0, calculations_1.deriveEvidenceState)(project, requirement), compact: true }),
+            openImpactReviews.length ? React.createElement(StatusBadge_1.StatusBadge, { value: `${openImpactReviews.length}-impact-review${openImpactReviews.length === 1 ? '' : 's'}`, compact: true }) : null),
         React.createElement(Tabs_1.Tabs, { active: tab, onChange: setTab, options: [
                 { id: 'dossier', label: 'Dossier' },
                 { id: 'status', label: 'Status' },
                 { id: 'links', label: 'Thread' },
+                { id: 'impacts', label: `Impacts${openImpactReviews.length ? ` (${openImpactReviews.length})` : ''}` },
                 { id: 'history', label: 'History' }
             ] }),
         React.createElement("div", { className: "inspector__body" },
@@ -2063,7 +2434,9 @@ function RequirementInspector({ requirementId, onClose }) {
                             (0, text_1.humanize)(record.approvalState)),
                         React.createElement("strong", null, record.title))) : React.createElement("p", { className: "muted-text" }, "No verification plan."),
                     executions.map((record) => React.createElement("div", { className: "linked-record linked-record--result", key: record.id },
-                        React.createElement(StatusBadge_1.StatusBadge, { value: record.result, compact: true }),
+                        React.createElement("div", null,
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.result, compact: true }),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.currencyState ?? 'current', compact: true })),
                         React.createElement("strong", null,
                             record.identifier,
                             " \u00B7 ",
@@ -2079,7 +2452,9 @@ function RequirementInspector({ requirementId, onClose }) {
                             " \u00B7 R",
                             record.revision),
                         React.createElement("strong", null, record.title),
-                        React.createElement(StatusBadge_1.StatusBadge, { value: record.status, compact: true }))) : React.createElement("p", { className: "muted-text" }, "No evidence.")),
+                        React.createElement("div", null,
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.status, compact: true }),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.currencyState ?? 'current', compact: true })))) : React.createElement("p", { className: "muted-text" }, "No evidence.")),
                 React.createElement("div", { className: "inspector-divider" }),
                 React.createElement("h3", null, "Failure analysis"),
                 failures.length ? failures.map((record) => React.createElement("div", { className: "linked-record linked-record--finding", key: record.id },
@@ -2101,6 +2476,28 @@ function RequirementInspector({ requirementId, onClose }) {
                         record.owner,
                         " \u00B7 ",
                         (0, dates_1.formatDate)(record.dueDate)))) : React.createElement("p", { className: "muted-text" }, "No work item connected.")) : null,
+            tab === 'impacts' ? React.createElement("div", { className: "inspector-stack" },
+                React.createElement("h3", null, "Change-impact history"),
+                React.createElement("p", { className: "muted-text" }, "These reviews explain why this requirement is a changed source or a potentially affected downstream record. No child text or approved result is rewritten automatically."),
+                impactReviews.length ? impactReviews.map((review) => {
+                    const items = review.items.filter((item) => item.affectedRecordId === requirement.id);
+                    const isSource = review.sourceRecordId === requirement.id;
+                    return React.createElement("div", { className: "linked-record linked-record--finding", key: review.id },
+                        React.createElement("div", null,
+                            React.createElement("span", null,
+                                review.identifier,
+                                " \u00B7 r",
+                                review.sourceRevisionBefore,
+                                " \u2192 r",
+                                review.sourceRevisionAfter),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: review.status, compact: true })),
+                        React.createElement("strong", null, isSource ? 'Changed source requirement' : 'Potentially affected requirement'),
+                        React.createElement("small", null, review.triggerSummary),
+                        items.map((item) => React.createElement("div", { className: "impact-mini-path", key: item.id },
+                            React.createElement(StatusBadge_1.StatusBadge, { value: item.disposition, compact: true }),
+                            React.createElement("span", null, item.path.map((step) => step.relationship).join(' → ') || 'Direct change'))),
+                        React.createElement(ui_1.Button, { size: "small", icon: "external", onClick: () => window.dispatchEvent(new CustomEvent('loom:open-record', { detail: { collection: 'impactReviews', id: review.id } })) }, "Open impact review"));
+                }) : React.createElement("p", { className: "muted-text" }, "No impact review currently references this requirement.")) : null,
             tab === 'history' ? React.createElement("div", { className: "inspector-stack" },
                 React.createElement("div", { className: "record-meta" },
                     React.createElement("div", null,
@@ -2626,10 +3023,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.statusTone = statusTone;
 exports.StatusBadge = StatusBadge;
 const text_1 = require("../utils/text");
-const success = new Set(['approved', 'baselined', 'fully-allocated', 'implemented', 'passed', 'accepted', 'complete', 'current', 'verified', 'done', 'resolved', 'closed']);
-const danger = new Set(['failed', 'rejected', 'critical', 'error', 'rework-required', 'stale']);
-const warning = new Set(['blocked', 'high', 'incomplete', 'under-review', 'change-pending', 'conditionally-accepted', 'conditional', 'partially-allocated', 'superseded']);
-const muted = new Set(['draft', 'unplanned', 'not-started', 'not-run', 'not-applicable', 'retired', 'backlog']);
+const success = new Set(['approved', 'baselined', 'fully-allocated', 'implemented', 'passed', 'accepted', 'complete', 'current', 'reviewed-current', 'confirmed-current', 'verified', 'done', 'resolved', 'closed', 'ready', 'overridden', 'conforming', 'corrected', 'completed', 'accept', 'ready', 'conforming', 'corrected', 'accept']);
+const danger = new Set(['failed', 'rejected', 'critical', 'error', 'rework-required', 'stale', 'not-ready', 'nonconforming', 'major']);
+const warning = new Set(['blocked', 'high', 'watch', 'incomplete', 'under-review', 'in-review', 'change-pending', 'conditionally-accepted', 'conditional', 'partially-allocated', 'superseded', 'potentially-stale', 'pending-review', 'review-required', 'deferred', 'action-created', 'change-request-linked', 'conditionally-ready', 'conditional-approval', 'deviation-approved', 'required', 'scheduled', 'additional-evaluation', 'conditionally-ready', 'overridden', 'deviation-approved', 'scheduled', 'required', 'minor', 'additional-evaluation']);
+const muted = new Set(['draft', 'unplanned', 'not-started', 'not-run', 'not-applicable', 'retired', 'backlog', 'information', 'not-assessed']);
 function statusTone(value) {
     const normalized = value.toLowerCase();
     if (success.has(normalized))
@@ -2783,7 +3180,9 @@ const React = require('react');
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createSampleProject = createSampleProject;
 const factory_1 = require("../domain/factory");
+const impact_1 = require("../domain/impact");
 const calculations_1 = require("../domain/calculations");
+const verification_1 = require("../domain/verification");
 const id_1 = require("../utils/id");
 const dates_1 = require("../utils/dates");
 const at = (date) => `${date}T14:00:00.000Z`;
@@ -2798,14 +3197,19 @@ function snapshot(project) {
         objects: project.objects,
         interfaces: project.interfaces,
         verificationPlans: project.verificationPlans,
+        verificationSetups: project.verificationSetups,
         testCases: project.testCases,
         testExecutions: project.testExecutions,
+        verificationExceptions: project.verificationExceptions,
+        readinessPolicies: project.readinessPolicies,
+        readinessOverrides: project.readinessOverrides,
         failureModes: project.failureModes,
         workItems: project.workItems,
         workDependencies: project.workDependencies,
         projectBudgetLines: project.projectBudgetLines,
         technicalBudgets: project.technicalBudgets,
         documents: project.documents,
+        impactReviews: project.impactReviews,
         links: project.links
     });
 }
@@ -3129,7 +3533,8 @@ function createSampleProject() {
         localParameters: '60 Wh usable energy minimum',
         rationale: 'Endurance decomposed into energy capacity and average-power obligations.',
         reviewedAt: at('2026-07-18'),
-        affectedByParentChange: false
+        affectedByParentChange: false,
+        reviewHistory: []
     });
     objDisplayModule.inheritedObligations.push({
         id: (0, id_1.createId)('obl'),
@@ -3139,7 +3544,8 @@ function createSampleProject() {
         localParameters: '2.0 second service refresh budget',
         rationale: 'Leaves 8 seconds of margin for acquisition and rendering.',
         reviewedAt: at('2026-07-21'),
-        affectedByParentChange: false
+        affectedByParentChange: false,
+        reviewHistory: []
     });
     objEnclosure.inheritedObligations.push({
         id: (0, id_1.createId)('obl'),
@@ -3148,7 +3554,8 @@ function createSampleProject() {
         state: 'pending-review',
         localParameters: '',
         rationale: '',
-        affectedByParentChange: false
+        affectedByParentChange: false,
+        reviewHistory: []
     });
     project.objects = [
         objSystem,
@@ -3283,6 +3690,34 @@ function createSampleProject() {
             .filter((record) => record.endpointAId === object.id || record.endpointBId === object.id)
             .map((record) => record.id);
     });
+    const verificationSetups = [
+        {
+            ...(0, factory_1.controlledRecord)('setup', 'SETUP-001', 'Controlled laboratory verification setup', 'Verification Lead', 'ready'),
+            applicableMethods: ['test', 'analysis', 'inspection', 'demonstration', 'combination'],
+            configuration: 'Production-representative Prototype P3 with released hardware, software, and firmware revisions recorded before execution.',
+            environment: 'Controlled laboratory at 23 °C unless the verification plan specifies another condition.',
+            equipment: 'Calibrated laboratory instrumentation selected by the applicable plan.',
+            instrumentation: 'Power analyzer, environmental logger, calibration chamber, reference probe, and logic analyzer as applicable.',
+            personnel: 'Qualified operator and independent reviewer.',
+            safetyConsiderations: 'Apply lithium-battery, energized-equipment, and environmental-chamber procedures.',
+            calibrationRequirements: 'All measurement equipment must have current calibration traceable to the laboratory calibration register.',
+            documentIds: []
+        },
+        {
+            ...(0, factory_1.controlledRecord)('setup', 'SETUP-002', 'Representative field-use validation setup', 'Human Factors Lead', 'ready'),
+            applicableMethods: ['demonstration', 'test'],
+            configuration: 'Prototype P3 configured in field mode with display service 0.8.2.',
+            environment: 'Outdoor daylight in a representative observation area.',
+            equipment: 'Observation forms, stopwatch, and facilitator script.',
+            instrumentation: 'Stopwatch and structured observation record.',
+            personnel: 'Representative users, facilitator, and independent observer.',
+            safetyConsiderations: 'Brief participants and avoid environmental or ergonomic hazards.',
+            calibrationRequirements: 'Timing equipment checked before the session.',
+            documentIds: []
+        }
+    ];
+    project.verificationSetups = verificationSetups;
+    const [laboratorySetup, fieldSetup] = verificationSetups;
     const plans = [
         {
             ...(0, factory_1.controlledRecord)('ver', 'VER-001', 'System endurance test', 'Verification Lead', 'approved'),
@@ -3410,6 +3845,17 @@ function createSampleProject() {
             testCaseIds: []
         }
     ];
+    plans.forEach((record) => {
+        record.inheritedEnvironment = true;
+        record.inheritedAcceptanceRule = true;
+        record.requiredReviewerDisposition = 'accepted';
+        record.allowConditionalAcceptance = record.verificationLevel === 'operational';
+    });
+    plans[0].setupId = laboratorySetup.id;
+    plans[1].setupId = laboratorySetup.id;
+    plans[2].setupId = laboratorySetup.id;
+    plans[3].setupId = laboratorySetup.id;
+    plans[4].setupId = fieldSetup.id;
     project.verificationPlans = plans;
     const [planEndurance, planAccuracy, planUpdate, planIngress, planDisplay] = plans;
     reqEndurance.verificationPlanIds = [planEndurance.id];
@@ -3424,6 +3870,67 @@ function createSampleProject() {
     intPower.verificationPlanIds = [planEndurance.id];
     intDisplay.verificationPlanIds = [planUpdate.id, planDisplay.id];
     intEnclosure.verificationPlanIds = [planIngress.id];
+    const testCases = [
+        {
+            ...(0, factory_1.controlledRecord)('case', 'TC-001', 'Reference monitoring endurance profile', 'Verification Lead', 'approved'),
+            verificationPlanId: planEndurance.id,
+            setupId: laboratorySetup.id,
+            sharedSetup: 'Charge the battery, confirm monitoring profile, start synchronized power and event logging, and continue through automatic shutdown.',
+            steps: [
+                { id: 'step-endurance-1', instruction: 'Record the exact hardware, software, firmware, and battery configuration.', expectedResult: 'Configuration is complete and conforms to the approved plan.' },
+                { id: 'step-endurance-2', instruction: 'Operate continuously under the parameterized monitoring profile.', expectedResult: 'The unit remains functional and scheduled records remain intact.' },
+                { id: 'step-endurance-3', instruction: 'Preserve raw data and calculate operating duration and average input power.', expectedResult: 'Duration and power are traceable to raw evidence.' }
+            ],
+            parameterDefinitions: [
+                { id: 'param-sample-interval', name: 'Sample interval', description: 'Seconds between scheduled sensor samples.', unit: 'seconds', dataType: 'number', defaultValue: 10, required: true },
+                { id: 'param-display-brightness', name: 'Display brightness', description: 'Configured display brightness.', unit: 'percent', dataType: 'number', defaultValue: 50, required: true },
+                { id: 'param-radio-sync', name: 'Radio synchronization interval', description: 'Minutes between radio synchronization events.', unit: 'minutes', dataType: 'number', defaultValue: 5, required: true }
+            ],
+            parameterValues: { 'Sample interval': 10, 'Display brightness': 50, 'Radio synchronization interval': 5 },
+            expectedEvidence: 'Raw power log, event log, configuration record, duration calculation, and reviewer disposition.',
+            inheritedAcceptanceRule: true
+        },
+        {
+            ...(0, factory_1.controlledRecord)('case', 'TC-002', 'Temperature accuracy set-point sequence', 'Sensor Lead', 'approved'),
+            verificationPlanId: planAccuracy.id,
+            setupId: laboratorySetup.id,
+            sharedSetup: 'Stabilize the chamber and reference probe before acquiring each sample set.',
+            steps: [
+                { id: 'step-temperature-1', instruction: 'Stabilize at each required set point.', expectedResult: 'Reference drift is within the laboratory stabilization limit.' },
+                { id: 'step-temperature-2', instruction: 'Acquire the required sample count.', expectedResult: 'Raw and compensated readings are recorded.' },
+                { id: 'step-temperature-3', instruction: 'Calculate maximum absolute and residual root-mean-square error.', expectedResult: 'Calculations are reproducible from the captured data.' }
+            ],
+            parameterDefinitions: [
+                { id: 'param-set-points', name: 'Temperature set points', description: 'Comma-separated chamber set points.', unit: 'degrees Celsius', dataType: 'text', defaultValue: '0, 10, 23, 35, 45', required: true },
+                { id: 'param-samples', name: 'Samples per set point', description: 'Number of readings acquired at each condition.', unit: 'samples', dataType: 'number', defaultValue: 30, required: true }
+            ],
+            parameterValues: { 'Temperature set points': '0, 10, 23, 35, 45', 'Samples per set point': 30 },
+            expectedEvidence: 'Reference-probe certificate, raw chamber log, calculation workbook, and approved verification report.',
+            inheritedAcceptanceRule: true
+        },
+        {
+            ...(0, factory_1.controlledRecord)('case', 'TC-003', 'Operational display interpretation scenario', 'Human Factors Lead', 'approved'),
+            verificationPlanId: planDisplay.id,
+            setupId: fieldSetup.id,
+            sharedSetup: 'Use the field-use setup and standardized facilitator script.',
+            steps: [
+                { id: 'step-display-1', instruction: 'Present the monitor at the defined viewing distance.', expectedResult: 'The participant can view the complete field display.' },
+                { id: 'step-display-2', instruction: 'Ask the participant to identify four values without coaching.', expectedResult: 'Accuracy and elapsed time are recorded.' },
+                { id: 'step-display-3', instruction: 'Capture suitability observations and participant comments.', expectedResult: 'Qualitative observations are linked to the execution.' }
+            ],
+            parameterDefinitions: [
+                { id: 'param-users', name: 'Representative users', description: 'Number of participants.', unit: 'users', dataType: 'number', defaultValue: 10, required: true },
+                { id: 'param-viewing-distance', name: 'Viewing distance', description: 'Distance between user and display.', unit: 'meters', dataType: 'number', defaultValue: 1, required: true }
+            ],
+            parameterValues: { 'Representative users': 10, 'Viewing distance': 1 },
+            expectedEvidence: 'Completed observation forms, timing summary, participant comments, and acceptance recommendation.',
+            inheritedAcceptanceRule: true
+        }
+    ];
+    project.testCases = testCases;
+    planEndurance.testCaseIds = [testCases[0].id];
+    planAccuracy.testCaseIds = [testCases[1].id];
+    planDisplay.testCaseIds = [testCases[2].id];
     const executions = [
         {
             ...(0, factory_1.controlledRecord)('run', 'RUN-001', 'Battery energy characterization — Run 1', 'Power Lead', 'complete'),
@@ -3536,16 +4043,162 @@ function createSampleProject() {
             evidenceIds: []
         }
     ];
+    executions[2].outputData = '12.4-second maximum update interval';
+    executions[2].observations = 'One display refresh missed the ten-second limit during radio synchronization.';
+    executions[2].result = 'failed';
+    const runUpdateRerun = {
+        ...(0, factory_1.controlledRecord)('run', 'RUN-006', 'Sensor-to-display timing — Run 2', 'Firmware Lead', 'complete'),
+        verificationPlanId: planUpdate.id,
+        requirementIds: [reqUpdate.id],
+        executionNumber: 2,
+        executedAt: at('2026-08-13'),
+        operator: 'Firmware Engineer',
+        reviewer: 'Verification Lead',
+        systemConfiguration: 'Prototype P3 with scheduling correction',
+        hardwareRevision: 'P3',
+        softwareVersion: '1.2.0',
+        firmwareVersion: '0.8.3-rc1',
+        environment: 'Laboratory',
+        equipment: 'Logic analyzer LA-03',
+        calibrationReference: 'CAL-LA03-2026-01',
+        inputData: '100 controlled sensor transitions with radio synchronization active',
+        outputData: '2.6-second maximum update interval',
+        observations: 'The corrective scheduling change removed the missed refresh.',
+        deviations: 'None.',
+        result: 'passed',
+        evidenceIds: []
+    };
+    executions.push(runUpdateRerun);
+    executions.forEach((record, index) => {
+        const linkedPlan = plans.find((candidate) => candidate.id === record.verificationPlanId);
+        const linkedCase = record.verificationPlanId === planEndurance.id ? testCases[0]
+            : record.verificationPlanId === planAccuracy.id ? testCases[1]
+                : record.verificationPlanId === planDisplay.id ? testCases[2]
+                    : undefined;
+        record.verificationPlanRevision = linkedPlan.revision;
+        record.verificationMethod = linkedPlan.verificationMethod;
+        record.verificationLevel = linkedPlan.verificationLevel;
+        record.testCaseId = linkedCase?.id;
+        record.testCaseRevision = linkedCase?.revision;
+        record.setupId = linkedPlan.setupId;
+        record.setupRevision = project.verificationSetups.find((setup) => setup.id === linkedPlan.setupId)?.revision;
+        record.parameterValues = linkedCase ? { ...linkedCase.parameterValues } : {};
+        record.methodDetails = (0, verification_1.defaultVerificationMethodDetails)();
+        record.operationalValidation = (0, verification_1.defaultOperationalValidation)();
+        record.acceptanceCriteriaSatisfied = record.result === 'passed';
+        record.configurationConformance = 'conforming';
+        record.reviewerDisposition = record.result === 'passed' ? 'accepted' : 'rejected';
+        record.reviewedAt = record.executedAt;
+        record.dispositionNotes = record.result === 'passed' ? 'Reviewer accepted the recorded result and evidence.' : 'Reviewer rejected closure and required corrective action and retest.';
+        record.exceptionIds = [];
+        record.retestState = record.result === 'failed' ? 'required' : index === 5 ? 'completed' : 'not-required';
+        record.retestReason = record.result === 'failed' ? 'The failed acceptance criterion requires corrective action and a controlled rerun.' : '';
+        record.rerunSequence = record.executionNumber;
+        record.currencyState = 'current';
+        record.staleReason = '';
+        record.staleSourceIds = [];
+    });
+    executions[1].methodDetails = {
+        ...(0, verification_1.defaultVerificationMethodDetails)(),
+        combinedMethods: ['test', 'analysis'],
+        analysisModel: 'System error stack-up and residual compensation model',
+        analysisTool: 'Controlled calculation workbook',
+        assumptions: 'Reference-probe uncertainty is independent of sensor residual error.',
+        calculationSummary: 'The measured chamber data were combined with the uncertainty and compensation analysis to demonstrate the complete system margin.'
+    };
+    executions[4].methodDetails = {
+        ...(0, verification_1.defaultVerificationMethodDetails)(),
+        demonstrationScenario: 'Representative users interpret four field values from one meter in outdoor daylight.',
+        participants: 'Ten representative users, one facilitator, and one independent observer.'
+    };
+    executions[4].operationalValidation = {
+        stakeholderNeed: 'Field scientists need to interpret environmental and device-health values without interrupting observation work.',
+        operationalScenario: 'Read the monitor while standing one meter away in outdoor daylight.',
+        representativeUser: 'Ten users representing field science and maintenance roles.',
+        missionObjective: 'Correctly identify four values within fifteen seconds.',
+        suitabilityObservations: 'Nine users succeeded; one user confused the battery icon with radio strength.',
+        acceptanceRecommendation: 'accept'
+    };
+    executions[5].rerunOfId = executions[2].id;
+    executions[2].retestState = 'completed';
+    executions[2].retestReason = 'Corrective action was verified by RUN-006 while the original failed result remains retained.';
     project.testExecutions = executions;
     const [runBattery, runAccuracy, runUpdate, runEndurance, runDisplay] = executions;
     reqBattery.testExecutionIds = [runBattery.id];
     reqAccuracy.testExecutionIds = [runAccuracy.id];
     reqSensorUnit.testExecutionIds = [runAccuracy.id];
     reqCompensation.testExecutionIds = [runAccuracy.id];
-    reqUpdate.testExecutionIds = [runUpdate.id];
+    reqUpdate.testExecutionIds = [runUpdate.id, runUpdateRerun.id];
     reqEndurance.testExecutionIds = [runEndurance.id];
     reqPower.testExecutionIds = [runEndurance.id];
     reqDisplay.testExecutionIds = [runDisplay.id];
+    const verificationExceptions = [
+        {
+            ...(0, factory_1.controlledRecord)('exception', 'EXC-001', 'Endurance threshold shortfall', 'Verification Lead', 'open'),
+            executionId: runEndurance.id,
+            kind: 'anomaly',
+            severity: 'major',
+            description: 'The unit shut down after 22.8 hours, below the 24-hour acceptance threshold.',
+            requirementIds: [reqEndurance.id, reqPower.id],
+            status: 'open',
+            disposition: 'Reduce display and radio power, repeat the endurance activity, and review the complete raw log.',
+            requiresRetest: true,
+            dueDate: '2026-08-28',
+            evidenceIds: []
+        },
+        {
+            ...(0, factory_1.controlledRecord)('exception', 'EXC-002', 'Display refresh timing overrun', 'Firmware Lead', 'corrected'),
+            executionId: runUpdate.id,
+            kind: 'defect',
+            severity: 'major',
+            description: 'A display refresh exceeded the ten-second limit during radio synchronization.',
+            requirementIds: [reqUpdate.id],
+            status: 'corrected',
+            disposition: 'The scheduler was corrected in firmware 0.8.3-rc1 and the verification activity was rerun successfully.',
+            requiresRetest: true,
+            retestExecutionId: runUpdateRerun.id,
+            dueDate: '2026-08-13',
+            evidenceIds: []
+        },
+        {
+            ...(0, factory_1.controlledRecord)('exception', 'EXC-003', 'Battery icon interpretation observation', 'Human Factors Lead', 'accepted'),
+            executionId: runDisplay.id,
+            kind: 'observation',
+            severity: 'minor',
+            description: 'One participant confused the battery icon with radio strength before reading the numeric value.',
+            requirementIds: [reqDisplay.id],
+            status: 'accepted',
+            disposition: 'The operational acceptance criterion was satisfied. The icon clarification is retained as a design-improvement action rather than a release blocker.',
+            requiresRetest: false,
+            evidenceIds: []
+        }
+    ];
+    project.verificationExceptions = verificationExceptions;
+    runEndurance.exceptionIds = [verificationExceptions[0].id];
+    runUpdate.exceptionIds = [verificationExceptions[1].id];
+    runDisplay.exceptionIds = [verificationExceptions[2].id];
+    const readinessPolicies = ['unit', 'integration', 'subsystem', 'system', 'operational'].map((level, index) => ({
+        ...(0, factory_1.controlledRecord)('gate', `GATE-${String(index + 1).padStart(3, '0')}`, `${level[0].toUpperCase()}${level.slice(1)} readiness gate`, 'Systems Engineering Lead', 'approved'),
+        verificationLevel: level,
+        minimumScore: level === 'operational' ? 90 : level === 'system' ? 85 : 80,
+        requireAllRequiredFactors: true,
+        factorRules: (0, verification_1.defaultReadinessFactorRules)(level),
+        approvalState: 'approved'
+    }));
+    project.readinessPolicies = readinessPolicies;
+    const readinessOverride = {
+        ...(0, factory_1.controlledRecord)('override', 'OVR-001', 'Conditional enclosure readiness request', 'Mechanical Lead', 'under-review'),
+        targetRecordId: reqIngress.id,
+        verificationLevel: 'system',
+        kind: 'conditional-approval',
+        rationale: 'Requested only to permit non-environmental bench integration while the revised cable gland and rain demonstration remain open. It does not waive system acceptance.',
+        requestedBy: 'Mechanical Lead',
+        reviewer: 'Systems Engineering Lead',
+        approvalState: 'under-review',
+        affectedRecordIds: [reqIngress.id, objEnclosure.id, intEnclosure.id],
+        factorKeys: ['verification-closure', 'evidence-current']
+    };
+    project.readinessOverrides = [readinessOverride];
     function failure(identifier, title, sourceType, sourceId, mode, cause, endEffect, severity, likelihood, detectability, mitigation, owner) {
         const score = severity * likelihood * detectability;
         return {
@@ -3935,24 +4588,42 @@ function createSampleProject() {
             integrityFingerprint: 'SHA-256 sample: d11a…cb22',
             approvalState: 'under-review',
             linkedRecordIds: [reqIngress.id, objEnclosure.id, intEnclosure.id, workGland.id]
+        },
+        {
+            ...(0, factory_1.controlledRecord)('doc', 'DOC-007', 'Display Timing Corrective-Action Verification Report', 'Verification Lead', 'current'),
+            documentType: 'Verification report',
+            author: 'Firmware and Verification Team',
+            date: '2026-08-13',
+            source: 'Local project library',
+            status: 'current',
+            description: 'Exact as-run configuration, timing traces, exception disposition, and reviewer acceptance for the successful RUN-006 controlled rerun.',
+            fileName: 'display-timing-rerun-report-rev-a.pdf',
+            mimeType: 'application/pdf',
+            fileSize: 624000,
+            integrityFingerprint: 'SHA-256 sample: 6f2a…91bc',
+            approvalState: 'approved',
+            linkedRecordIds: [reqUpdate.id, planUpdate.id, runUpdate.id, runUpdateRerun.id, verificationExceptions[1].id]
         }
     ];
     documents[4].supersededById = documents[5].id;
     project.documents = documents;
-    const [docConcept, docCalibration, docEndurance, docReadability, docEnclosureB, docEnclosureC] = documents;
+    const [docConcept, docCalibration, docEndurance, docReadability, docEnclosureB, docEnclosureC, docTimingRerun] = documents;
     reqEndurance.evidenceIds = [docConcept.id, docEndurance.id];
     reqPower.evidenceIds = [docEndurance.id];
     reqAccuracy.evidenceIds = [docConcept.id, docCalibration.id];
     reqSensorUnit.evidenceIds = [docCalibration.id];
     reqCompensation.evidenceIds = [docCalibration.id];
-    reqUpdate.evidenceIds = [docConcept.id];
+    reqUpdate.evidenceIds = [docConcept.id, docTimingRerun.id];
     reqDisplay.evidenceIds = [docConcept.id, docReadability.id];
     reqIngress.evidenceIds = [docConcept.id, docEnclosureB.id, docEnclosureC.id];
     runAccuracy.evidenceIds = [docCalibration.id];
     runEndurance.evidenceIds = [docEndurance.id];
     runDisplay.evidenceIds = [docReadability.id];
+    runUpdateRerun.evidenceIds = [docTimingRerun.id];
+    verificationExceptions[1].evidenceIds = [docTimingRerun.id];
     planAccuracy.documentIds = [docCalibration.id];
     planEndurance.documentIds = [docEndurance.id];
+    planUpdate.documentIds = [docTimingRerun.id];
     planDisplay.documentIds = [docReadability.id];
     planIngress.documentIds = [docEnclosureC.id];
     intEnclosure.documentIds = [docEnclosureB.id, docEnclosureC.id];
@@ -4001,6 +4672,8 @@ function createSampleProject() {
     };
     project.issuesActions = [actionPower, issueSupplier];
     project.revision = 1;
+    if (reqEndurance.metric)
+        reqEndurance.metric.target = 30;
     const baselineOneSnapshot = snapshot(project);
     const baselineOne = {
         ...(0, factory_1.controlledRecord)('baseline', 'BL-001', 'Preliminary Design Baseline', 'Systems Engineering Lead', 'approved'),
@@ -4009,6 +4682,8 @@ function createSampleProject() {
         approvedAt: at('2026-08-01'),
         snapshot: baselineOneSnapshot
     };
+    if (reqEndurance.metric)
+        reqEndurance.metric.target = 36;
     reqEndurance.revision = 2;
     reqEndurance.updatedAt = at('2026-08-10');
     reqEndurance.history.push((0, factory_1.historyEntry)('Requirement revised', 2, 'Target increased from 30 hours to 36 hours after stakeholder review.', 'Systems Engineering Lead'));
@@ -4032,7 +4707,8 @@ function createSampleProject() {
         reviewer: 'Project Review Board',
         approval: 'Approved 2026-08-10',
         implementationStatus: 'in-progress',
-        resultingRevisionIds: [reqEndurance.id, reqIngress.id]
+        resultingRevisionIds: [reqEndurance.id, reqIngress.id],
+        impactReviewIds: []
     };
     project.changeRequests = [changeRequest];
     project.links.push(link('changed-by', reqEndurance.id, changeRequest.id), link('changed-by', reqIngress.id, changeRequest.id));
@@ -4048,8 +4724,29 @@ function createSampleProject() {
     project.requirements.forEach((record) => {
         record.baselineIds = [baselineTwo.id, ...(record.baselineIds ?? [])];
     });
+    project.testExecutions = project.testExecutions.map((execution) => ({ ...execution, currencyState: 'current', staleReason: '', staleSourceIds: [] }));
+    project.documents = project.documents.map((document) => ({
+        ...document,
+        currencyState: document.status === 'superseded' ? 'superseded' : document.status === 'stale' ? 'stale' : 'current',
+        staleReason: '',
+        staleSourceIds: []
+    }));
     project.updatedAt = (0, dates_1.nowIso)();
-    return (0, factory_1.initializeProjectRevisionHistory)(project);
+    const current = (0, factory_1.initializeProjectRevisionHistory)(project);
+    const beforeImpact = structuredClone(current);
+    const baselineRequirement = current.baselines[0]?.snapshot.requirements.find((candidate) => candidate.id === reqEndurance.id);
+    if (baselineRequirement) {
+        const index = beforeImpact.requirements.findIndex((candidate) => candidate.id === reqEndurance.id);
+        if (index >= 0) {
+            const prior = structuredClone(baselineRequirement);
+            // Baseline membership is configuration metadata, not part of the sample target-change trigger.
+            prior.baselineIds = [...current.requirements[index].baselineIds];
+            beforeImpact.requirements[index] = prior;
+        }
+    }
+    (0, impact_1.applyImpactAutomation)(beforeImpact, current, 'Sample parent requirement target changed from 30 hours to 36 hours.', 'Sample project');
+    const reconciled = (0, factory_1.reconcileProjectControlledRecords)(beforeImpact, current, 'Sample Batch 3 impact review generated', 'Sample project');
+    return (0, factory_1.initializeProjectRevisionHistory)((0, factory_1.touchProject)(reconciled));
 }
 
 },
@@ -4062,13 +4759,16 @@ exports.calculateMetricMargin = calculateMetricMargin;
 exports.calculateRequirementCompleteness = calculateRequirementCompleteness;
 exports.deriveAllocationState = deriveAllocationState;
 exports.latestExecutionForRequirement = latestExecutionForRequirement;
-exports.deriveVerificationState = deriveVerificationState;
-exports.deriveEvidenceState = deriveEvidenceState;
+exports.executionExceptions = executionExceptions;
 exports.verificationClosure = verificationClosure;
+exports.deriveVerificationState = deriveVerificationState;
+exports.deriveValidationState = deriveValidationState;
+exports.deriveEvidenceState = deriveEvidenceState;
 exports.criticalityScore = criticalityScore;
 exports.criticalityCategory = criticalityCategory;
 exports.projectBudgetSummary = projectBudgetSummary;
 exports.technicalBudgetSummary = technicalBudgetSummary;
+exports.assessRequirementReadiness = assessRequirementReadiness;
 exports.requirementReadiness = requirementReadiness;
 exports.objectReadiness = objectReadiness;
 exports.compareEntityRecords = compareEntityRecords;
@@ -4078,6 +4778,7 @@ exports.recordsNeedingAttention = recordsNeedingAttention;
 exports.evidenceForRequirement = evidenceForRequirement;
 exports.plansForRequirement = plansForRequirement;
 const text_1 = require("../utils/text");
+const verification_1 = require("./verification");
 function calculateMetricMargin(metric) {
     if (!metric)
         return undefined;
@@ -4147,17 +4848,147 @@ function deriveAllocationState(requirement) {
         return 'partially-allocated';
     return 'unallocated';
 }
-function latestExecutionForRequirement(project, requirementId) {
-    return project.testExecutions
-        .filter((execution) => execution.requirementIds.includes(requirementId) && execution.result !== 'superseded')
-        .sort((a, b) => b.executedAt.localeCompare(a.executedAt))[0];
+function latestExecutionForRequirement(project, requirementId, level) {
+    return (project.testExecutions ?? [])
+        .filter((execution) => !execution.archived && execution.requirementIds.includes(requirementId) && execution.result !== 'superseded' && (!level || execution.verificationLevel === level))
+        .sort((a, b) => b.executedAt.localeCompare(a.executedAt) || b.executionNumber - a.executionNumber)[0];
+}
+function executionExceptions(project, executionId) {
+    return (project.verificationExceptions ?? []).filter((record) => !record.archived && record.executionId === executionId);
+}
+function planForExecution(project, execution) {
+    return execution ? project.verificationPlans.find((plan) => plan.id === execution.verificationPlanId) : undefined;
+}
+function executionEvidence(project, requirement, execution) {
+    const ids = new Set([...(requirement.evidenceIds ?? []), ...(execution?.evidenceIds ?? [])]);
+    return project.documents.filter((document) => ids.has(document.id) && !document.archived);
+}
+function requiredParametersComplete(project, execution) {
+    if (!execution?.testCaseId)
+        return { complete: true, missing: [] };
+    const testCase = project.testCases.find((record) => record.id === execution.testCaseId);
+    if (!testCase)
+        return { complete: false, missing: ['Referenced test case'] };
+    const missing = (testCase.parameterDefinitions ?? [])
+        .filter((definition) => definition.required)
+        .filter((definition) => {
+        const value = execution.parameterValues?.[definition.name] ?? execution.parameterValues?.[definition.id];
+        return value === undefined || value === null || String(value).trim() === '';
+    })
+        .map((definition) => definition.name);
+    return { complete: missing.length === 0, missing };
+}
+function verificationClosure(project, requirement, level = requirement.verificationIntent.level) {
+    const latest = latestExecutionForRequirement(project, requirement.id, level);
+    const plan = planForExecution(project, latest)
+        ?? project.verificationPlans.filter((candidate) => candidate.requirementIds.includes(requirement.id) && candidate.verificationLevel === level).sort((a, b) => b.revision - a.revision)[0];
+    const evidence = executionEvidence(project, requirement, latest);
+    const exceptions = latest ? executionExceptions(project, latest.id) : [];
+    const openExceptions = exceptions.filter((record) => !['accepted', 'corrected', 'closed'].includes(record.status));
+    const unresolvedRetest = exceptions.filter((record) => record.requiresRetest).filter((record) => {
+        if (!record.retestExecutionId)
+            return true;
+        const rerun = project.testExecutions.find((execution) => execution.id === record.retestExecutionId);
+        return !rerun || rerun.result !== 'passed' || !(0, verification_1.isExecutionCurrent)(rerun);
+    });
+    const method = latest ? (0, verification_1.methodSpecificCompleteness)(latest) : { complete: false, missing: ['Completed verification activity'] };
+    const operational = latest?.verificationLevel === 'operational'
+        ? (0, verification_1.operationalValidationCompleteness)(latest)
+        : { complete: true, missing: [] };
+    const parameters = requiredParametersComplete(project, latest);
+    const testCase = latest?.testCaseId ? project.testCases.find((record) => record.id === latest.testCaseId) : undefined;
+    const setupId = latest?.setupId ?? testCase?.setupId ?? plan?.setupId;
+    const setup = setupId ? project.verificationSetups.find((record) => record.id === setupId) : undefined;
+    const exactRevisions = Boolean(latest && plan && latest.verificationPlanRevision === plan.revision)
+        && (!testCase || latest?.testCaseRevision === testCase.revision)
+        && (!setup || latest?.setupRevision === setup.revision);
+    const override = (0, verification_1.activeReadinessOverride)(project, requirement.id, latest?.verificationLevel ?? plan?.verificationLevel ?? requirement.verificationIntent.level);
+    const overrideClosesVerification = Boolean(override?.factorKeys.includes('verification-closure'));
+    const acceptedResult = Boolean(latest && (latest.result === 'passed'
+        || (latest.result === 'conditionally-accepted' && plan?.allowConditionalAcceptance && latest.reviewerDisposition === 'conditionally-accepted')
+        || (latest.result === 'waived' && overrideClosesVerification)));
+    const reviewerRequired = plan?.requiredReviewerDisposition ?? 'accepted';
+    const reviewerAccepted = Boolean(latest && (latest.reviewerDisposition === reviewerRequired
+        || (plan?.allowConditionalAcceptance && latest.reviewerDisposition === 'conditionally-accepted')
+        || (latest.reviewerDisposition === 'waived' && overrideClosesVerification)));
+    const completed = Boolean(latest && !['not-run', 'running'].includes(latest.result));
+    const criteriaDefined = Boolean((plan?.acceptanceCriteria ?? requirement.verificationIntent.acceptanceCriteria).trim());
+    const configurationRecorded = Boolean(latest?.systemConfiguration.trim());
+    const configurationConforming = Boolean(latest && ['conforming', 'deviation-approved'].includes(latest.configurationConformance ?? 'not-assessed'));
+    const evidenceCurrent = evidence.length > 0 && evidence.every((document) => ['current', 'reviewed-current'].includes(document.currencyState ?? 'current'));
+    const retestResolved = Boolean(latest && !['required', 'scheduled'].includes(latest.retestState ?? 'not-required')) && unresolvedRetest.length === 0;
+    const conditions = [
+        {
+            key: 'approved-plan', label: 'Approved verification plan', met: plan?.approvalState === 'approved', detail: plan ? `${plan.identifier} revision ${plan.revision} is ${(0, text_1.humanize)(plan.approvalState)}.` : 'No verification plan is linked.', blocking: true,
+            nextAction: 'Approve a verification plan that covers this requirement.', recordIds: plan ? [plan.id] : []
+        },
+        {
+            key: 'completed-execution', label: 'Completed verification activity', met: completed, detail: latest ? `${latest.identifier} is ${(0, text_1.humanize)(latest.result)}.` : 'No execution or result is recorded.', blocking: true,
+            nextAction: 'Record a completed verification activity.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'passing-result', label: 'Acceptable result', met: acceptedResult, detail: latest ? `${(0, text_1.humanize)(latest.result)} with ${(0, text_1.humanize)(latest.reviewerDisposition ?? 'pending-review')} reviewer disposition.` : 'No result is available.', blocking: true,
+            nextAction: 'Resolve the failed, blocked, inconclusive, conditional, or waived result through an approved disposition and rerun where required.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'current-result', label: 'Result remains current', met: (0, verification_1.isExecutionCurrent)(latest), detail: latest ? `Currency is ${(0, text_1.humanize)(latest.currencyState ?? 'current')}.` : 'No result is available.', blocking: true,
+            nextAction: 'Review the result against the current requirement and configuration, then confirm currency or rerun it.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'acceptance-criteria', label: 'Acceptance criteria satisfied', met: criteriaDefined && latest?.acceptanceCriteriaSatisfied === true, detail: !criteriaDefined ? 'Acceptance criteria are missing.' : latest?.acceptanceCriteriaSatisfied ? 'The as-run record confirms the criteria were satisfied.' : 'The as-run record does not confirm satisfaction.', blocking: true,
+            nextAction: 'Define acceptance criteria and record their as-run disposition.', recordIds: [requirement.id, ...(plan ? [plan.id] : []), ...(latest ? [latest.id] : [])]
+        },
+        {
+            key: 'method-record', label: 'Method-specific record complete', met: method.complete, detail: method.complete ? `Required ${(0, text_1.humanize)(latest?.verificationMethod ?? plan?.verificationMethod ?? 'verification')} fields are complete.` : `Missing: ${method.missing.join(', ')}.`, blocking: true,
+            nextAction: 'Complete the method-specific analysis, inspection, demonstration, similarity, certification, or combined-method fields.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'parameters', label: 'Required parameters recorded', met: parameters.complete, detail: parameters.complete ? 'All required parameter values are recorded.' : `Missing: ${parameters.missing.join(', ')}.`, blocking: true,
+            nextAction: 'Record every required parameter value for the selected test case.', recordIds: latest?.testCaseId ? [latest.testCaseId, latest.id] : latest ? [latest.id] : []
+        },
+        {
+            key: 'exact-revisions', label: 'Exact plan, case, and setup revisions recorded', met: exactRevisions, detail: !latest ? 'No as-run record is available.' : `Plan revision ${latest.verificationPlanRevision || 'missing'}; test case revision ${latest.testCaseRevision ?? 'not applicable'}; setup revision ${latest.setupRevision ?? 'not applicable'}.`, blocking: true,
+            nextAction: 'Record the exact approved verification plan, reusable setup, and parameterized case revisions used as run.', recordIds: [plan?.id, testCase?.id, setup?.id, latest?.id].filter((id) => Boolean(id))
+        },
+        {
+            key: 'configuration', label: 'Correct configuration recorded', met: configurationRecorded && configurationConforming, detail: !configurationRecorded ? 'The as-run configuration is missing.' : `Configuration disposition is ${(0, text_1.humanize)(latest?.configurationConformance ?? 'not-assessed')}.`, blocking: true,
+            nextAction: 'Record the exact as-run configuration and disposition any configuration deviation.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'reviewer', label: 'Reviewer disposition complete', met: reviewerAccepted && Boolean(latest?.reviewer.trim()), detail: latest ? `${latest.reviewer || 'No reviewer'}: ${(0, text_1.humanize)(latest.reviewerDisposition ?? 'pending-review')}.` : 'No reviewer disposition is available.', blocking: true,
+            nextAction: 'Obtain the required reviewer disposition and record any conditions.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'exceptions', label: 'Deviations, anomalies, and retest resolved', met: openExceptions.length === 0 && retestResolved, detail: `${openExceptions.length} open exception(s); ${unresolvedRetest.length} unresolved retest obligation(s).`, blocking: true,
+            nextAction: 'Disposition open exceptions and complete or waive required retests with rationale.', recordIds: exceptions.map((record) => record.id)
+        },
+        {
+            key: 'evidence', label: 'Current evidence attached', met: evidenceCurrent, detail: `${evidence.filter((document) => ['current', 'reviewed-current'].includes(document.currencyState ?? 'current')).length}/${evidence.length} linked artifact(s) are current.`, blocking: true,
+            nextAction: 'Attach current evidence or disposition stale evidence.', recordIds: evidence.map((document) => document.id)
+        },
+        {
+            key: 'operational-validation', label: 'Operational validation context complete', met: operational.complete, detail: operational.complete ? 'Operational scenario, representative user, observations, and recommendation are complete.' : `Missing: ${operational.missing.join(', ')}.`, blocking: latest?.verificationLevel === 'operational',
+            nextAction: 'Complete the operational validation context and acceptance recommendation.', recordIds: latest ? [latest.id] : []
+        },
+        {
+            key: 'operational-recommendation', label: 'Operational acceptance recommendation', met: latest?.verificationLevel !== 'operational' || ['accept', 'conditional'].includes(latest.operationalValidation?.acceptanceRecommendation ?? 'not-assessed'), detail: latest?.verificationLevel === 'operational' ? `Recommendation is ${(0, text_1.humanize)(latest.operationalValidation?.acceptanceRecommendation ?? 'not-assessed')}.` : 'Not applicable at this verification level.', blocking: latest?.verificationLevel === 'operational',
+            nextAction: 'Record an acceptance, conditional acceptance, rejection, or additional-evaluation recommendation.', recordIds: latest ? [latest.id] : []
+        }
+    ];
+    const applicable = conditions.filter((condition) => condition.blocking);
+    return { closed: applicable.every((condition) => condition.met), conditions, execution: latest, plan };
 }
 function deriveVerificationState(project, requirement) {
-    const latest = latestExecutionForRequirement(project, requirement.id);
+    const closure = verificationClosure(project, requirement);
+    if (closure.closed)
+        return 'passed';
+    const latest = closure.execution;
+    const level = latest?.verificationLevel ?? closure.plan?.verificationLevel ?? requirement.verificationIntent.level;
+    const override = (0, verification_1.activeReadinessOverride)(project, requirement.id, level);
+    if (override?.factorKeys.includes('verification-closure'))
+        return 'waived';
     if (latest) {
-        if (latest.result === 'passed')
-            return 'passed';
-        if (latest.result === 'failed' || latest.result === 'inconclusive')
+        if (latest.result === 'failed' || latest.result === 'inconclusive' || latest.reviewerDisposition === 'rejected')
             return 'failed';
         if (latest.result === 'blocked')
             return 'blocked';
@@ -4173,33 +5004,38 @@ function deriveVerificationState(project, requirement) {
         return 'ready';
     return 'planned';
 }
+function deriveValidationState(project, requirement) {
+    const operationalExecutions = project.testExecutions
+        .filter((execution) => !execution.archived && execution.requirementIds.includes(requirement.id) && execution.verificationLevel === 'operational' && execution.result !== 'superseded')
+        .sort((a, b) => b.executedAt.localeCompare(a.executedAt));
+    if (!operationalExecutions.length) {
+        const hasOperationalPlan = project.verificationPlans.some((plan) => plan.requirementIds.includes(requirement.id) && plan.verificationLevel === 'operational');
+        return hasOperationalPlan ? 'planned' : 'not-applicable';
+    }
+    const latest = operationalExecutions[0];
+    if (latest.result === 'running')
+        return 'running';
+    if (latest.operationalValidation.acceptanceRecommendation === 'accept' && (0, verification_1.verificationExecutionClosure)(project, requirement, latest).closed)
+        return 'accepted';
+    if (latest.operationalValidation.acceptanceRecommendation === 'conditional' || latest.result === 'conditionally-accepted')
+        return 'conditional';
+    if (latest.operationalValidation.acceptanceRecommendation === 'reject' || latest.result === 'failed')
+        return 'rejected';
+    return 'planned';
+}
 function deriveEvidenceState(project, requirement) {
     if (!requirement.evidenceIds.length)
         return 'missing';
     const evidence = project.documents.filter((document) => requirement.evidenceIds.includes(document.id));
     if (!evidence.length)
         return 'missing';
-    if (evidence.some((document) => document.status === 'stale' || document.status === 'superseded'))
+    if (evidence.some((document) => document.status === 'stale' || document.status === 'superseded' || ['stale', 'superseded'].includes(document.currencyState ?? 'current')))
         return 'stale';
-    if (evidence.every((document) => document.status === 'current' && document.approvalState !== 'draft'))
+    if (evidence.some((document) => document.currencyState === 'potentially-stale'))
+        return 'potentially-stale';
+    if (evidence.every((document) => document.status === 'current' && document.approvalState !== 'draft' && ['current', 'reviewed-current'].includes(document.currencyState ?? 'current')))
         return 'complete';
     return 'incomplete';
-}
-function verificationClosure(project, requirement) {
-    const plans = project.verificationPlans.filter((plan) => plan.requirementIds.includes(requirement.id));
-    const approvedPlan = plans.some((plan) => plan.approvalState === 'approved');
-    const latest = latestExecutionForRequirement(project, requirement.id);
-    const evidence = project.documents.filter((document) => requirement.evidenceIds.includes(document.id));
-    const conditions = [
-        { label: 'Approved verification plan', met: approvedPlan },
-        { label: 'Completed execution', met: Boolean(latest && latest.result !== 'not-run' && latest.result !== 'running') },
-        { label: 'Passing result', met: latest?.result === 'passed' },
-        { label: 'Acceptance criteria defined', met: Boolean(requirement.verificationIntent.acceptanceCriteria.trim()) },
-        { label: 'Evidence attached', met: evidence.length > 0 },
-        { label: 'Reviewer disposition', met: Boolean(latest?.reviewer.trim()) },
-        { label: 'Correct configuration recorded', met: Boolean(latest?.systemConfiguration.trim()) }
-    ];
-    return { closed: conditions.every((condition) => condition.met), conditions };
 }
 function criticalityScore(failure) {
     return failure.severity * failure.likelihood * failure.detectability;
@@ -4259,56 +5095,93 @@ function technicalBudgetSummary(budget) {
         utilizationPercent: capacity ? (0, text_1.clamp)(Math.round((measured / capacity) * 100), 0, 999) : 0
     };
 }
-function requirementReadiness(project, requirement) {
-    const objects = project.objects.filter((object) => requirement.objectIds.includes(object.id));
-    const plans = project.verificationPlans.filter((plan) => requirement.verificationPlanIds.includes(plan.id));
-    const failures = project.failureModes.filter((failure) => requirement.failureModeIds.includes(failure.id));
-    const work = project.workItems.filter((item) => requirement.workItemIds.includes(item.id));
-    const evidence = project.documents.filter((document) => requirement.evidenceIds.includes(document.id));
-    const factors = [
-        {
-            label: 'Requirement allocation coverage',
-            met: requirement.functionIds.length > 0 && requirement.objectIds.length > 0,
-            detail: `${requirement.functionIds.length} function allocation(s), ${requirement.objectIds.length} object allocation(s)`
-        },
-        {
-            label: 'Inherited obligations resolved',
-            met: objects.every((object) => object.inheritedObligations.every((obligation) => obligation.state !== 'pending-review')),
-            detail: `${objects.flatMap((object) => object.inheritedObligations).filter((obligation) => obligation.state === 'pending-review').length} pending`
-        },
-        {
-            label: 'Implementation complete',
-            met: objects.length > 0 && objects.every((object) => object.implementationStatus === 'implemented'),
-            detail: `${objects.filter((object) => object.implementationStatus === 'implemented').length}/${objects.length || 0} implementing objects complete`
-        },
-        {
-            label: 'High-criticality failures addressed',
-            met: failures.every((failure) => !['high', 'critical'].includes(failure.criticalityCategory) || ['verified', 'accepted'].includes(failure.mitigationStatus)),
-            detail: `${failures.filter((failure) => ['high', 'critical'].includes(failure.criticalityCategory) && !['verified', 'accepted'].includes(failure.mitigationStatus)).length} open high-criticality concern(s)`
-        },
-        {
-            label: 'Verification plan approved',
-            met: plans.length > 0 && plans.every((plan) => plan.approvalState === 'approved'),
-            detail: `${plans.filter((plan) => plan.approvalState === 'approved').length}/${plans.length || 0} approved`
-        },
-        {
-            label: 'Blocking work resolved',
-            met: work.every((item) => item.status !== 'blocked'),
-            detail: `${work.filter((item) => item.status === 'blocked').length} blocked item(s)`
-        },
-        {
-            label: 'Evidence complete',
-            met: evidence.length > 0 && evidence.every((document) => document.status === 'current'),
-            detail: `${evidence.filter((document) => document.status === 'current').length}/${evidence.length || 0} current artifact(s)`
+function factorEvaluation(project, requirement, key, level = requirement.verificationIntent.level) {
+    const objects = project.objects.filter((object) => requirement.objectIds.includes(object.id) && !object.archived);
+    const interfaces = project.interfaces.filter((record) => !record.archived && (requirement.interfaceIds.includes(record.id) || record.requirementIds.includes(requirement.id) || objects.some((object) => object.interfaceIds.includes(record.id))));
+    const plans = project.verificationPlans.filter((plan) => !plan.archived && (requirement.verificationPlanIds.includes(plan.id) || plan.requirementIds.includes(requirement.id)) && plan.verificationLevel === level);
+    const failures = project.failureModes.filter((failure) => !failure.archived && (requirement.failureModeIds.includes(failure.id) || failure.requirementIds.includes(requirement.id)));
+    const work = project.workItems.filter((item) => !item.archived && (requirement.workItemIds.includes(item.id) || item.requirementIds.includes(requirement.id)));
+    const evidence = executionEvidence(project, requirement, latestExecutionForRequirement(project, requirement.id));
+    const descendants = (0, verification_1.descendantRequirements)(project, requirement);
+    const lowerLevel = descendants.filter((child) => (0, verification_1.verificationLevelRank)(child.verificationIntent.level) < (0, verification_1.verificationLevelRank)(level));
+    const latest = (project.testExecutions ?? []).filter((execution) => !execution.archived && execution.requirementIds.includes(requirement.id) && execution.result !== 'superseded' && execution.verificationLevel === level).sort((a, b) => b.executedAt.localeCompare(a.executedAt) || b.executionNumber - a.executionNumber)[0];
+    const exceptions = latest ? executionExceptions(project, latest.id) : [];
+    const today = new Date().toISOString().slice(0, 10);
+    const openImpacts = project.impactReviews.flatMap((review) => review.status === 'resolved' || review.archived ? [] : review.items.filter((item) => item.affectedRecordId === requirement.id || review.sourceRecordId === requirement.id).filter((item) => ['pending-review', 'deferred'].includes(item.disposition)));
+    const linkedFinancial = project.projectBudgetLines.filter((line) => !line.archived && line.requirementIds.includes(requirement.id));
+    const linkedTechnical = project.technicalBudgets.filter((budget) => !budget.archived && budget.allocations.some((allocation) => allocation.requirementId === requirement.id || (allocation.objectId && requirement.objectIds.includes(allocation.objectId))));
+    switch (key) {
+        case 'allocation-coverage': return { met: requirement.functionIds.length > 0 && requirement.objectIds.length > 0, detail: `${requirement.functionIds.length} function and ${requirement.objectIds.length} object allocation(s).`, nextAction: 'Allocate the requirement to functions and implementation objects.', recordIds: [requirement.id, ...requirement.functionIds, ...requirement.objectIds] };
+        case 'inherited-obligations': {
+            const pending = objects.flatMap((object) => object.inheritedObligations).filter((obligation) => obligation.state === 'pending-review');
+            return { met: pending.length === 0, detail: `${pending.length} inherited obligation(s) remain pending.`, nextAction: 'Disposition each inherited obligation with rationale where required.', recordIds: objects.map((object) => object.id) };
         }
-    ];
-    const score = Math.round((factors.filter((factor) => factor.met).length / factors.length) * 100);
-    return { score, factors };
+        case 'implementation-complete': return { met: objects.length > 0 && objects.every((object) => object.implementationStatus === 'implemented'), detail: `${objects.filter((object) => object.implementationStatus === 'implemented').length}/${objects.length} implementing object(s) complete.`, nextAction: 'Complete or disposition implementation work.', recordIds: objects.map((object) => object.id) };
+        case 'lower-level-verification': {
+            const open = lowerLevel.filter((child) => !verificationClosure(project, child).closed);
+            return { met: open.length === 0, detail: lowerLevel.length ? `${lowerLevel.length - open.length}/${lowerLevel.length} lower-level requirement(s) closed.` : 'No lower-level verification obligations were found.', nextAction: 'Close failed or incomplete lower-level verification before rolling readiness upward.', recordIds: lowerLevel.map((child) => child.id) };
+        }
+        case 'interfaces-verified': return { met: interfaces.every((record) => record.status === 'verified'), detail: `${interfaces.filter((record) => record.status === 'verified').length}/${interfaces.length} applicable interface(s) verified.`, nextAction: 'Verify every applicable interface or record a justified disposition.', recordIds: interfaces.map((record) => record.id) };
+        case 'high-criticality-failures': {
+            const open = failures.filter((failure) => ['high', 'critical'].includes(failure.criticalityCategory) && !['verified', 'accepted'].includes(failure.mitigationStatus));
+            return { met: open.length === 0, detail: `${open.length} open high- or critical-concern mitigation(s).`, nextAction: 'Implement and verify high-criticality mitigations.', recordIds: failures.map((failure) => failure.id) };
+        }
+        case 'approved-verification-plan': return { met: plans.length > 0 && plans.every((plan) => plan.approvalState === 'approved'), detail: `${plans.filter((plan) => plan.approvalState === 'approved').length}/${plans.length} applicable plan(s) approved.`, nextAction: 'Approve every applicable verification plan.', recordIds: plans.map((plan) => plan.id) };
+        case 'configuration-defined': return { met: Boolean(latest?.systemConfiguration.trim()) && ['conforming', 'deviation-approved'].includes(latest?.configurationConformance ?? 'not-assessed'), detail: latest ? `Configuration is ${(0, text_1.humanize)(latest.configurationConformance ?? 'not-assessed')}.` : 'No as-run configuration is recorded.', nextAction: 'Record the exact configuration and disposition deviations.', recordIds: latest ? [latest.id] : [] };
+        case 'verification-closure': {
+            const closure = verificationClosure(project, requirement, level);
+            return { met: closure.closed, detail: `${closure.conditions.filter((condition) => condition.blocking && condition.met).length}/${closure.conditions.filter((condition) => condition.blocking).length} closure condition(s) satisfied.`, nextAction: closure.conditions.find((condition) => !condition.met && condition.blocking)?.nextAction ?? 'Complete verification closure.', recordIds: closure.conditions.flatMap((condition) => condition.recordIds) };
+        }
+        case 'deviations-resolved': {
+            const open = exceptions.filter((record) => !['accepted', 'corrected', 'closed'].includes(record.status) || (record.requiresRetest && !record.retestExecutionId));
+            return { met: open.length === 0 && !['required', 'scheduled'].includes(latest?.retestState ?? 'not-required'), detail: `${open.length} unresolved exception or retest obligation(s).`, nextAction: 'Disposition deviations and anomalies and complete required retests.', recordIds: exceptions.map((record) => record.id) };
+        }
+        case 'evidence-current': return { met: evidence.length > 0 && evidence.every((document) => ['current', 'reviewed-current'].includes(document.currencyState ?? 'current')), detail: `${evidence.filter((document) => ['current', 'reviewed-current'].includes(document.currencyState ?? 'current')).length}/${evidence.length} evidence artifact(s) current.`, nextAction: 'Attach and review current evidence.', recordIds: evidence.map((document) => document.id) };
+        case 'blocking-work-resolved': return { met: work.every((item) => item.status !== 'blocked'), detail: `${work.filter((item) => item.status === 'blocked').length} linked work item(s) blocked.`, nextAction: 'Resolve linked blockers.', recordIds: work.map((item) => item.id) };
+        case 'schedule-ready': {
+            const late = work.filter((item) => item.status !== 'done' && Boolean(item.plannedFinish) && item.plannedFinish < today);
+            return { met: late.length === 0, detail: `${late.length} linked work item(s) are late.`, nextAction: 'Recover or rebaseline late verification work.', recordIds: work.map((item) => item.id) };
+        }
+        case 'budget-available': {
+            const financialOver = linkedFinancial.filter((line) => line.forecast > (line.approved || line.planned));
+            const technicalOver = linkedTechnical.filter((budget) => technicalBudgetSummary(budget).margin < 0);
+            return { met: financialOver.length === 0 && technicalOver.length === 0, detail: `${financialOver.length} financial and ${technicalOver.length} technical budget overrun(s).`, nextAction: 'Recover budget margin or approve a controlled change.', recordIds: [...linkedFinancial.map((line) => line.id), ...linkedTechnical.map((budget) => budget.id)] };
+        }
+        case 'impact-reviews-dispositioned': return { met: openImpacts.length === 0, detail: `${openImpacts.length} open or deferred impact item(s).`, nextAction: 'Disposition every applicable change impact.', recordIds: openImpacts.map((item) => item.id) };
+        case 'operational-validation': {
+            const operational = project.testExecutions.filter((execution) => !execution.archived && execution.requirementIds.includes(requirement.id) && execution.verificationLevel === 'operational').sort((a, b) => b.executedAt.localeCompare(a.executedAt))[0];
+            const complete = (0, verification_1.operationalValidationCompleteness)(operational);
+            const accepted = Boolean(operational && complete.complete && ['accept', 'conditional'].includes(operational.operationalValidation.acceptanceRecommendation) && ['accepted', 'conditionally-accepted'].includes(operational.reviewerDisposition));
+            return { met: accepted, detail: operational ? `Recommendation: ${(0, text_1.humanize)(operational.operationalValidation.acceptanceRecommendation)}; reviewer: ${(0, text_1.humanize)(operational.reviewerDisposition)}.` : 'No operational validation is recorded.', nextAction: 'Complete operational validation with representative users and an acceptance recommendation.', recordIds: operational ? [operational.id] : [] };
+        }
+    }
+}
+function assessRequirementReadiness(project, requirement, level = requirement.verificationIntent.level) {
+    const policy = (project.readinessPolicies ?? []).filter((record) => !record.archived && record.verificationLevel === level && record.approvalState === 'approved').sort((a, b) => b.revision - a.revision)[0];
+    const rules = policy?.factorRules?.length ? policy.factorRules : (0, verification_1.defaultReadinessFactorRules)(level);
+    const override = (0, verification_1.activeReadinessOverride)(project, requirement.id, level);
+    const factors = rules.filter((rule) => rule.enabled).map((rule) => {
+        const evaluation = factorEvaluation(project, requirement, rule.key, level);
+        const overridden = Boolean(override?.factorKeys.includes(rule.key));
+        return { key: rule.key, label: rule.label || verification_1.READINESS_FACTOR_LABELS[rule.key], required: rule.required, weight: Math.max(0, rule.weight || 1), overridden, ...evaluation, met: evaluation.met || overridden };
+    });
+    const totalWeight = factors.reduce((sum, factor) => sum + factor.weight, 0);
+    const earned = factors.filter((factor) => factor.met).reduce((sum, factor) => sum + factor.weight, 0);
+    const score = totalWeight ? Math.round((earned / totalWeight) * 100) : 0;
+    const requiredMet = factors.filter((factor) => factor.required).every((factor) => factor.met);
+    const minimum = policy?.minimumScore ?? 80;
+    let status = requiredMet && score >= minimum ? 'ready' : requiredMet ? 'conditionally-ready' : 'not-ready';
+    if (override && status !== 'ready')
+        status = 'overridden';
+    return { score, status, factors, policy, override };
+}
+function requirementReadiness(project, requirement) {
+    return assessRequirementReadiness(project, requirement, requirement.verificationIntent.level);
 }
 function objectReadiness(project, object) {
     const obligationsResolved = object.inheritedObligations.every((obligation) => obligation.state !== 'pending-review');
     const requirements = project.requirements.filter((requirement) => object.requirementIds.includes(requirement.id));
-    const readyRequirements = requirements.filter((requirement) => requirementReadiness(project, requirement).score >= 80);
+    const readyRequirements = requirements.filter((requirement) => ['ready', 'overridden'].includes(requirementReadiness(project, requirement).status));
     const interfaceRecords = project.interfaces.filter((record) => object.interfaceIds.includes(record.id));
     const verifiedInterfaces = interfaceRecords.filter((record) => record.status === 'verified');
     const factors = [
@@ -4355,12 +5228,18 @@ function compareBaselines(a, b) {
         compareEntityRecords('Architecture objects', a.snapshot.objects, b.snapshot.objects),
         compareEntityRecords('Interfaces', a.snapshot.interfaces, b.snapshot.interfaces),
         compareEntityRecords('Verification plans', a.snapshot.verificationPlans, b.snapshot.verificationPlans),
-        compareEntityRecords('Test executions', a.snapshot.testExecutions, b.snapshot.testExecutions),
+        compareEntityRecords('Verification setups', a.snapshot.verificationSetups ?? [], b.snapshot.verificationSetups ?? []),
+        compareEntityRecords('Test cases', a.snapshot.testCases ?? [], b.snapshot.testCases ?? []),
+        compareEntityRecords('Verification executions', a.snapshot.testExecutions, b.snapshot.testExecutions),
+        compareEntityRecords('Verification exceptions', a.snapshot.verificationExceptions ?? [], b.snapshot.verificationExceptions ?? []),
+        compareEntityRecords('Readiness policies', a.snapshot.readinessPolicies ?? [], b.snapshot.readinessPolicies ?? []),
+        compareEntityRecords('Readiness overrides', a.snapshot.readinessOverrides ?? [], b.snapshot.readinessOverrides ?? []),
         compareEntityRecords('Failure modes', a.snapshot.failureModes, b.snapshot.failureModes),
         compareEntityRecords('Work items', a.snapshot.workItems, b.snapshot.workItems),
         compareEntityRecords('Project budget lines', a.snapshot.projectBudgetLines, b.snapshot.projectBudgetLines),
         compareEntityRecords('Technical budgets', a.snapshot.technicalBudgets, b.snapshot.technicalBudgets),
-        compareEntityRecords('Documents', a.snapshot.documents, b.snapshot.documents)
+        compareEntityRecords('Documents', a.snapshot.documents, b.snapshot.documents),
+        compareEntityRecords('Impact reviews', a.snapshot.impactReviews ?? [], b.snapshot.impactReviews ?? [])
     ];
 }
 function projectCockpit(project) {
@@ -4372,9 +5251,16 @@ function projectCockpit(project) {
     const today = new Date().toISOString().slice(0, 10);
     const lateWork = project.workItems.filter((item) => item.status !== 'done' && Boolean(item.plannedFinish) && item.plannedFinish < today).length;
     const budget = projectBudgetSummary(project.projectBudgetLines);
-    const staleEvidence = project.documents.filter((document) => ['stale', 'superseded'].includes(document.status)).length;
+    const staleEvidence = project.documents.filter((document) => ['stale', 'superseded', 'potentially-stale'].includes(document.currencyState ?? document.status)).length;
+    const openImpactReviews = project.impactReviews.filter((review) => !review.archived && review.status !== 'resolved').length;
+    const pendingImpactItems = project.impactReviews.flatMap((review) => review.status === 'resolved' || review.archived ? [] : review.items).filter((item) => ['pending-review', 'deferred'].includes(item.disposition)).length;
+    const staleResults = project.testExecutions.filter((execution) => ['potentially-stale', 'stale'].includes(execution.currencyState ?? 'current')).length;
     const pendingReviews = activeRequirements.filter((requirement) => requirement.statuses.definition === 'under-review').length
         + project.verificationPlans.filter((plan) => plan.approvalState === 'under-review').length;
+    const openVerificationExceptions = (project.verificationExceptions ?? []).filter((record) => !record.archived && !['accepted', 'corrected', 'closed'].includes(record.status)).length;
+    const pendingReadinessOverrides = (project.readinessOverrides ?? []).filter((record) => !record.archived && ['draft', 'under-review'].includes(record.approvalState)).length;
+    const operationalAccepted = activeRequirements.filter((requirement) => deriveValidationState(project, requirement) === 'accepted').length;
+    const readinessNotReady = activeRequirements.filter((requirement) => requirementReadiness(project, requirement).status === 'not-ready').length;
     return {
         totalRequirements: activeRequirements.length,
         allocationPercent: activeRequirements.length ? Math.round((allocationsComplete / activeRequirements.length) * 100) : 0,
@@ -4384,7 +5270,14 @@ function projectCockpit(project) {
         lateWork,
         budget,
         staleEvidence,
+        staleResults,
+        openImpactReviews,
+        pendingImpactItems,
         pendingReviews,
+        openVerificationExceptions,
+        pendingReadinessOverrides,
+        operationalAccepted,
+        readinessNotReady,
         changeRequests: project.changeRequests.filter((request) => !['rejected'].includes(request.disposition) && request.implementationStatus !== 'closed').length
     };
 }
@@ -4398,10 +5291,19 @@ function recordsNeedingAttention(project) {
         if (deriveVerificationState(project, requirement) === 'failed') {
             rows.push({ kind: 'Verification', id: requirement.id, title: requirement.identifier, reason: 'Latest verification result failed', severity: 'danger' });
         }
-        if (deriveEvidenceState(project, requirement) === 'stale') {
+        if (['stale', 'potentially-stale'].includes(deriveEvidenceState(project, requirement))) {
             rows.push({ kind: 'Evidence', id: requirement.id, title: requirement.identifier, reason: 'Supporting evidence is stale', severity: 'watch' });
         }
     });
+    (project.verificationExceptions ?? [])
+        .filter((record) => !record.archived && !['accepted', 'corrected', 'closed'].includes(record.status))
+        .forEach((record) => rows.push({ kind: 'Verification exception', id: record.id, title: record.identifier, reason: `${(0, text_1.humanize)(record.severity)} ${(0, text_1.humanize)(record.kind)} remains ${(0, text_1.humanize)(record.status)}`, severity: ['major', 'critical'].includes(record.severity) ? 'danger' : 'watch' }));
+    (project.readinessOverrides ?? [])
+        .filter((record) => !record.archived && ['draft', 'under-review'].includes(record.approvalState))
+        .forEach((record) => rows.push({ kind: 'Readiness override', id: record.id, title: record.identifier, reason: `${(0, text_1.humanize)(record.kind)} awaits approval`, severity: 'watch' }));
+    project.impactReviews
+        .filter((review) => !review.archived && review.status !== 'resolved')
+        .forEach((review) => rows.push({ kind: 'Impact review', id: review.id, title: review.identifier, reason: `${review.items.filter((item) => ['pending-review', 'deferred'].includes(item.disposition)).length} downstream item(s) require disposition`, severity: review.items.some((item) => item.severity === 'critical' && ['pending-review', 'deferred'].includes(item.disposition)) ? 'danger' : 'watch' }));
     project.failureModes
         .filter((failure) => ['high', 'critical'].includes(failure.criticalityCategory) && !['verified', 'accepted'].includes(failure.mitigationStatus))
         .forEach((failure) => rows.push({ kind: 'Failure mode', id: failure.id, title: failure.identifier, reason: `${failure.criticalityCategory} criticality mitigation remains ${failure.mitigationStatus}`, severity: 'danger' }));
@@ -4441,21 +5343,26 @@ exports.touchProject = touchProject;
 exports.reviseRecord = reviseRecord;
 const id_1 = require("../utils/id");
 const dates_1 = require("../utils/dates");
-exports.APP_VERSION = '0.3.0';
-exports.SCHEMA_VERSION = '0.3.0';
+exports.APP_VERSION = '0.5.0';
+exports.SCHEMA_VERSION = '0.5.0';
 exports.CONTROLLED_COLLECTION_KEYS = [
     'requirements',
     'functions',
     'objects',
     'interfaces',
     'verificationPlans',
+    'verificationSetups',
     'testCases',
     'testExecutions',
+    'verificationExceptions',
+    'readinessPolicies',
+    'readinessOverrides',
     'failureModes',
     'workItems',
     'projectBudgetLines',
     'technicalBudgets',
     'documents',
+    'impactReviews',
     'decisions',
     'assumptions',
     'issuesActions',
@@ -4578,14 +5485,19 @@ function createEmptyProject(name = 'Untitled LOOM Project') {
         objects: [],
         interfaces: [],
         verificationPlans: [],
+        verificationSetups: [],
         testCases: [],
         testExecutions: [],
+        verificationExceptions: [],
+        readinessPolicies: [],
+        readinessOverrides: [],
         failureModes: [],
         workItems: [],
         workDependencies: [],
         projectBudgetLines: [],
         technicalBudgets: [],
         documents: [],
+        impactReviews: [],
         links: [],
         decisions: [],
         assumptions: [],
@@ -4608,13 +5520,18 @@ function baselineSnapshotSummary(value) {
         objects: count('objects'),
         interfaces: count('interfaces'),
         verificationPlans: count('verificationPlans'),
+        verificationSetups: count('verificationSetups'),
         testCases: count('testCases'),
         testExecutions: count('testExecutions'),
+        verificationExceptions: count('verificationExceptions'),
+        readinessPolicies: count('readinessPolicies'),
+        readinessOverrides: count('readinessOverrides'),
         failureModes: count('failureModes'),
         workItems: count('workItems'),
         projectBudgetLines: count('projectBudgetLines'),
         technicalBudgets: count('technicalBudgets'),
         documents: count('documents'),
+        impactReviews: count('impactReviews'),
         links: count('links')
     };
 }
@@ -4672,13 +5589,18 @@ function snapshotCollections(snapshot) {
         snapshot.objects,
         snapshot.interfaces,
         snapshot.verificationPlans,
+        snapshot.verificationSetups,
         snapshot.testCases,
         snapshot.testExecutions,
+        snapshot.verificationExceptions,
+        snapshot.readinessPolicies,
+        snapshot.readinessOverrides,
         snapshot.failureModes,
         snapshot.workItems,
         snapshot.projectBudgetLines,
         snapshot.technicalBudgets,
-        snapshot.documents
+        snapshot.documents,
+        snapshot.impactReviews
     ].filter(Array.isArray);
 }
 function historicalCandidates(project, collectionKey, recordId) {
@@ -4702,7 +5624,7 @@ function seedRevisionHistory(record, candidates) {
         const history = candidate.history?.find((entry) => entry.revision === candidate.revision);
         if (!byRevision.has(candidate.revision)) {
             byRevision.set(candidate.revision, recordRevisionSnapshot(candidate, history?.action ?? (candidate === record ? 'Current revision captured' : 'Baseline revision captured'), history?.summary ?? (candidate === record
-                ? 'Field-level revision history initialized for LOOM v0.3.0.'
+                ? 'Field-level revision history initialized for LOOM v0.5.0.'
                 : 'Revision reconstructed from a named baseline.'), history?.by ?? candidate.owner, history?.changedFields ?? []));
         }
     });
@@ -4834,6 +5756,725 @@ function reviseRecord(record, action, summary = '', by = 'Local user') {
 }
 
 },
+"src/domain/impact.ts": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.applyImpactAutomation = applyImpactAutomation;
+exports.setImpactItemDisposition = setImpactItemDisposition;
+exports.setImpactItemStaleness = setImpactItemStaleness;
+exports.reviewInheritedObligation = reviewInheritedObligation;
+exports.createActionFromImpactItem = createActionFromImpactItem;
+exports.createChangeRequestFromImpactReview = createChangeRequestFromImpactReview;
+exports.impactReviewSummary = impactReviewSummary;
+const factory_1 = require("./factory");
+const recordLifecycle_1 = require("./recordLifecycle");
+const id_1 = require("../utils/id");
+const dates_1 = require("../utils/dates");
+const MAX_IMPACT_DEPTH = 2;
+const MAX_IMPACT_ITEMS = 160;
+const sourceCollections = new Set([
+    'requirements',
+    'functions',
+    'objects',
+    'interfaces',
+    'verificationPlans',
+    'verificationSetups',
+    'testCases',
+    'failureModes',
+    'workItems',
+    'projectBudgetLines',
+    'technicalBudgets',
+    'assumptions'
+]);
+const terminalCollections = new Set([
+    'documents', 'testExecutions', 'verificationExceptions', 'readinessOverrides', 'readinessPolicies', 'baselines', 'changeRequests', 'issuesActions',
+    'workItems', 'projectBudgetLines', 'technicalBudgets'
+]);
+const significantFields = {
+    requirements: new Set([
+        'statement', 'source', 'sourceDocumentId', 'sourceLocation', 'stakeholder', 'rationale', 'requirementType',
+        'parentId', 'childIds', 'applicableSystemLevel', 'applicableOperatingMode', 'applicableEnvironment',
+        'assumptions', 'constraints', 'dependencyIds', 'decisionIds', 'metric', 'verificationIntent',
+        'functionIds', 'objectIds', 'interfaceIds', 'failureModeIds', 'verificationPlanIds', 'testExecutionIds', 'evidenceIds'
+    ]),
+    functions: new Set(['name', 'description', 'parentId', 'childIds', 'input', 'output', 'trigger', 'performanceExpectation', 'applicableMode', 'requirementIds', 'objectIds', 'interfaceIds', 'verificationMethods', 'failureModeIds']),
+    objects: new Set(['name', 'domain', 'objectType', 'parentId', 'childIds', 'description', 'functionIds', 'requirementIds', 'interfaceIds', 'implementationStatus']),
+    interfaces: new Set(['endpointAId', 'endpointBId', 'direction', 'interfaceType', 'exchangedItem', 'mechanicalCharacteristics', 'electricalCharacteristics', 'dataCharacteristics', 'timingCharacteristics', 'protocol', 'requirementIds', 'verificationPlanIds', 'documentIds', 'status']),
+    verificationPlans: new Set(['requirementIds', 'verificationMethod', 'verificationLevel', 'objective', 'acceptanceCriteria', 'preconditions', 'configuration', 'environment', 'equipment', 'instrumentation', 'personnel', 'safetyConsiderations', 'procedure', 'dataToCollect', 'sampleSize', 'passFailLogic', 'reviewer', 'plannedDate', 'dependencyIds', 'documentIds', 'approvalState', 'setupId', 'inheritedEnvironment', 'inheritedAcceptanceRule', 'requiredReviewerDisposition', 'allowConditionalAcceptance', 'testCaseIds']),
+    verificationSetups: new Set(['applicableMethods', 'configuration', 'environment', 'equipment', 'instrumentation', 'personnel', 'safetyConsiderations', 'calibrationRequirements', 'documentIds']),
+    testCases: new Set(['verificationPlanId', 'setupId', 'sharedSetup', 'steps', 'parameterDefinitions', 'parameterValues', 'expectedEvidence', 'inheritedAcceptanceRule']),
+    failureModes: new Set(['sourceType', 'sourceId', 'operatingMode', 'failureMode', 'cause', 'localEffect', 'nextHigherEffect', 'endEffect', 'detectionMethod', 'preventionControl', 'detectionControl', 'severity', 'likelihood', 'detectability', 'criticalityCategory', 'hazardRelationship', 'requirementIds', 'interfaceIds', 'verificationPlanIds', 'recommendedMitigation', 'mitigationStatus', 'residualSeverity', 'residualLikelihood', 'residualCriticalityCategory', 'evidenceIds']),
+    workItems: new Set(['description', 'status', 'plannedStart', 'plannedFinish', 'actualStart', 'actualFinish', 'forecastFinish', 'durationDays', 'percentComplete', 'milestone', 'parentWorkPackageId', 'predecessorIds', 'successorIds', 'baselineStart', 'baselineFinish', 'requirementIds', 'functionIds', 'objectIds', 'verificationPlanIds', 'failureModeIds', 'documentIds', 'budgetLineIds', 'blockedReason', 'dueDate']),
+    projectBudgetLines: new Set(['category', 'planned', 'approved', 'committed', 'actual', 'forecast', 'currency', 'vendor', 'purchaseReference', 'dueDate', 'workItemIds', 'requirementIds', 'objectIds', 'verificationPlanIds', 'documentIds']),
+    technicalBudgets: new Set(['resourceType', 'unit', 'aggregationRule', 'totalAvailable', 'reserve', 'threshold', 'target', 'applicableMode', 'applicableScenario', 'customFormula', 'allocations']),
+    assumptions: new Set(['assumption', 'basis', 'reviewDate', 'validationMethod', 'affectedRecordIds', 'status'])
+};
+function addEdge(adjacency, fromId, toId, relationship, source, reciprocal = true) {
+    if (!fromId || !toId || fromId === toId)
+        return;
+    const add = (from, to) => {
+        const edges = adjacency.get(from) ?? [];
+        if (!edges.some((edge) => edge.toId === to && edge.relationship === relationship && edge.source === source)) {
+            edges.push({ toId: to, relationship, source });
+            adjacency.set(from, edges);
+        }
+    };
+    add(fromId, toId);
+    if (reciprocal)
+        add(toId, fromId);
+}
+function addMany(adjacency, fromId, toIds, relationship, source, reciprocal = true) {
+    toIds.forEach((toId) => addEdge(adjacency, fromId, toId, relationship, source, reciprocal));
+}
+function baselineContains(snapshot, id) {
+    return [
+        'requirements', 'functions', 'objects', 'interfaces', 'verificationPlans', 'verificationSetups', 'testCases', 'testExecutions',
+        'verificationExceptions', 'readinessPolicies', 'readinessOverrides', 'failureModes', 'workItems', 'projectBudgetLines', 'technicalBudgets', 'documents', 'impactReviews'
+    ].some((key) => Array.isArray(snapshot[key]) && snapshot[key].some((record) => record?.id === id));
+}
+function buildGraph(project) {
+    const adjacency = new Map();
+    const nodes = new Map();
+    (0, recordLifecycle_1.allControlledRecords)(project).forEach((reference) => {
+        if (reference.collection === 'impactReviews')
+            return;
+        nodes.set(reference.record.id, { reference, label: `${reference.record.identifier} · ${(0, recordLifecycle_1.recordPrimaryText)(reference.record)}` });
+    });
+    project.requirements.forEach((record) => {
+        addEdge(adjacency, record.id, record.parentId, 'parent requirement', 'hierarchy', false);
+        addEdge(adjacency, record.parentId, record.id, 'child requirement', 'hierarchy', false);
+        addMany(adjacency, record.id, record.functionIds, 'allocated function', 'direct-reference');
+        addMany(adjacency, record.id, record.objectIds, 'allocated implementation object', 'direct-reference');
+        addMany(adjacency, record.id, record.interfaceIds, 'applicable interface', 'direct-reference');
+        addMany(adjacency, record.id, record.failureModeIds, 'failure analysis', 'direct-reference');
+        addMany(adjacency, record.id, record.verificationPlanIds, 'verification plan', 'verification');
+        addMany(adjacency, record.id, record.testExecutionIds, 'verification result', 'verification');
+        addMany(adjacency, record.id, record.evidenceIds, 'supporting evidence', 'evidence');
+        addMany(adjacency, record.id, record.workItemIds, 'scheduled work', 'schedule');
+        addMany(adjacency, record.id, record.decisionIds, 'engineering decision', 'direct-reference');
+        addEdge(adjacency, record.id, record.sourceDocumentId, 'source document', 'evidence');
+    });
+    project.functions.forEach((record) => {
+        addEdge(adjacency, record.id, record.parentId, 'parent function', 'hierarchy', false);
+        addEdge(adjacency, record.parentId, record.id, 'child function', 'hierarchy', false);
+        addMany(adjacency, record.id, record.requirementIds, 'allocated requirement', 'direct-reference');
+        addMany(adjacency, record.id, record.objectIds, 'performing object', 'direct-reference');
+        addMany(adjacency, record.id, record.interfaceIds, 'function interface', 'direct-reference');
+        addMany(adjacency, record.id, record.failureModeIds, 'function failure mode', 'direct-reference');
+    });
+    project.objects.forEach((record) => {
+        addEdge(adjacency, record.id, record.parentId, 'parent implementation object', 'hierarchy', false);
+        addEdge(adjacency, record.parentId, record.id, 'child implementation object', 'hierarchy', false);
+        addMany(adjacency, record.id, record.functionIds, 'performed function', 'direct-reference');
+        addMany(adjacency, record.id, record.requirementIds, 'allocated requirement', 'direct-reference');
+        addMany(adjacency, record.id, record.interfaceIds, 'implementation interface', 'direct-reference');
+        record.inheritedObligations.forEach((obligation) => addEdge(adjacency, obligation.requirementId, record.id, 'inherited obligation', 'inheritance'));
+    });
+    project.interfaces.forEach((record) => {
+        addEdge(adjacency, record.id, record.endpointAId, 'interface endpoint A', 'direct-reference');
+        addEdge(adjacency, record.id, record.endpointBId, 'interface endpoint B', 'direct-reference');
+        addMany(adjacency, record.id, record.requirementIds, 'interface requirement', 'direct-reference');
+        addMany(adjacency, record.id, record.verificationPlanIds, 'interface verification plan', 'verification');
+        addMany(adjacency, record.id, record.documentIds, 'interface evidence', 'evidence');
+    });
+    project.verificationPlans.forEach((record) => {
+        addMany(adjacency, record.id, record.requirementIds, 'covered requirement', 'verification');
+        addEdge(adjacency, record.id, record.setupId, 'verification setup', 'verification');
+        addMany(adjacency, record.id, record.testCaseIds, 'test case', 'verification');
+        addMany(adjacency, record.id, record.documentIds, 'verification document', 'evidence');
+        addMany(adjacency, record.id, record.dependencyIds, 'verification dependency', 'verification');
+    });
+    project.verificationSetups.forEach((record) => addMany(adjacency, record.id, record.documentIds, 'setup document', 'evidence'));
+    project.testCases.forEach((record) => {
+        addEdge(adjacency, record.id, record.verificationPlanId, 'verification plan', 'verification');
+        addEdge(adjacency, record.id, record.setupId, 'test case setup', 'verification');
+    });
+    project.testExecutions.forEach((record) => {
+        addEdge(adjacency, record.id, record.verificationPlanId, 'as-run verification plan', 'verification');
+        addEdge(adjacency, record.id, record.testCaseId, 'as-run test case', 'verification');
+        addEdge(adjacency, record.id, record.setupId, 'as-run verification setup', 'verification');
+        addEdge(adjacency, record.id, record.rerunOfId, 'rerun of', 'verification');
+        addMany(adjacency, record.id, record.exceptionIds, 'verification exception', 'verification');
+        addMany(adjacency, record.id, record.requirementIds, 'evaluated requirement', 'verification');
+        addMany(adjacency, record.id, record.evidenceIds, 'result evidence', 'evidence');
+    });
+    project.verificationExceptions.forEach((record) => {
+        addEdge(adjacency, record.id, record.executionId, 'exception from execution', 'verification');
+        addEdge(adjacency, record.id, record.retestExecutionId, 'required retest execution', 'verification');
+        addMany(adjacency, record.id, record.requirementIds, 'affected requirement', 'verification');
+        addMany(adjacency, record.id, record.evidenceIds, 'exception evidence', 'evidence');
+    });
+    project.readinessOverrides.forEach((record) => {
+        addEdge(adjacency, record.id, record.targetRecordId, 'readiness override target', 'direct-reference');
+        addMany(adjacency, record.id, record.affectedRecordIds, 'readiness override affects', 'direct-reference');
+    });
+    project.failureModes.forEach((record) => {
+        addEdge(adjacency, record.id, record.sourceId, 'failure source', 'direct-reference');
+        addMany(adjacency, record.id, record.requirementIds, 'affected requirement', 'direct-reference');
+        addMany(adjacency, record.id, record.interfaceIds, 'affected interface', 'direct-reference');
+        addMany(adjacency, record.id, record.verificationPlanIds, 'failure verification', 'verification');
+        addMany(adjacency, record.id, record.evidenceIds, 'failure evidence', 'evidence');
+    });
+    project.workItems.forEach((record) => {
+        addEdge(adjacency, record.id, record.parentWorkPackageId, 'parent work package', 'schedule');
+        addMany(adjacency, record.id, record.predecessorIds, 'predecessor', 'schedule');
+        addMany(adjacency, record.id, record.successorIds, 'successor', 'schedule');
+        addMany(adjacency, record.id, record.requirementIds, 'scheduled requirement', 'schedule');
+        addMany(adjacency, record.id, record.functionIds, 'scheduled function', 'schedule');
+        addMany(adjacency, record.id, record.objectIds, 'scheduled object', 'schedule');
+        addMany(adjacency, record.id, record.verificationPlanIds, 'scheduled verification', 'schedule');
+        addMany(adjacency, record.id, record.failureModeIds, 'scheduled mitigation', 'schedule');
+        addMany(adjacency, record.id, record.documentIds, 'scheduled document', 'schedule');
+        addMany(adjacency, record.id, record.budgetLineIds, 'funded work', 'budget');
+    });
+    project.workDependencies.forEach((dependency) => addEdge(adjacency, dependency.predecessorId, dependency.successorId, `${dependency.type} dependency`, 'schedule'));
+    project.projectBudgetLines.forEach((record) => {
+        addMany(adjacency, record.id, record.workItemIds, 'funded work item', 'budget');
+        addMany(adjacency, record.id, record.requirementIds, 'funded requirement', 'budget');
+        addMany(adjacency, record.id, record.objectIds, 'funded object', 'budget');
+        addMany(adjacency, record.id, record.verificationPlanIds, 'funded verification', 'budget');
+        addMany(adjacency, record.id, record.documentIds, 'budget evidence', 'evidence');
+    });
+    project.technicalBudgets.forEach((record) => record.allocations.forEach((allocation) => {
+        addEdge(adjacency, record.id, allocation.objectId, 'technical allocation', 'budget');
+        addEdge(adjacency, record.id, allocation.requirementId, 'technical requirement allocation', 'budget');
+        addMany(adjacency, record.id, allocation.evidenceIds, 'technical budget evidence', 'evidence');
+    }));
+    project.documents.forEach((record) => {
+        addMany(adjacency, record.id, record.linkedRecordIds, 'evidence relationship', 'evidence');
+        addEdge(adjacency, record.id, record.supersededById, 'superseded by', 'evidence');
+    });
+    project.decisions.forEach((record) => {
+        addMany(adjacency, record.id, record.affectedRecordIds, 'decision affects', 'direct-reference');
+        addMany(adjacency, record.id, record.evidenceIds, 'decision evidence', 'evidence');
+    });
+    project.assumptions.forEach((record) => addMany(adjacency, record.id, record.affectedRecordIds, 'assumption affects', 'assumption'));
+    project.issuesActions.forEach((record) => {
+        addMany(adjacency, record.id, record.blockingRecordIds, 'blocks', 'schedule');
+        addMany(adjacency, record.id, record.affectedRecordIds, 'action affects', 'direct-reference');
+        addMany(adjacency, record.id, record.evidenceIds, 'action evidence', 'evidence');
+    });
+    project.changeRequests.forEach((record) => addMany(adjacency, record.id, record.affectedRecordIds, 'change request affects', 'direct-reference'));
+    project.links.forEach((link) => addEdge(adjacency, link.fromId, link.toId, link.type, 'typed-link'));
+    project.baselines.forEach((baseline) => {
+        const snapshot = baseline.snapshot;
+        nodes.forEach((_node, id) => {
+            if (baselineContains(snapshot, id))
+                addEdge(adjacency, id, baseline.id, 'captured in baseline', 'baseline', false);
+        });
+    });
+    return { adjacency, nodes };
+}
+function collectionLayer(collection) {
+    switch (collection) {
+        case 'requirements':
+        case 'assumptions':
+            return 0;
+        case 'functions':
+            return 1;
+        case 'objects':
+            return 2;
+        case 'interfaces':
+        case 'failureModes':
+            return 3;
+        case 'verificationPlans':
+        case 'verificationSetups':
+        case 'testCases':
+        case 'readinessPolicies':
+        case 'workItems':
+        case 'projectBudgetLines':
+        case 'technicalBudgets':
+        case 'issuesActions':
+            return 4;
+        case 'testExecutions':
+        case 'verificationExceptions':
+        case 'readinessOverrides':
+        case 'documents':
+            return 5;
+        case 'baselines':
+        case 'changeRequests':
+        case 'impactReviews':
+            return 6;
+        default:
+            return 4;
+    }
+}
+function isParentHierarchy(edge) {
+    return edge.source === 'hierarchy' && edge.relationship.startsWith('parent ');
+}
+function canTraverseEdge(source, current, next, edge, depth) {
+    const currentLayer = collectionLayer(current.collection);
+    const nextLayer = collectionLayer(next.collection);
+    // A direct upstream dependency is useful context when the changed record is
+    // itself a function, object, interface, verification record, or budget. It
+    // is included as an affected record, but traversal never rebounds through
+    // that upstream record into unrelated siblings.
+    if (nextLayer < currentLayer)
+        return depth === 0;
+    // Hierarchy traversal is meaningful inside the same domain as the changed
+    // record. A requirement change may flow to child requirements, but reaching
+    // an allocated function or object must not automatically fan out through
+    // that entire hierarchy.
+    if (edge.source === 'hierarchy' && current.collection !== source.collection)
+        return false;
+    return true;
+}
+function shouldContinueTraversal(source, current, next, edge, depth) {
+    if (terminalCollections.has(next.collection))
+        return false;
+    if (collectionLayer(next.collection) < collectionLayer(current.collection))
+        return false;
+    if (isParentHierarchy(edge))
+        return false;
+    if (edge.source === 'hierarchy' && current.collection !== source.collection)
+        return false;
+    return depth + 1 < MAX_IMPACT_DEPTH;
+}
+function traverse(project, sourceId) {
+    const { adjacency, nodes } = buildGraph(project);
+    const sourceNode = nodes.get(sourceId);
+    if (!sourceNode)
+        return [];
+    const visited = new Set([sourceId]);
+    const queue = [{ id: sourceId, path: [], depth: 0 }];
+    const results = [];
+    while (queue.length && results.length < MAX_IMPACT_ITEMS) {
+        const current = queue.shift();
+        if (current.depth >= MAX_IMPACT_DEPTH)
+            continue;
+        const currentNode = nodes.get(current.id);
+        if (!currentNode)
+            continue;
+        if (current.depth > 0 && terminalCollections.has(currentNode.reference.collection))
+            continue;
+        for (const edge of adjacency.get(current.id) ?? []) {
+            if (visited.has(edge.toId))
+                continue;
+            const node = nodes.get(edge.toId);
+            if (!node || node.reference.record.archived)
+                continue;
+            if (!canTraverseEdge(sourceNode.reference, currentNode.reference, node.reference, edge, current.depth))
+                continue;
+            const step = {
+                fromId: current.id,
+                toId: edge.toId,
+                relationship: edge.relationship,
+                label: `${currentNode.reference.record.identifier} → ${node.reference.record.identifier}: ${edge.relationship}`,
+                source: edge.source
+            };
+            const path = [...current.path, step];
+            visited.add(edge.toId);
+            results.push({ reference: node.reference, path });
+            if (shouldContinueTraversal(sourceNode.reference, currentNode.reference, node.reference, edge, current.depth)) {
+                queue.push({ id: edge.toId, path, depth: current.depth + 1 });
+            }
+            if (results.length >= MAX_IMPACT_ITEMS)
+                break;
+        }
+    }
+    return results;
+}
+function categoryForCollection(collection) {
+    switch (collection) {
+        case 'requirements': return 'requirement';
+        case 'functions': return 'function';
+        case 'objects': return 'implementation';
+        case 'interfaces': return 'interface';
+        case 'failureModes': return 'failure-analysis';
+        case 'verificationPlans':
+        case 'verificationSetups':
+        case 'testCases':
+        case 'readinessPolicies': return 'verification-plan';
+        case 'testExecutions': return 'test-result';
+        case 'documents': return 'evidence';
+        case 'workItems': return 'schedule';
+        case 'projectBudgetLines': return 'project-budget';
+        case 'technicalBudgets': return 'technical-budget';
+        case 'baselines': return 'baseline';
+        case 'changeRequests': return 'change-control';
+        default: return 'other';
+    }
+}
+function changeValues(before, after, changedFields) {
+    const left = (0, factory_1.snapshotRecordData)(before);
+    const right = (0, factory_1.snapshotRecordData)(after);
+    return changedFields.map((path) => ({ path, before: left[path], after: right[path] }));
+}
+function isSignificantChange(collection, before, after, changedFields) {
+    if (!sourceCollections.has(collection))
+        return false;
+    if (collection === 'assumptions') {
+        const left = before;
+        const right = after;
+        return left.status !== 'invalidated' && right.status === 'invalidated';
+    }
+    const allowed = significantFields[collection];
+    return Boolean(allowed && changedFields.some((field) => allowed.has(field)));
+}
+function markPotentiallyStale(record, sourceId, reason, at) {
+    record.staleSourceIds = [...new Set([...(record.staleSourceIds ?? []), sourceId])];
+    if (!['stale', 'superseded'].includes(record.currencyState))
+        record.currencyState = 'potentially-stale';
+    record.staleDetectedAt = at;
+    const reasons = record.staleReason ? record.staleReason.split('\n').filter(Boolean) : [];
+    if (!reasons.includes(reason))
+        reasons.push(reason);
+    record.staleReason = reasons.join('\n');
+}
+function createImpactItem(reference, path, source) {
+    const category = categoryForCollection(reference.collection);
+    const evidenceDocument = reference.collection === 'documents' ? reference.record : undefined;
+    const verificationEvidence = Boolean(evidenceDocument && /test|data|analysis|validation|inspection|demonstration|certificate|calculation|report/i.test(`${evidenceDocument.documentType} ${evidenceDocument.title}`));
+    const stalenessCandidate = reference.collection === 'testExecutions' || verificationEvidence;
+    const reason = path.length
+        ? `${reference.record.identifier} is connected to ${source.identifier} through ${path.map((step) => step.relationship).join(' → ')}.`
+        : `${reference.record.identifier} is directly affected by ${source.identifier}.`;
+    return {
+        id: (0, id_1.createId)('impact-item'),
+        affectedRecordId: reference.record.id,
+        affectedCollection: reference.collection,
+        affectedRevisionAtDetection: reference.record.revision,
+        categories: [category],
+        severity: stalenessCandidate || category === 'requirement' ? 'watch' : 'information',
+        reason,
+        path,
+        disposition: 'pending-review',
+        dispositionRationale: '',
+        owner: reference.record.owner || 'Unassigned',
+        reviewedBy: '',
+        stalenessCandidate,
+        stalenessReason: stalenessCandidate ? `${reference.record.identifier} may no longer represent the changed ${source.identifier} revision or configuration.` : '',
+        stalenessDisposition: stalenessCandidate ? 'potentially-stale' : 'not-applicable'
+    };
+}
+function prepareInheritedObligationItems(project, source, targetRevision, generatedAt, items) {
+    project.objects.forEach((object) => {
+        object.inheritedObligations = (object.inheritedObligations ?? []).map((obligation) => {
+            if (obligation.requirementId !== source.id)
+                return obligation;
+            const previousState = obligation.state === 'pending-review' ? (obligation.previousState ?? 'pending-review') : obligation.state;
+            const previousSourceRevision = obligation.sourceRequirementRevision;
+            const reason = `${source.identifier} changed from revision ${source.revision} to revision ${targetRevision}; this inherited obligation requires an explicit disposition.`;
+            const next = {
+                ...obligation,
+                state: 'pending-review',
+                affectedByParentChange: true,
+                previousState,
+                previousSourceRequirementRevision: previousSourceRevision,
+                targetSourceRequirementRevision: targetRevision,
+                reviewRequiredAt: generatedAt,
+                reviewReason: reason,
+                reviewHistory: obligation.reviewHistory ?? []
+            };
+            const key = object.id;
+            const existing = items.get(key);
+            if (existing) {
+                existing.categories = [...new Set([...existing.categories, 'inheritance'])];
+                existing.severity = 'critical';
+                existing.obligationId = obligation.id;
+                existing.reason = `${existing.reason} ${reason}`;
+            }
+            else {
+                items.set(key, {
+                    id: (0, id_1.createId)('impact-item'),
+                    affectedRecordId: object.id,
+                    affectedCollection: 'objects',
+                    affectedRevisionAtDetection: object.revision,
+                    categories: ['inheritance', 'implementation'],
+                    severity: 'critical',
+                    reason,
+                    path: [{ fromId: source.id, toId: object.id, relationship: 'inherited obligation', label: `${source.identifier} → ${object.identifier}: inherited obligation`, source: 'inheritance' }],
+                    disposition: 'pending-review',
+                    dispositionRationale: '',
+                    owner: object.owner || 'Unassigned',
+                    reviewedBy: '',
+                    obligationId: obligation.id,
+                    stalenessCandidate: false,
+                    stalenessReason: '',
+                    stalenessDisposition: 'not-applicable'
+                });
+            }
+            return next;
+        });
+    });
+}
+function nextImpactIdentifier(project) {
+    return (0, id_1.nextIdentifier)('IR', project.impactReviews.map((review) => review.identifier));
+}
+function applyImpactAutomation(before, proposed, triggerSummary = 'Controlled engineering change', by = 'Local user') {
+    const generatedAt = (0, dates_1.nowIso)();
+    for (const key of factory_1.CONTROLLED_COLLECTION_KEYS) {
+        if (!sourceCollections.has(key))
+            continue;
+        const previousCollection = before[key];
+        const proposedCollection = proposed[key];
+        const nextById = new Map(proposedCollection.map((record) => [record.id, record]));
+        for (const previous of previousCollection) {
+            const next = nextById.get(previous.id);
+            if (!next || previous.archived || next.archived)
+                continue;
+            const changedFields = (0, factory_1.rootChangedFields)(previous, next);
+            if (!changedFields.length || !isSignificantChange(key, previous, next, changedFields))
+                continue;
+            const targetRevision = previous.revision + 1;
+            const generationKey = `${previous.id}:r${targetRevision}:${changedFields.slice().sort().join(',')}`;
+            if (proposed.impactReviews.some((review) => review.generationKey === generationKey))
+                continue;
+            const itemMap = new Map();
+            traverse(proposed, previous.id).forEach(({ reference, path }) => {
+                if (reference.record.id === previous.id || reference.collection === 'impactReviews')
+                    return;
+                const item = createImpactItem(reference, path, previous);
+                itemMap.set(reference.record.id, item);
+                if (item.stalenessCandidate && reference.collection === 'testExecutions') {
+                    markPotentiallyStale(reference.record, previous.id, item.stalenessReason, generatedAt);
+                }
+                else if (item.stalenessCandidate && reference.collection === 'documents') {
+                    markPotentiallyStale(reference.record, previous.id, item.stalenessReason, generatedAt);
+                }
+            });
+            if (key === 'requirements') {
+                prepareInheritedObligationItems(proposed, previous, targetRevision, generatedAt, itemMap);
+            }
+            const items = [...itemMap.values()].sort((left, right) => {
+                const severityOrder = { critical: 0, watch: 1, information: 2 };
+                return severityOrder[left.severity] - severityOrder[right.severity] || left.affectedCollection.localeCompare(right.affectedCollection) || left.affectedRecordId.localeCompare(right.affectedRecordId);
+            });
+            const identifier = nextImpactIdentifier(proposed);
+            const review = {
+                ...(0, factory_1.controlledRecord)('impact', identifier, `Impact review — ${previous.identifier} r${previous.revision} → r${targetRevision}`, by, 'open'),
+                generationKey,
+                sourceRecordId: previous.id,
+                sourceCollection: key,
+                sourceRevisionBefore: previous.revision,
+                sourceRevisionAfter: targetRevision,
+                sourceChangedFields: changedFields,
+                sourceChanges: changeValues(previous, next, changedFields),
+                generatedAt,
+                triggerSummary,
+                status: 'open',
+                reviewer: '',
+                items
+            };
+            proposed.impactReviews.push(review);
+        }
+    }
+}
+function findReview(project, reviewId) {
+    const review = project.impactReviews.find((candidate) => candidate.id === reviewId);
+    if (!review)
+        throw new Error('Impact review not found.');
+    return review;
+}
+function updateReviewStatus(review) {
+    const terminal = new Set(['dismissed', 'resolved']);
+    if (review.items.length > 0 && review.items.every((item) => terminal.has(item.disposition)))
+        review.status = 'resolved';
+    else if (review.items.some((item) => item.disposition !== 'pending-review'))
+        review.status = 'in-review';
+    else
+        review.status = 'open';
+    review.lifecycleState = review.status;
+}
+function setImpactItemDisposition(project, reviewId, itemId, disposition, rationale = '', by = 'Local user') {
+    const review = findReview(project, reviewId);
+    const item = review.items.find((candidate) => candidate.id === itemId);
+    if (!item)
+        throw new Error('Impact-review item not found.');
+    if (['dismissed', 'deferred', 'resolved'].includes(disposition) && !rationale.trim()) {
+        throw new Error(`${disposition.replaceAll('-', ' ')} requires a rationale.`);
+    }
+    item.disposition = disposition;
+    item.dispositionRationale = rationale.trim();
+    item.reviewedBy = by;
+    item.reviewedAt = (0, dates_1.nowIso)();
+    updateReviewStatus(review);
+    return item;
+}
+function applyCurrencyDisposition(record, sourceId, disposition, rationale) {
+    const sources = new Set(record.staleSourceIds ?? []);
+    if (disposition === 'confirmed-current')
+        sources.delete(sourceId);
+    else if (disposition !== 'not-applicable')
+        sources.add(sourceId);
+    record.staleSourceIds = [...sources];
+    const state = disposition === 'confirmed-current'
+        ? (sources.size ? 'potentially-stale' : 'reviewed-current')
+        : disposition === 'stale'
+            ? 'stale'
+            : disposition === 'superseded'
+                ? 'superseded'
+                : disposition === 'potentially-stale'
+                    ? 'potentially-stale'
+                    : record.currencyState;
+    record.currencyState = state;
+    if (rationale.trim())
+        record.staleReason = rationale.trim();
+    if (record && 'status' in record) {
+        const document = record;
+        if (state === 'stale')
+            document.status = 'stale';
+        if (state === 'superseded')
+            document.status = 'superseded';
+        if (state === 'reviewed-current' && ['stale', 'under-review'].includes(document.status))
+            document.status = 'current';
+    }
+}
+function setImpactItemStaleness(project, reviewId, itemId, disposition, rationale = '', by = 'Local user') {
+    const review = findReview(project, reviewId);
+    const item = review.items.find((candidate) => candidate.id === itemId);
+    if (!item)
+        throw new Error('Impact-review item not found.');
+    if (!item.stalenessCandidate)
+        throw new Error('This impact item is not a staleness candidate.');
+    if (['confirmed-current', 'stale', 'superseded'].includes(disposition) && !rationale.trim()) {
+        throw new Error('A staleness disposition requires a rationale.');
+    }
+    const reference = (0, recordLifecycle_1.findControlledRecord)(project, item.affectedRecordId);
+    if (!reference || !['testExecutions', 'documents'].includes(reference.collection))
+        throw new Error('The affected result or evidence record is unavailable.');
+    applyCurrencyDisposition(reference.record, review.sourceRecordId, disposition, rationale);
+    item.stalenessDisposition = disposition;
+    item.stalenessReason = rationale.trim() || item.stalenessReason;
+    item.reviewedBy = by;
+    item.reviewedAt = (0, dates_1.nowIso)();
+    return item;
+}
+function reviewInheritedObligation(project, objectId, obligationId, state, rationale = '', localParameters = '', by = 'Local user') {
+    const object = project.objects.find((candidate) => candidate.id === objectId);
+    if (!object)
+        throw new Error('Implementation object not found.');
+    const obligation = object.inheritedObligations.find((candidate) => candidate.id === obligationId);
+    if (!obligation)
+        throw new Error('Inherited obligation not found.');
+    if (['tailored', 'superseded', 'not-applicable'].includes(state) && !rationale.trim()) {
+        throw new Error(`${state.replaceAll('-', ' ')} requires a rationale.`);
+    }
+    if (state === 'accepted-with-local-parameters' && !localParameters.trim()) {
+        throw new Error('accepted with local parameters requires the local parameters to be recorded.');
+    }
+    const requirement = project.requirements.find((candidate) => candidate.id === obligation.requirementId);
+    const sourceRevision = obligation.targetSourceRequirementRevision ?? requirement?.revision ?? obligation.sourceRequirementRevision;
+    const fromState = obligation.state;
+    obligation.state = state;
+    obligation.localParameters = localParameters.trim();
+    obligation.rationale = rationale.trim();
+    obligation.reviewedAt = (0, dates_1.nowIso)();
+    obligation.affectedByParentChange = state === 'pending-review';
+    obligation.sourceRequirementRevision = sourceRevision;
+    obligation.reviewHistory = [...(obligation.reviewHistory ?? []), {
+            id: (0, id_1.createId)('obligation-review'),
+            reviewedAt: obligation.reviewedAt,
+            reviewedBy: by,
+            fromState,
+            toState: state,
+            sourceRequirementRevision: sourceRevision,
+            rationale: obligation.rationale,
+            localParameters: obligation.localParameters
+        }];
+    if (state !== 'pending-review') {
+        delete obligation.reviewRequiredAt;
+        delete obligation.reviewReason;
+        delete obligation.previousState;
+        delete obligation.previousSourceRequirementRevision;
+        delete obligation.targetSourceRequirementRevision;
+        project.impactReviews.forEach((review) => {
+            review.items.filter((item) => item.obligationId === obligationId).forEach((item) => {
+                item.disposition = 'resolved';
+                item.dispositionRationale = rationale.trim() || `Inherited obligation dispositioned as ${state.replaceAll('-', ' ')}.`;
+                item.reviewedBy = by;
+                item.reviewedAt = obligation.reviewedAt;
+            });
+            updateReviewStatus(review);
+        });
+    }
+    return object;
+}
+function createActionFromImpactItem(project, reviewId, itemId, by = 'Local user') {
+    const review = findReview(project, reviewId);
+    const item = review.items.find((candidate) => candidate.id === itemId);
+    if (!item)
+        throw new Error('Impact-review item not found.');
+    if (item.actionId) {
+        const existing = project.issuesActions.find((candidate) => candidate.id === item.actionId);
+        if (existing)
+            return existing;
+    }
+    const source = (0, recordLifecycle_1.findControlledRecord)(project, review.sourceRecordId)?.record;
+    const affected = (0, recordLifecycle_1.findControlledRecord)(project, item.affectedRecordId)?.record;
+    const action = {
+        ...(0, factory_1.controlledRecord)('action', (0, id_1.nextIdentifier)('ACTION', project.issuesActions.map((record) => record.identifier)), `Resolve ${review.identifier} impact on ${affected?.identifier ?? item.affectedRecordId}`, item.owner || by, 'open'),
+        kind: 'action',
+        description: item.reason,
+        priority: item.severity === 'critical' ? 'critical' : item.severity === 'watch' ? 'high' : 'normal',
+        dueDate: item.dueDate,
+        status: 'open',
+        blockingRecordIds: item.severity === 'critical' ? [item.affectedRecordId] : [],
+        resolution: '',
+        evidenceIds: [],
+        affectedRecordIds: [...new Set([review.sourceRecordId, item.affectedRecordId])],
+        sourceImpactReviewId: review.id,
+        notes: `Created from ${review.identifier}. Source: ${source?.identifier ?? review.sourceRecordId}.`
+    };
+    project.issuesActions.push(action);
+    item.actionId = action.id;
+    item.disposition = 'action-created';
+    item.reviewedBy = by;
+    item.reviewedAt = (0, dates_1.nowIso)();
+    updateReviewStatus(review);
+    return action;
+}
+function createChangeRequestFromImpactReview(project, reviewId, by = 'Local user') {
+    const review = findReview(project, reviewId);
+    const existing = project.changeRequests.find((request) => request.impactReviewIds?.includes(review.id));
+    if (existing)
+        return existing;
+    const source = (0, recordLifecycle_1.findControlledRecord)(project, review.sourceRecordId)?.record;
+    const affectedRecordIds = [...new Set([review.sourceRecordId, ...review.items.map((item) => item.affectedRecordId)])];
+    const request = {
+        ...(0, factory_1.controlledRecord)('change', (0, id_1.nextIdentifier)('CR', project.changeRequests.map((record) => record.identifier)), `Control ${review.identifier} — ${source?.identifier ?? 'engineering change'}`, by, 'draft'),
+        reason: review.triggerSummary || `Controlled change to ${source?.identifier ?? review.sourceRecordId}.`,
+        originator: by,
+        proposedChange: `Review and disposition the downstream impacts identified in ${review.identifier}.`,
+        affectedRecordIds,
+        impactAnalysis: review.items.map((item) => `${item.severity.toUpperCase()}: ${item.reason}`).join('\n'),
+        scheduleImpact: review.items.some((item) => item.categories.includes('schedule')) ? 'Schedule-related impact items require review.' : 'No schedule impact identified by the current traceability graph.',
+        budgetImpact: review.items.some((item) => item.categories.includes('project-budget') || item.categories.includes('technical-budget')) ? 'Budget-related impact items require review.' : 'No budget impact identified by the current traceability graph.',
+        riskImpact: review.items.some((item) => item.categories.includes('failure-analysis')) ? 'Failure-analysis records are potentially affected.' : 'No failure-analysis impact identified by the current traceability graph.',
+        verificationImpact: review.items.some((item) => item.categories.includes('verification-plan') || item.categories.includes('test-result') || item.categories.includes('evidence')) ? 'Verification intent, results, or evidence require disposition.' : 'No verification impact identified by the current traceability graph.',
+        disposition: 'draft',
+        reviewer: review.reviewer,
+        approval: '',
+        implementationStatus: 'not-started',
+        resultingRevisionIds: [],
+        impactReviewIds: [review.id]
+    };
+    project.changeRequests.push(request);
+    review.items.forEach((item) => {
+        item.changeRequestId = request.id;
+        if (item.disposition === 'pending-review')
+            item.disposition = 'change-request-linked';
+        item.reviewedBy = by;
+        item.reviewedAt = (0, dates_1.nowIso)();
+    });
+    updateReviewStatus(review);
+    return request;
+}
+function impactReviewSummary(project) {
+    const active = project.impactReviews.filter((review) => !review.archived && review.status !== 'resolved');
+    return {
+        openReviews: active.length,
+        pendingItems: active.flatMap((review) => review.items).filter((item) => ['pending-review', 'deferred'].includes(item.disposition)).length,
+        criticalItems: active.flatMap((review) => review.items).filter((item) => item.severity === 'critical' && ['pending-review', 'deferred'].includes(item.disposition)).length,
+        pendingObligations: project.objects.flatMap((object) => object.inheritedObligations).filter((obligation) => obligation.state === 'pending-review' || obligation.affectedByParentChange).length,
+        potentiallyStaleResults: project.testExecutions.filter((record) => record.currencyState === 'potentially-stale').length,
+        potentiallyStaleEvidence: project.documents.filter((record) => record.currencyState === 'potentially-stale').length
+    };
+}
+
+},
 "src/domain/migrations.ts": function (module, exports, require) {
 'use strict';
 const React = require('react');
@@ -4842,8 +6483,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateProjectCandidate = validateProjectCandidate;
 exports.migrateProject = migrateProject;
 const factory_1 = require("./factory");
+const verification_1 = require("./verification");
 const validation_1 = require("./validation");
-const SUPPORTED_SCHEMA_VERSIONS = new Set(['0.1.0', '0.2.0', factory_1.SCHEMA_VERSION]);
+const SUPPORTED_SCHEMA_VERSIONS = new Set(['0.1.0', '0.2.0', '0.3.0', '0.4.0', factory_1.SCHEMA_VERSION]);
 function parseVersion(value) {
     const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
     if (!match)
@@ -4858,6 +6500,228 @@ function compareVersions(left, right) {
             return a[index] - b[index];
     }
     return 0;
+}
+function asArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+function asRecord(value) {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+function normalizeInheritedObligations(objects) {
+    return objects.map((candidate) => {
+        if (!candidate || typeof candidate !== 'object')
+            return candidate;
+        const object = structuredClone(candidate);
+        const obligations = asArray(object.inheritedObligations);
+        object.inheritedObligations = obligations.map((entry) => {
+            if (!entry || typeof entry !== 'object')
+                return entry;
+            const obligation = entry;
+            return { ...obligation, reviewHistory: asArray(obligation.reviewHistory) };
+        });
+        return object;
+    });
+}
+function normalizeVerificationSetups(setups) {
+    return setups.map((candidate) => {
+        const record = asRecord(candidate);
+        return {
+            ...record,
+            applicableMethods: asArray(record.applicableMethods),
+            configuration: typeof record.configuration === 'string' ? record.configuration : '',
+            environment: typeof record.environment === 'string' ? record.environment : '',
+            equipment: typeof record.equipment === 'string' ? record.equipment : '',
+            instrumentation: typeof record.instrumentation === 'string' ? record.instrumentation : '',
+            personnel: typeof record.personnel === 'string' ? record.personnel : '',
+            safetyConsiderations: typeof record.safetyConsiderations === 'string' ? record.safetyConsiderations : '',
+            calibrationRequirements: typeof record.calibrationRequirements === 'string' ? record.calibrationRequirements : '',
+            documentIds: asArray(record.documentIds)
+        };
+    });
+}
+function normalizeVerificationPlans(plans) {
+    return plans.map((candidate) => {
+        const record = asRecord(candidate);
+        return {
+            ...record,
+            requirementIds: asArray(record.requirementIds),
+            dependencyIds: asArray(record.dependencyIds),
+            documentIds: asArray(record.documentIds),
+            testCaseIds: asArray(record.testCaseIds),
+            setupId: typeof record.setupId === 'string' && record.setupId ? record.setupId : undefined,
+            inheritedEnvironment: record.inheritedEnvironment === true,
+            inheritedAcceptanceRule: record.inheritedAcceptanceRule === true,
+            requiredReviewerDisposition: typeof record.requiredReviewerDisposition === 'string' ? record.requiredReviewerDisposition : 'accepted',
+            allowConditionalAcceptance: record.allowConditionalAcceptance === true
+        };
+    });
+}
+function normalizeTestCases(cases) {
+    return cases.map((candidate) => {
+        const record = asRecord(candidate);
+        return {
+            ...record,
+            setupId: typeof record.setupId === 'string' && record.setupId ? record.setupId : undefined,
+            sharedSetup: typeof record.sharedSetup === 'string' ? record.sharedSetup : '',
+            steps: asArray(record.steps),
+            parameterDefinitions: asArray(record.parameterDefinitions),
+            parameterValues: asRecord(record.parameterValues),
+            expectedEvidence: typeof record.expectedEvidence === 'string' ? record.expectedEvidence : '',
+            inheritedAcceptanceRule: record.inheritedAcceptanceRule !== false
+        };
+    });
+}
+function normalizeTestExecutions(executions, plans, cases, setups) {
+    return executions.map((candidate) => {
+        const record = asRecord(candidate);
+        const plan = plans.find((item) => item.id === record.verificationPlanId);
+        const testCase = cases.find((item) => item.id === record.testCaseId);
+        const setup = setups.find((item) => item.id === (record.setupId ?? testCase?.setupId ?? plan?.setupId));
+        return {
+            ...record,
+            verificationPlanRevision: typeof record.verificationPlanRevision === 'number' ? record.verificationPlanRevision : plan?.revision ?? 1,
+            verificationMethod: typeof record.verificationMethod === 'string' ? record.verificationMethod : plan?.verificationMethod ?? 'test',
+            verificationLevel: typeof record.verificationLevel === 'string' ? record.verificationLevel : plan?.verificationLevel ?? 'system',
+            testCaseRevision: typeof record.testCaseRevision === 'number' ? record.testCaseRevision : testCase?.revision,
+            setupId: typeof record.setupId === 'string' && record.setupId ? record.setupId : setup?.id,
+            setupRevision: typeof record.setupRevision === 'number' ? record.setupRevision : setup?.revision,
+            requirementIds: asArray(record.requirementIds),
+            parameterValues: asRecord(record.parameterValues),
+            methodDetails: { ...(0, verification_1.defaultVerificationMethodDetails)(), ...asRecord(record.methodDetails) },
+            operationalValidation: { ...(0, verification_1.defaultOperationalValidation)(), ...asRecord(record.operationalValidation) },
+            acceptanceCriteriaSatisfied: record.acceptanceCriteriaSatisfied === true || record.result === 'passed',
+            configurationConformance: typeof record.configurationConformance === 'string'
+                ? record.configurationConformance
+                : typeof record.systemConfiguration === 'string' && record.systemConfiguration.trim() ? 'conforming' : 'not-assessed',
+            reviewerDisposition: typeof record.reviewerDisposition === 'string'
+                ? record.reviewerDisposition
+                : typeof record.reviewer === 'string' && record.reviewer.trim() && record.result === 'passed' ? 'accepted' : 'pending-review',
+            reviewedAt: typeof record.reviewedAt === 'string' ? record.reviewedAt : undefined,
+            dispositionNotes: typeof record.dispositionNotes === 'string' ? record.dispositionNotes : '',
+            exceptionIds: asArray(record.exceptionIds),
+            retestState: typeof record.retestState === 'string'
+                ? record.retestState
+                : record.result === 'failed' || record.result === 'inconclusive' ? 'required' : 'not-required',
+            retestReason: typeof record.retestReason === 'string' ? record.retestReason : '',
+            rerunOfId: typeof record.rerunOfId === 'string' && record.rerunOfId ? record.rerunOfId : undefined,
+            rerunSequence: typeof record.rerunSequence === 'number' && record.rerunSequence >= 1 ? record.rerunSequence : 1,
+            evidenceIds: asArray(record.evidenceIds),
+            currencyState: typeof record.currencyState === 'string' ? record.currencyState : 'current',
+            staleReason: typeof record.staleReason === 'string' ? record.staleReason : '',
+            staleSourceIds: asArray(record.staleSourceIds)
+        };
+    });
+}
+function normalizeVerificationExceptions(exceptions) {
+    return exceptions.map((candidate) => {
+        const record = asRecord(candidate);
+        return {
+            ...record,
+            requirementIds: asArray(record.requirementIds),
+            evidenceIds: asArray(record.evidenceIds),
+            disposition: typeof record.disposition === 'string' ? record.disposition : '',
+            requiresRetest: record.requiresRetest === true
+        };
+    });
+}
+function defaultPolicies(projectId, now) {
+    const levels = ['unit', 'integration', 'subsystem', 'system', 'operational'];
+    return levels.map((level, index) => ({
+        id: `readiness-policy-${projectId}-${level}`,
+        identifier: `GATE-${String(index + 1).padStart(3, '0')}`,
+        title: `${level[0].toUpperCase()}${level.slice(1)} readiness gate`,
+        owner: 'Systems Engineering Lead',
+        lifecycleState: 'approved',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        history: [{ id: `history-${projectId}-${level}`, at: now, action: 'Readiness policy initialized', by: 'LOOM migration', revision: 1, summary: 'Default explainable readiness policy created during migration.' }],
+        revisionHistory: [],
+        notes: 'Default LOOM readiness policy. Review and tailor before organizational use.',
+        tags: ['readiness', level],
+        archived: false,
+        verificationLevel: level,
+        minimumScore: level === 'operational' ? 90 : level === 'system' ? 85 : 80,
+        requireAllRequiredFactors: true,
+        factorRules: (0, verification_1.defaultReadinessFactorRules)(level),
+        approvalState: 'approved'
+    }));
+}
+function normalizeReadinessPolicies(policies, projectId, now) {
+    if (!policies.length)
+        return defaultPolicies(projectId, now);
+    return policies.map((candidate) => {
+        const record = asRecord(candidate);
+        const level = typeof record.verificationLevel === 'string' ? record.verificationLevel : 'system';
+        return {
+            ...record,
+            verificationLevel: level,
+            minimumScore: typeof record.minimumScore === 'number' ? record.minimumScore : 80,
+            requireAllRequiredFactors: record.requireAllRequiredFactors !== false,
+            factorRules: asArray(record.factorRules).length ? asArray(record.factorRules) : (0, verification_1.defaultReadinessFactorRules)(level),
+            approvalState: typeof record.approvalState === 'string' ? record.approvalState : 'draft'
+        };
+    });
+}
+function normalizeReadinessOverrides(overrides) {
+    return overrides.map((candidate) => {
+        const record = asRecord(candidate);
+        return {
+            ...record,
+            affectedRecordIds: asArray(record.affectedRecordIds),
+            factorKeys: asArray(record.factorKeys),
+            rationale: typeof record.rationale === 'string' ? record.rationale : '',
+            requestedBy: typeof record.requestedBy === 'string' ? record.requestedBy : '',
+            reviewer: typeof record.reviewer === 'string' ? record.reviewer : '',
+            approvalState: typeof record.approvalState === 'string' ? record.approvalState : 'draft'
+        };
+    });
+}
+function normalizeDocuments(documents) {
+    return documents.map((candidate) => {
+        if (!candidate || typeof candidate !== 'object')
+            return candidate;
+        const record = candidate;
+        const status = typeof record.status === 'string' ? record.status : 'draft';
+        const currencyState = typeof record.currencyState === 'string'
+            ? record.currencyState
+            : status === 'stale' ? 'stale' : status === 'superseded' ? 'superseded' : 'current';
+        return {
+            ...record,
+            currencyState,
+            staleReason: typeof record.staleReason === 'string' ? record.staleReason : '',
+            staleSourceIds: asArray(record.staleSourceIds)
+        };
+    });
+}
+function normalizeChangeRequests(changes) {
+    return changes.map((candidate) => candidate && typeof candidate === 'object'
+        ? { ...candidate, impactReviewIds: asArray(candidate.impactReviewIds) }
+        : candidate);
+}
+function normalizeBaselines(baselines, projectId, now) {
+    return baselines.map((candidate) => {
+        if (!candidate || typeof candidate !== 'object')
+            return candidate;
+        const baseline = structuredClone(candidate);
+        if (baseline.snapshot && typeof baseline.snapshot === 'object' && !Array.isArray(baseline.snapshot)) {
+            const snapshot = baseline.snapshot;
+            const setups = normalizeVerificationSetups(asArray(snapshot.verificationSetups));
+            const plans = normalizeVerificationPlans(asArray(snapshot.verificationPlans));
+            const cases = normalizeTestCases(asArray(snapshot.testCases));
+            snapshot.verificationSetups = setups;
+            snapshot.verificationPlans = plans;
+            snapshot.testCases = cases;
+            snapshot.testExecutions = normalizeTestExecutions(asArray(snapshot.testExecutions), plans, cases, setups);
+            snapshot.verificationExceptions = normalizeVerificationExceptions(asArray(snapshot.verificationExceptions));
+            snapshot.readinessPolicies = normalizeReadinessPolicies(asArray(snapshot.readinessPolicies), projectId, now);
+            snapshot.readinessOverrides = normalizeReadinessOverrides(asArray(snapshot.readinessOverrides));
+            snapshot.impactReviews = asArray(snapshot.impactReviews);
+            snapshot.documents = normalizeDocuments(asArray(snapshot.documents));
+            snapshot.objects = normalizeInheritedObligations(asArray(snapshot.objects));
+        }
+        return baseline;
+    });
 }
 function validateProjectCandidate(candidate) {
     return (0, validation_1.validateProjectShape)(candidate);
@@ -4883,10 +6747,15 @@ function migrateProject(candidate) {
         if (!alreadyRecorded)
             migrationHistory.push({ fromVersion: incomingSchemaVersion, toVersion: factory_1.SCHEMA_VERSION, migratedAt: now });
     }
+    const projectId = typeof source.id === 'string' && source.id ? source.id : `migrated-project-${Date.now()}`;
+    const plans = normalizeVerificationPlans(asArray(source.verificationPlans));
+    const setups = normalizeVerificationSetups(asArray(source.verificationSetups));
+    const cases = normalizeTestCases(asArray(source.testCases));
     const project = {
         ...source,
         schemaVersion: factory_1.SCHEMA_VERSION,
         applicationVersion: factory_1.APP_VERSION,
+        id: projectId,
         revision: typeof source.revision === 'number' && source.revision >= 1 ? Math.floor(source.revision) : 1,
         description: typeof source.description === 'string' ? source.description : '',
         createdAt: typeof source.createdAt === 'string' ? source.createdAt : now,
@@ -4895,25 +6764,30 @@ function migrateProject(candidate) {
         isSample: source.isSample === true,
         migrationHistory,
         settings: { ...(0, factory_1.defaultSettings)(), ...(source.settings ?? {}) },
-        requirements: source.requirements ?? [],
-        functions: source.functions ?? [],
-        objects: source.objects ?? [],
-        interfaces: source.interfaces ?? [],
-        verificationPlans: source.verificationPlans ?? [],
-        testCases: source.testCases ?? [],
-        testExecutions: source.testExecutions ?? [],
-        failureModes: source.failureModes ?? [],
-        workItems: source.workItems ?? [],
-        workDependencies: source.workDependencies ?? [],
-        projectBudgetLines: source.projectBudgetLines ?? [],
-        technicalBudgets: source.technicalBudgets ?? [],
-        documents: source.documents ?? [],
-        links: source.links ?? [],
-        decisions: source.decisions ?? [],
-        assumptions: source.assumptions ?? [],
-        issuesActions: source.issuesActions ?? [],
-        baselines: source.baselines ?? [],
-        changeRequests: source.changeRequests ?? []
+        requirements: asArray(source.requirements),
+        functions: asArray(source.functions),
+        objects: normalizeInheritedObligations(asArray(source.objects)),
+        interfaces: asArray(source.interfaces),
+        verificationPlans: plans,
+        verificationSetups: setups,
+        testCases: cases,
+        testExecutions: normalizeTestExecutions(asArray(source.testExecutions), plans, cases, setups),
+        verificationExceptions: normalizeVerificationExceptions(asArray(source.verificationExceptions)),
+        readinessPolicies: normalizeReadinessPolicies(asArray(source.readinessPolicies), projectId, now),
+        readinessOverrides: normalizeReadinessOverrides(asArray(source.readinessOverrides)),
+        failureModes: asArray(source.failureModes),
+        workItems: asArray(source.workItems),
+        workDependencies: asArray(source.workDependencies),
+        projectBudgetLines: asArray(source.projectBudgetLines),
+        technicalBudgets: asArray(source.technicalBudgets),
+        documents: normalizeDocuments(asArray(source.documents)),
+        impactReviews: asArray(source.impactReviews),
+        links: asArray(source.links),
+        decisions: asArray(source.decisions),
+        assumptions: asArray(source.assumptions),
+        issuesActions: asArray(source.issuesActions),
+        baselines: normalizeBaselines(asArray(source.baselines), projectId, now),
+        changeRequests: normalizeChangeRequests(asArray(source.changeRequests))
     };
     const normalizedProject = (0, factory_1.initializeProjectRevisionHistory)(project);
     const relationships = (0, validation_1.validateProjectRelationships)(normalizedProject);
@@ -4947,19 +6821,25 @@ exports.linksForRecord = linksForRecord;
 const factory_1 = require("./factory");
 const id_1 = require("../utils/id");
 const dates_1 = require("../utils/dates");
+const verification_1 = require("./verification");
 exports.controlledCollectionDescriptors = [
     { key: 'requirements', singular: 'Requirement', plural: 'Requirements', prefix: 'REQ', icon: 'requirements', section: 'requirements' },
     { key: 'functions', singular: 'Function', plural: 'Functions', prefix: 'FUN', icon: 'architecture', section: 'architecture' },
     { key: 'objects', singular: 'Implementation object', plural: 'Implementation objects', prefix: 'OBJ', icon: 'architecture', section: 'architecture' },
     { key: 'interfaces', singular: 'Interface', plural: 'Interfaces', prefix: 'IF', icon: 'link', section: 'architecture' },
     { key: 'verificationPlans', singular: 'Verification plan', plural: 'Verification plans', prefix: 'VP', icon: 'verification', section: 'verification' },
+    { key: 'verificationSetups', singular: 'Verification setup', plural: 'Verification setups', prefix: 'SETUP', icon: 'settings', section: 'verification' },
     { key: 'testCases', singular: 'Test case', plural: 'Test cases', prefix: 'TC', icon: 'verification', section: 'verification' },
-    { key: 'testExecutions', singular: 'Test execution', plural: 'Test executions', prefix: 'RUN', icon: 'play', section: 'verification' },
+    { key: 'testExecutions', singular: 'Verification execution', plural: 'Verification executions', prefix: 'RUN', icon: 'play', section: 'verification' },
+    { key: 'verificationExceptions', singular: 'Verification exception', plural: 'Verification exceptions', prefix: 'EXC', icon: 'warning', section: 'verification' },
+    { key: 'readinessPolicies', singular: 'Readiness policy', plural: 'Readiness policies', prefix: 'GATE', icon: 'cockpit', section: 'verification' },
+    { key: 'readinessOverrides', singular: 'Readiness override', plural: 'Readiness overrides', prefix: 'OVR', icon: 'check', section: 'verification' },
     { key: 'failureModes', singular: 'Failure mode', plural: 'Failure modes', prefix: 'FM', icon: 'failure', section: 'failure' },
     { key: 'workItems', singular: 'Work item', plural: 'Work items', prefix: 'WORK', icon: 'execution', section: 'execution' },
     { key: 'projectBudgetLines', singular: 'Project budget line', plural: 'Project budget lines', prefix: 'COST', icon: 'budget', section: 'execution' },
     { key: 'technicalBudgets', singular: 'Technical budget', plural: 'Technical budgets', prefix: 'TB', icon: 'budget', section: 'execution' },
     { key: 'documents', singular: 'Evidence document', plural: 'Evidence documents', prefix: 'DOC', icon: 'evidence', section: 'evidence' },
+    { key: 'impactReviews', singular: 'Impact review', plural: 'Impact reviews', prefix: 'IR', icon: 'warning', section: 'baselines' },
     { key: 'decisions', singular: 'Decision', plural: 'Decisions', prefix: 'DEC', icon: 'check', section: 'execution' },
     { key: 'assumptions', singular: 'Assumption', plural: 'Assumptions', prefix: 'ASM', icon: 'info', section: 'execution' },
     { key: 'issuesActions', singular: 'Issue or action', plural: 'Issues and actions', prefix: 'ACTION', icon: 'warning', section: 'execution' },
@@ -4994,14 +6874,19 @@ function baselineSnapshot(project) {
         objects: project.objects,
         interfaces: project.interfaces,
         verificationPlans: project.verificationPlans,
+        verificationSetups: project.verificationSetups,
         testCases: project.testCases,
         testExecutions: project.testExecutions,
+        verificationExceptions: project.verificationExceptions,
+        readinessPolicies: project.readinessPolicies,
+        readinessOverrides: project.readinessOverrides,
         failureModes: project.failureModes,
         workItems: project.workItems,
         workDependencies: project.workDependencies,
         projectBudgetLines: project.projectBudgetLines,
         technicalBudgets: project.technicalBudgets,
         documents: project.documents,
+        impactReviews: project.impactReviews,
         links: project.links
     });
 }
@@ -5034,13 +6919,25 @@ function createDefaultControlledRecord(project, key) {
             record = { ...(0, factory_1.controlledRecord)('interface', identifier, 'Untitled interface', owner, 'draft'), direction: 'bidirectional', interfaceType: 'data', exchangedItem: '', mechanicalCharacteristics: '', electricalCharacteristics: '', dataCharacteristics: '', timingCharacteristics: '', protocol: '', requirementIds: [], verificationPlanIds: [], documentIds: [], status: 'draft' };
             break;
         case 'verificationPlans':
-            record = { ...(0, factory_1.controlledRecord)('plan', identifier, 'Untitled verification plan', owner, 'draft'), requirementIds: [], verificationMethod: 'test', verificationLevel: 'system', objective: '', acceptanceCriteria: '', preconditions: '', configuration: '', environment: '', equipment: '', instrumentation: '', personnel: '', safetyConsiderations: '', procedure: '', dataToCollect: '', sampleSize: '', passFailLogic: '', reviewer: '', dependencyIds: [], documentIds: [], approvalState: 'draft', testCaseIds: [] };
+            record = { ...(0, factory_1.controlledRecord)('plan', identifier, 'Untitled verification plan', owner, 'draft'), requirementIds: [], verificationMethod: 'test', verificationLevel: 'system', objective: '', acceptanceCriteria: '', preconditions: '', configuration: '', environment: '', equipment: '', instrumentation: '', personnel: '', safetyConsiderations: '', procedure: '', dataToCollect: '', sampleSize: '', passFailLogic: '', reviewer: '', dependencyIds: [], documentIds: [], approvalState: 'draft', setupId: undefined, inheritedEnvironment: false, inheritedAcceptanceRule: false, requiredReviewerDisposition: 'accepted', allowConditionalAcceptance: false, testCaseIds: [] };
+            break;
+        case 'verificationSetups':
+            record = { ...(0, factory_1.controlledRecord)('setup', identifier, 'Untitled verification setup', owner, 'draft'), applicableMethods: ['test'], configuration: '', environment: '', equipment: '', instrumentation: '', personnel: '', safetyConsiderations: '', calibrationRequirements: '', documentIds: [] };
             break;
         case 'testCases':
-            record = { ...(0, factory_1.controlledRecord)('case', identifier, 'Untitled test case', owner, 'draft'), verificationPlanId: project.verificationPlans[0]?.id ?? '', sharedSetup: '', steps: [], parameterValues: {} };
+            record = { ...(0, factory_1.controlledRecord)('case', identifier, 'Untitled test case', owner, 'draft'), verificationPlanId: project.verificationPlans[0]?.id ?? '', setupId: undefined, sharedSetup: '', steps: [], parameterDefinitions: [], parameterValues: {}, expectedEvidence: '', inheritedAcceptanceRule: true };
             break;
         case 'testExecutions':
-            record = { ...(0, factory_1.controlledRecord)('run', identifier, 'Untitled test execution', owner, 'not-run'), verificationPlanId: project.verificationPlans[0]?.id ?? '', requirementIds: [], executionNumber: 1, executedAt: createdAt, operator: '', reviewer: '', systemConfiguration: '', hardwareRevision: '', softwareVersion: '', firmwareVersion: '', environment: '', equipment: '', calibrationReference: '', inputData: '', outputData: '', observations: '', deviations: '', result: 'not-run', evidenceIds: [] };
+            record = { ...(0, factory_1.controlledRecord)('run', identifier, 'Untitled verification execution', owner, 'not-run'), verificationPlanId: project.verificationPlans[0]?.id ?? '', verificationPlanRevision: project.verificationPlans[0]?.revision ?? 1, verificationMethod: project.verificationPlans[0]?.verificationMethod ?? 'test', verificationLevel: project.verificationPlans[0]?.verificationLevel ?? 'system', requirementIds: [], executionNumber: 1, executedAt: createdAt, operator: '', reviewer: '', systemConfiguration: '', hardwareRevision: '', softwareVersion: '', firmwareVersion: '', environment: '', equipment: '', calibrationReference: '', inputData: '', outputData: '', observations: '', deviations: '', parameterValues: {}, methodDetails: (0, verification_1.defaultVerificationMethodDetails)(), operationalValidation: (0, verification_1.defaultOperationalValidation)(), acceptanceCriteriaSatisfied: false, configurationConformance: 'not-assessed', reviewerDisposition: 'pending-review', dispositionNotes: '', exceptionIds: [], retestState: 'not-required', retestReason: '', rerunSequence: 1, result: 'not-run', evidenceIds: [], currencyState: 'current', staleReason: '', staleSourceIds: [] };
+            break;
+        case 'verificationExceptions':
+            record = { ...(0, factory_1.controlledRecord)('exception', identifier, 'Untitled verification exception', owner, 'open'), executionId: project.testExecutions[0]?.id ?? '', kind: 'deviation', severity: 'minor', description: '', requirementIds: [], status: 'open', disposition: '', requiresRetest: false, evidenceIds: [] };
+            break;
+        case 'readinessPolicies':
+            record = { ...(0, factory_1.controlledRecord)('gate', identifier, 'Untitled readiness policy', owner, 'draft'), verificationLevel: 'system', minimumScore: 80, requireAllRequiredFactors: true, factorRules: (0, verification_1.defaultReadinessFactorRules)('system'), approvalState: 'draft' };
+            break;
+        case 'readinessOverrides':
+            record = { ...(0, factory_1.controlledRecord)('override', identifier, 'Untitled readiness override', owner, 'draft'), targetRecordId: project.requirements[0]?.id ?? '', verificationLevel: 'system', kind: 'waiver', rationale: '', requestedBy: owner, reviewer: '', approvalState: 'draft', affectedRecordIds: [], factorKeys: [] };
             break;
         case 'failureModes':
             record = { ...(0, factory_1.controlledRecord)('failure', identifier, 'Untitled failure mode', owner, 'draft'), sourceType: 'requirement', operatingMode: 'All modes', failureMode: 'Untitled failure mode', cause: '', localEffect: '', nextHigherEffect: '', endEffect: '', detectionMethod: '', preventionControl: '', detectionControl: '', severity: 1, likelihood: 1, detectability: 1, criticalityCategory: 'low', hazardRelationship: '', requirementIds: [], interfaceIds: [], verificationPlanIds: [], recommendedMitigation: '', actionOwner: owner, mitigationStatus: 'open', residualSeverity: 1, residualLikelihood: 1, residualCriticalityCategory: 'low', evidenceIds: [], reviewStatus: 'draft' };
@@ -5055,7 +6952,15 @@ function createDefaultControlledRecord(project, key) {
             record = { ...(0, factory_1.controlledRecord)('tb', identifier, 'Untitled technical budget', owner, 'active'), resourceType: 'User-defined resource', unit: '', aggregationRule: 'sum', totalAvailable: 0, reserve: 0, applicableMode: 'All modes', applicableScenario: 'Nominal', customFormula: '', allocations: [] };
             break;
         case 'documents':
-            record = { ...(0, factory_1.controlledRecord)('document', identifier, 'Untitled evidence document', owner, 'draft'), documentType: 'Supporting document', author: '', date: (0, dates_1.todayIso)(), source: '', status: 'draft', description: '', approvalState: 'not-required', linkedRecordIds: [] };
+            record = { ...(0, factory_1.controlledRecord)('document', identifier, 'Untitled evidence document', owner, 'draft'), documentType: 'Supporting document', author: '', date: (0, dates_1.todayIso)(), source: '', status: 'draft', description: '', approvalState: 'not-required', linkedRecordIds: [], currencyState: 'current', staleReason: '', staleSourceIds: [] };
+            break;
+        case 'impactReviews':
+            record = {
+                ...(0, factory_1.controlledRecord)('impact', identifier, 'Untitled impact review', owner, 'open'),
+                generationKey: (0, id_1.createId)('impact-generation'), sourceRecordId: '', sourceCollection: '', sourceRevisionBefore: 0,
+                sourceRevisionAfter: 0, sourceChangedFields: [], sourceChanges: [], generatedAt: createdAt,
+                triggerSummary: '', status: 'open', reviewer: '', items: []
+            };
             break;
         case 'decisions':
             record = { ...(0, factory_1.controlledRecord)('decision', identifier, 'Untitled decision', owner, 'draft'), decision: '', context: '', alternatives: '', rationale: '', date: (0, dates_1.todayIso)(), affectedRecordIds: [], evidenceIds: [] };
@@ -5070,7 +6975,7 @@ function createDefaultControlledRecord(project, key) {
             record = { ...(0, factory_1.controlledRecord)('baseline', identifier, 'Untitled baseline', owner, 'draft'), description: '', approvedBy: '', approvedAt: createdAt, snapshot: baselineSnapshot(project) };
             break;
         case 'changeRequests':
-            record = { ...(0, factory_1.controlledRecord)('change', identifier, 'Untitled change request', owner, 'draft'), reason: '', originator: '', proposedChange: '', affectedRecordIds: [], impactAnalysis: '', scheduleImpact: '', budgetImpact: '', riskImpact: '', verificationImpact: '', disposition: 'draft', reviewer: '', approval: '', implementationStatus: 'not-started', resultingRevisionIds: [] };
+            record = { ...(0, factory_1.controlledRecord)('change', identifier, 'Untitled change request', owner, 'draft'), reason: '', originator: '', proposedChange: '', affectedRecordIds: [], impactAnalysis: '', scheduleImpact: '', budgetImpact: '', riskImpact: '', verificationImpact: '', disposition: 'draft', reviewer: '', approval: '', implementationStatus: 'not-started', resultingRevisionIds: [], impactReviewIds: [] };
             break;
         default:
             throw new Error(`Unsupported controlled collection: ${String(key)}`);
@@ -5466,14 +7371,19 @@ const projectArrayFields = [
     'objects',
     'interfaces',
     'verificationPlans',
+    'verificationSetups',
     'testCases',
     'testExecutions',
+    'verificationExceptions',
+    'readinessPolicies',
+    'readinessOverrides',
     'failureModes',
     'workItems',
     'workDependencies',
     'projectBudgetLines',
     'technicalBudgets',
     'documents',
+    'impactReviews',
     'links',
     'decisions',
     'assumptions',
@@ -5635,6 +7545,7 @@ function validateObject(errors, object, ids) {
 }
 function validatePlan(errors, plan, ids) {
     addReferences(errors, `${plan.identifier} requirements`, plan.requirementIds ?? [], ids.requirements);
+    addReferences(errors, `${plan.identifier} setup`, [plan.setupId], ids.setups);
     addReferences(errors, `${plan.identifier} dependencies`, plan.dependencyIds ?? [], ids.all);
     addReferences(errors, `${plan.identifier} documents`, plan.documentIds ?? [], ids.documents);
     addReferences(errors, `${plan.identifier} test cases`, plan.testCaseIds ?? [], ids.testCases);
@@ -5664,13 +7575,18 @@ function validateProjectRelationships(project) {
         ['objects', project.objects],
         ['interfaces', project.interfaces],
         ['verificationPlans', project.verificationPlans],
+        ['verificationSetups', project.verificationSetups],
         ['testCases', project.testCases],
         ['testExecutions', project.testExecutions],
+        ['verificationExceptions', project.verificationExceptions],
+        ['readinessPolicies', project.readinessPolicies],
+        ['readinessOverrides', project.readinessOverrides],
         ['failureModes', project.failureModes],
         ['workItems', project.workItems],
         ['projectBudgetLines', project.projectBudgetLines],
         ['technicalBudgets', project.technicalBudgets],
         ['documents', project.documents],
+        ['impactReviews', project.impactReviews],
         ['decisions', project.decisions],
         ['assumptions', project.assumptions],
         ['issuesActions', project.issuesActions],
@@ -5688,13 +7604,18 @@ function validateProjectRelationships(project) {
         objects: new Set(project.objects.map((record) => record.id)),
         interfaces: new Set(project.interfaces.map((record) => record.id)),
         plans: new Set(project.verificationPlans.map((record) => record.id)),
+        setups: new Set(project.verificationSetups.map((record) => record.id)),
         testCases: new Set(project.testCases.map((record) => record.id)),
         executions: new Set(project.testExecutions.map((record) => record.id)),
+        exceptions: new Set(project.verificationExceptions.map((record) => record.id)),
+        policies: new Set(project.readinessPolicies.map((record) => record.id)),
+        overrides: new Set(project.readinessOverrides.map((record) => record.id)),
         failures: new Set(project.failureModes.map((record) => record.id)),
         work: new Set(project.workItems.map((record) => record.id)),
         projectBudgets: new Set(project.projectBudgetLines.map((record) => record.id)),
         technicalBudgets: new Set(project.technicalBudgets.map((record) => record.id)),
         documents: new Set(project.documents.map((record) => record.id)),
+        impactReviews: new Set(project.impactReviews.map((record) => record.id)),
         decisions: new Set(project.decisions.map((record) => record.id)),
         assumptions: new Set(project.assumptions.map((record) => record.id)),
         issuesActions: new Set(project.issuesActions.map((record) => record.id)),
@@ -5718,12 +7639,54 @@ function validateProjectRelationships(project) {
         addReferences(errors, `${record.identifier} documents`, record.documentIds ?? [], ids.documents);
     });
     project.verificationPlans.forEach((record) => validatePlan(errors, record, ids));
-    project.testCases.forEach((record) => addReferences(errors, `${record.identifier} verification plan`, [record.verificationPlanId], ids.plans));
+    project.verificationSetups.forEach((record) => {
+        addReferences(errors, `${record.identifier} documents`, record.documentIds ?? [], ids.documents);
+        if (!(record.applicableMethods ?? []).length)
+            warnings.push(`${record.identifier} has no applicable verification method.`);
+    });
+    project.testCases.forEach((record) => {
+        addReferences(errors, `${record.identifier} verification plan`, [record.verificationPlanId], ids.plans);
+        addReferences(errors, `${record.identifier} setup`, [record.setupId], ids.setups);
+        const parameterIds = (record.parameterDefinitions ?? []).map((definition) => definition.id);
+        if (new Set(parameterIds).size !== parameterIds.length)
+            errors.push(`${record.identifier} contains duplicate parameter-definition identities.`);
+    });
     project.testExecutions.forEach((record) => {
         addReferences(errors, `${record.identifier} verification plan`, [record.verificationPlanId], ids.plans);
         addReferences(errors, `${record.identifier} test case`, [record.testCaseId], ids.testCases);
+        addReferences(errors, `${record.identifier} setup`, [record.setupId], ids.setups);
         addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
         addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+        addReferences(errors, `${record.identifier} exceptions`, record.exceptionIds ?? [], ids.exceptions);
+        addReferences(errors, `${record.identifier} rerun source`, [record.rerunOfId], ids.executions);
+        addReferences(errors, `${record.identifier} stale sources`, record.staleSourceIds ?? [], ids.all);
+        if (!Number.isInteger(record.verificationPlanRevision) || record.verificationPlanRevision < 1)
+            errors.push(`${record.identifier} must retain the exact verification-plan revision.`);
+        if (!Number.isInteger(record.rerunSequence) || record.rerunSequence < 1)
+            errors.push(`${record.identifier} rerun sequence must be a positive integer.`);
+    });
+    project.verificationExceptions.forEach((record) => {
+        addReferences(errors, `${record.identifier} execution`, [record.executionId], ids.executions);
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} retest execution`, [record.retestExecutionId], ids.executions);
+        addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+        if (record.requiresRetest && ['accepted', 'corrected', 'closed'].includes(record.status) && !record.retestExecutionId && !record.disposition.trim())
+            warnings.push(`${record.identifier} closes a retest obligation without a linked rerun or disposition rationale.`);
+    });
+    project.readinessPolicies.forEach((record) => {
+        if (record.minimumScore < 0 || record.minimumScore > 100)
+            errors.push(`${record.identifier} minimum readiness score must be between 0 and 100.`);
+        const factorKeys = (record.factorRules ?? []).map((factor) => factor.key);
+        if (new Set(factorKeys).size !== factorKeys.length)
+            errors.push(`${record.identifier} contains duplicate readiness factors.`);
+        if ((record.factorRules ?? []).some((factor) => factor.weight < 0))
+            errors.push(`${record.identifier} readiness weights must not be negative.`);
+    });
+    project.readinessOverrides.forEach((record) => {
+        addReferences(errors, `${record.identifier} target`, [record.targetRecordId], ids.all);
+        addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
+        if (record.approvalState === 'approved' && (!record.rationale.trim() || !record.reviewer.trim()))
+            errors.push(`${record.identifier} approved override requires rationale and reviewer.`);
     });
     project.failureModes.forEach((record) => {
         addReferences(errors, `${record.identifier} source`, [record.sourceId], sourceIdsForFailure(project, record));
@@ -5751,7 +7714,22 @@ function validateProjectRelationships(project) {
             addReferences(errors, `${record.identifier} allocation evidence`, allocation.evidenceIds ?? [], ids.documents);
         });
     });
-    project.documents.forEach((record) => validateDocument(errors, record, ids));
+    project.documents.forEach((record) => { validateDocument(errors, record, ids); addReferences(errors, `${record.identifier} stale sources`, record.staleSourceIds ?? [], ids.all); });
+    const obligationIds = new Set(project.objects.flatMap((object) => (object.inheritedObligations ?? []).map((obligation) => obligation.id)));
+    project.impactReviews.forEach((review) => {
+        addReferences(errors, `${review.identifier} source record`, [review.sourceRecordId], ids.all);
+        review.items.forEach((item, index) => {
+            addReferences(errors, `${review.identifier} item ${index + 1} affected record`, [item.affectedRecordId], ids.all);
+            addReferences(errors, `${review.identifier} item ${index + 1} action`, [item.actionId], ids.issuesActions);
+            addReferences(errors, `${review.identifier} item ${index + 1} change request`, [item.changeRequestId], ids.changes);
+            if (item.obligationId && !obligationIds.has(item.obligationId))
+                errors.push(`${review.identifier} item ${index + 1} contains dangling inherited obligation ${item.obligationId}.`);
+            item.path.forEach((step, stepIndex) => {
+                addReferences(errors, `${review.identifier} item ${index + 1} path ${stepIndex + 1} source`, [step.fromId], ids.all);
+                addReferences(errors, `${review.identifier} item ${index + 1} path ${stepIndex + 1} target`, [step.toId], ids.all);
+            });
+        });
+    });
     project.links.forEach((record) => {
         addReferences(errors, `Trace link ${record.id} source`, [record.fromId], ids.all);
         addReferences(errors, `Trace link ${record.id} target`, [record.toId], ids.all);
@@ -5762,15 +7740,452 @@ function validateProjectRelationships(project) {
     });
     project.assumptions.forEach((record) => addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all));
     project.issuesActions.forEach((record) => {
+        addReferences(errors, `${record.identifier} source impact review`, [record.sourceImpactReviewId], ids.impactReviews);
         addReferences(errors, `${record.identifier} blocking records`, record.blockingRecordIds ?? [], ids.all);
         addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
         addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
     });
     project.changeRequests.forEach((record) => {
+        addReferences(errors, `${record.identifier} impact reviews`, record.impactReviewIds ?? [], ids.impactReviews);
         addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
         addReferences(errors, `${record.identifier} resulting revisions`, record.resultingRevisionIds ?? [], ids.all);
     });
     return { valid: errors.length === 0, errors, warnings };
+}
+
+},
+"src/domain/verification.ts": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.READINESS_FACTOR_LABELS = void 0;
+exports.defaultReadinessFactorRules = defaultReadinessFactorRules;
+exports.defaultReadinessPolicy = defaultReadinessPolicy;
+exports.defaultVerificationMethodDetails = defaultVerificationMethodDetails;
+exports.defaultOperationalValidation = defaultOperationalValidation;
+exports.methodSpecificRequirements = methodSpecificRequirements;
+exports.methodSpecificCompleteness = methodSpecificCompleteness;
+exports.operationalValidationCompleteness = operationalValidationCompleteness;
+exports.isExecutionCurrent = isExecutionCurrent;
+exports.isReviewerDispositionAcceptable = isReviewerDispositionAcceptable;
+exports.activeReadinessOverride = activeReadinessOverride;
+exports.descendantRequirements = descendantRequirements;
+exports.verificationLevelRank = verificationLevelRank;
+exports.executionsForRequirement = executionsForRequirement;
+exports.latestVerificationExecution = latestVerificationExecution;
+exports.exceptionsForExecution = exceptionsForExecution;
+exports.unresolvedExceptions = unresolvedExceptions;
+exports.verificationExecutionClosure = verificationExecutionClosure;
+exports.evaluateRequirementReadiness = evaluateRequirementReadiness;
+exports.readinessByLevel = readinessByLevel;
+exports.READINESS_FACTOR_LABELS = {
+    'allocation-coverage': 'Requirement allocation coverage',
+    'inherited-obligations': 'Inherited obligations resolved',
+    'implementation-complete': 'Implementation complete',
+    'lower-level-verification': 'Lower-level verification complete',
+    'interfaces-verified': 'Required interfaces verified',
+    'high-criticality-failures': 'High-criticality failures addressed',
+    'approved-verification-plan': 'Verification plan approved',
+    'configuration-defined': 'Required configuration identified',
+    'verification-closure': 'Verification closure complete',
+    'deviations-resolved': 'Deviations and anomalies resolved',
+    'evidence-current': 'Evidence complete and current',
+    'blocking-work-resolved': 'Blocking work resolved',
+    'schedule-ready': 'Schedule readiness',
+    'budget-available': 'Budget availability',
+    'impact-reviews-dispositioned': 'Change impacts dispositioned',
+    'operational-validation': 'Operational validation accepted'
+};
+const allFactorKeys = Object.keys(exports.READINESS_FACTOR_LABELS);
+function defaultReadinessFactorRules(level) {
+    const optionalByLevel = new Set();
+    if (level !== 'operational')
+        optionalByLevel.add('operational-validation');
+    if (level === 'unit') {
+        optionalByLevel.add('lower-level-verification');
+        optionalByLevel.add('interfaces-verified');
+    }
+    return allFactorKeys.map((key) => ({
+        key,
+        label: exports.READINESS_FACTOR_LABELS[key],
+        enabled: !optionalByLevel.has(key),
+        required: ['approved-verification-plan', 'configuration-defined', 'deviations-resolved', 'evidence-current'].includes(key)
+            || (key === 'operational-validation' && level === 'operational')
+            || (key === 'lower-level-verification' && level !== 'unit'),
+        weight: ['verification-closure', 'lower-level-verification', 'operational-validation'].includes(key) ? 2 : 1
+    }));
+}
+function defaultReadinessPolicy(level, now = new Date().toISOString()) {
+    return {
+        id: `readiness-policy-default-${level}`,
+        identifier: `DEFAULT-${level.toUpperCase()}`,
+        title: `${level[0].toUpperCase()}${level.slice(1)} readiness gate`,
+        revision: 1,
+        owner: 'Systems Engineering Lead',
+        lifecycleState: 'approved',
+        createdAt: now,
+        updatedAt: now,
+        history: [],
+        revisionHistory: [],
+        notes: 'Built-in fallback policy. Create an approved controlled readiness policy to tailor this gate.',
+        tags: ['readiness', level, 'default'],
+        archived: false,
+        verificationLevel: level,
+        minimumScore: level === 'operational' ? 90 : level === 'system' ? 85 : 80,
+        requireAllRequiredFactors: true,
+        factorRules: defaultReadinessFactorRules(level),
+        approvalState: 'approved'
+    };
+}
+function defaultVerificationMethodDetails() {
+    return {
+        analysisModel: '',
+        analysisTool: '',
+        assumptions: '',
+        calculationSummary: '',
+        inspectionItem: '',
+        inspectionMethod: '',
+        sampleInspected: '',
+        demonstrationScenario: '',
+        participants: '',
+        similarityReference: '',
+        similarityBasis: '',
+        differences: '',
+        certificationAuthority: '',
+        certificateReference: '',
+        certificationScope: '',
+        combinedMethods: []
+    };
+}
+function defaultOperationalValidation() {
+    return {
+        stakeholderNeed: '',
+        operationalScenario: '',
+        representativeUser: '',
+        missionObjective: '',
+        suitabilityObservations: '',
+        acceptanceRecommendation: 'not-assessed'
+    };
+}
+function methodSpecificRequirements(method) {
+    switch (method) {
+        case 'analysis':
+            return [
+                { key: 'analysisModel', label: 'Analysis model' },
+                { key: 'analysisTool', label: 'Analysis tool' },
+                { key: 'assumptions', label: 'Analysis assumptions' },
+                { key: 'calculationSummary', label: 'Calculation summary' }
+            ];
+        case 'inspection':
+            return [
+                { key: 'inspectionItem', label: 'Item inspected' },
+                { key: 'inspectionMethod', label: 'Inspection method' },
+                { key: 'sampleInspected', label: 'Sample inspected' }
+            ];
+        case 'demonstration':
+            return [
+                { key: 'demonstrationScenario', label: 'Demonstration scenario' },
+                { key: 'participants', label: 'Participants or observers' }
+            ];
+        case 'similarity':
+            return [
+                { key: 'similarityReference', label: 'Reference item or evidence' },
+                { key: 'similarityBasis', label: 'Basis of similarity' },
+                { key: 'differences', label: 'Material differences' }
+            ];
+        case 'certification':
+            return [
+                { key: 'certificationAuthority', label: 'Certification authority' },
+                { key: 'certificateReference', label: 'Certificate reference' },
+                { key: 'certificationScope', label: 'Certification scope' }
+            ];
+        case 'combination':
+            return [{ key: 'calculationSummary', label: 'Combined-method contribution summary' }];
+        default:
+            return [];
+    }
+}
+function methodSpecificCompleteness(execution) {
+    const details = execution.methodDetails ?? defaultVerificationMethodDetails();
+    const missing = methodSpecificRequirements(execution.verificationMethod)
+        .filter(({ key }) => !String(details[key] ?? '').trim())
+        .map(({ label }) => label);
+    if (execution.verificationMethod === 'combination') {
+        const combinedMethods = details.combinedMethods ?? [];
+        if (!combinedMethods.length) {
+            missing.unshift('Combined verification methods');
+        }
+        else {
+            for (const method of combinedMethods) {
+                if (method === 'combination' || method === 'not-determined' || method === 'test')
+                    continue;
+                for (const { key, label } of methodSpecificRequirements(method)) {
+                    if (!String(details[key] ?? '').trim() && !missing.includes(label))
+                        missing.push(label);
+                }
+            }
+        }
+    }
+    return { complete: missing.length === 0, missing };
+}
+function operationalValidationCompleteness(execution) {
+    if (!execution || execution.verificationLevel !== 'operational')
+        return { complete: false, missing: ['Operational execution'] };
+    const context = execution.operationalValidation;
+    const missing = [];
+    if (!context?.stakeholderNeed?.trim())
+        missing.push('Stakeholder need');
+    if (!context?.operationalScenario?.trim())
+        missing.push('Operational scenario');
+    if (!context?.representativeUser?.trim())
+        missing.push('Representative user');
+    if (!context?.missionObjective?.trim())
+        missing.push('Mission or use objective');
+    if (!context?.suitabilityObservations?.trim())
+        missing.push('Suitability observations');
+    if (!context || context.acceptanceRecommendation === 'not-assessed')
+        missing.push('Acceptance recommendation');
+    return { complete: missing.length === 0, missing };
+}
+function isExecutionCurrent(execution) {
+    return Boolean(execution && ['current', 'reviewed-current'].includes(execution.currencyState ?? 'current'));
+}
+function isReviewerDispositionAcceptable(execution) {
+    return Boolean(execution && ['accepted', 'conditionally-accepted', 'waived'].includes(execution.reviewerDisposition ?? 'pending-review'));
+}
+function activeReadinessOverride(project, targetRecordId, level, at = new Date().toISOString()) {
+    return project.readinessOverrides
+        .filter((record) => !record.archived)
+        .filter((record) => record.targetRecordId === targetRecordId && record.verificationLevel === level)
+        .filter((record) => record.approvalState === 'approved')
+        .filter((record) => !record.effectiveAt || record.effectiveAt <= at)
+        .filter((record) => !record.expiresAt || record.expiresAt >= at)
+        .sort((a, b) => (b.effectiveAt ?? b.updatedAt).localeCompare(a.effectiveAt ?? a.updatedAt))[0];
+}
+function descendantRequirements(project, requirement) {
+    const output = [];
+    const queue = [...requirement.childIds];
+    const seen = new Set();
+    while (queue.length) {
+        const id = queue.shift();
+        if (seen.has(id))
+            continue;
+        seen.add(id);
+        const child = project.requirements.find((record) => record.id === id);
+        if (!child || child.archived)
+            continue;
+        output.push(child);
+        queue.push(...child.childIds);
+    }
+    return output;
+}
+function verificationLevelRank(level) {
+    return ({ unit: 0, integration: 1, subsystem: 2, system: 3, operational: 4 })[level];
+}
+function executionsForRequirement(project, requirementId) {
+    return project.testExecutions
+        .filter((execution) => !execution.archived && execution.requirementIds.includes(requirementId))
+        .sort((a, b) => {
+        const byDate = b.executedAt.localeCompare(a.executedAt);
+        if (byDate)
+            return byDate;
+        const byRerun = (b.rerunSequence ?? 1) - (a.rerunSequence ?? 1);
+        return byRerun || b.revision - a.revision;
+    });
+}
+function latestVerificationExecution(project, requirementId, level) {
+    return executionsForRequirement(project, requirementId)
+        .filter((execution) => execution.result !== 'superseded')
+        .find((execution) => !level || execution.verificationLevel === level);
+}
+function exceptionsForExecution(project, executionId) {
+    return project.verificationExceptions.filter((record) => !record.archived && record.executionId === executionId);
+}
+function unresolvedExceptions(project, execution) {
+    if (!execution)
+        return [];
+    return exceptionsForExecution(project, execution.id).filter((record) => !['accepted', 'corrected', 'closed'].includes(record.status));
+}
+function reviewerDispositionMeetsPlan(execution, plan) {
+    if (!isReviewerDispositionAcceptable(execution))
+        return false;
+    if (!plan)
+        return true;
+    if (plan.requiredReviewerDisposition === 'accepted') {
+        return execution.reviewerDisposition === 'accepted'
+            || (plan.allowConditionalAcceptance && execution.reviewerDisposition === 'conditionally-accepted');
+    }
+    if (plan.requiredReviewerDisposition === 'conditionally-accepted') {
+        return ['accepted', 'conditionally-accepted'].includes(execution.reviewerDisposition);
+    }
+    if (plan.requiredReviewerDisposition === 'waived')
+        return execution.reviewerDisposition === 'waived';
+    if (plan.requiredReviewerDisposition === 'rejected')
+        return execution.reviewerDisposition === 'rejected';
+    return execution.reviewerDisposition !== 'pending-review';
+}
+function acceptableResult(execution, plan) {
+    if (!execution)
+        return false;
+    if (execution.result === 'passed')
+        return true;
+    if (execution.result === 'conditionally-accepted')
+        return Boolean(plan?.allowConditionalAcceptance);
+    if (execution.result === 'waived')
+        return execution.reviewerDisposition === 'waived';
+    return false;
+}
+function evidenceCurrent(project, execution) {
+    if (!execution)
+        return { met: false, detail: 'No execution evidence can be evaluated.', recordIds: [] };
+    const evidence = project.documents.filter((document) => execution.evidenceIds.includes(document.id) && !document.archived);
+    const current = evidence.filter((document) => ['current', 'reviewed-current'].includes(document.currencyState ?? 'current') && document.status !== 'stale' && document.status !== 'superseded');
+    return {
+        met: evidence.length > 0 && current.length === evidence.length,
+        detail: `${current.length}/${evidence.length} execution evidence artifact(s) are current`,
+        recordIds: evidence.map((record) => record.id)
+    };
+}
+function verificationExecutionClosure(project, requirement, execution = latestVerificationExecution(project, requirement.id)) {
+    const plan = execution
+        ? project.verificationPlans.find((record) => record.id === execution.verificationPlanId)
+        : project.verificationPlans.find((record) => !record.archived && record.requirementIds.includes(requirement.id) && record.approvalState === 'approved');
+    const testCase = execution?.testCaseId ? project.testCases.find((record) => record.id === execution.testCaseId) : undefined;
+    const setupId = execution?.setupId ?? testCase?.setupId ?? plan?.setupId;
+    const setup = setupId ? project.verificationSetups.find((record) => record.id === setupId) : undefined;
+    const method = execution ? methodSpecificCompleteness(execution) : { complete: false, missing: ['Completed execution'] };
+    const operational = execution?.verificationLevel === 'operational'
+        ? operationalValidationCompleteness(execution)
+        : { complete: true, missing: [] };
+    const evidence = evidenceCurrent(project, execution);
+    const exceptions = execution ? exceptionsForExecution(project, execution.id) : [];
+    const openExceptions = unresolvedExceptions(project, execution);
+    const pendingRetest = Boolean(execution && ['required', 'scheduled'].includes(execution.retestState));
+    const criteria = plan?.acceptanceCriteria?.trim() || requirement.verificationIntent.acceptanceCriteria.trim();
+    const planRevisionExact = Boolean(execution && plan && execution.verificationPlanRevision === plan.revision);
+    const caseRevisionExact = !testCase || Boolean(execution?.testCaseRevision && execution.testCaseRevision === testCase.revision);
+    const setupRevisionExact = !setup || Boolean(execution?.setupRevision && execution.setupRevision === setup.revision);
+    const conditions = [
+        { key: 'plan-approved', label: 'Approved verification plan', met: plan?.approvalState === 'approved', detail: plan ? `${plan.identifier} is ${plan.approvalState}` : 'No linked verification plan', blocking: true },
+        { key: 'execution-complete', label: 'Completed verification execution', met: Boolean(execution && !['not-run', 'running'].includes(execution.result)), detail: execution ? `${execution.identifier} result: ${execution.result}` : 'No execution recorded', blocking: true },
+        { key: 'acceptable-result', label: 'Acceptable result', met: acceptableResult(execution, plan), detail: execution ? `Result ${execution.result}; reviewer disposition ${execution.reviewerDisposition}` : 'No result', blocking: true },
+        { key: 'result-current', label: 'Result remains current', met: isExecutionCurrent(execution), detail: execution ? `Currency: ${execution.currencyState}` : 'No execution', blocking: true },
+        { key: 'method-record', label: 'Method-specific record complete', met: Boolean(execution && (execution.verificationMethod === 'test' || method.complete)), detail: method.complete || execution?.verificationMethod === 'test' ? `${execution?.verificationMethod ?? 'Unknown'} record complete` : `Missing: ${method.missing.join(', ')}`, blocking: true },
+        { key: 'criteria-defined', label: 'Acceptance criteria defined', met: Boolean(criteria), detail: criteria || 'No acceptance criteria', blocking: true },
+        { key: 'criteria-satisfied', label: 'Acceptance criteria satisfied', met: Boolean(execution?.acceptanceCriteriaSatisfied), detail: execution?.acceptanceCriteriaSatisfied ? 'Recorded as satisfied' : 'Not yet recorded as satisfied', blocking: true },
+        { key: 'configuration-recorded', label: 'As-run configuration recorded', met: Boolean(execution?.systemConfiguration.trim()), detail: execution?.systemConfiguration || 'No system configuration recorded', blocking: true },
+        { key: 'configuration-conforming', label: 'Configuration conformity accepted', met: Boolean(execution && ['conforming', 'deviation-approved'].includes(execution.configurationConformance)), detail: execution ? `Configuration: ${execution.configurationConformance}` : 'No execution', blocking: true },
+        { key: 'exact-revisions', label: 'Exact plan, case, and setup revisions recorded', met: planRevisionExact && caseRevisionExact && setupRevisionExact, detail: `Plan ${planRevisionExact ? 'exact' : 'mismatch'}; case ${caseRevisionExact ? 'exact/not applicable' : 'mismatch'}; setup ${setupRevisionExact ? 'exact/not applicable' : 'mismatch'}`, blocking: true },
+        { key: 'reviewer-disposition', label: 'Reviewer disposition accepted', met: Boolean(execution?.reviewer.trim()) && Boolean(execution) && reviewerDispositionMeetsPlan(execution, plan), detail: execution ? `${execution.reviewer || 'No reviewer'} · ${execution.reviewerDisposition}` : 'No execution', blocking: true },
+        { key: 'exceptions-resolved', label: 'Deviations, anomalies, and defects resolved', met: openExceptions.length === 0, detail: `${exceptions.length - openExceptions.length}/${exceptions.length} exception(s) dispositioned`, blocking: true },
+        { key: 'retest-complete', label: 'Required retest complete or waived', met: !pendingRetest, detail: execution ? `Retest: ${execution.retestState}${execution.retestReason ? ` · ${execution.retestReason}` : ''}` : 'No execution', blocking: true },
+        { key: 'evidence-current', label: 'Evidence attached and current', met: evidence.met, detail: evidence.detail, blocking: true },
+        { key: 'operational-context', label: 'Operational validation context complete', met: operational.complete, detail: operational.complete ? 'Operational context complete or not applicable' : `Missing: ${operational.missing.join(', ')}`, blocking: execution?.verificationLevel === 'operational' },
+        { key: 'operational-recommendation', label: 'Operational acceptance recommendation', met: execution?.verificationLevel !== 'operational' || ['accept', 'conditional'].includes(execution.operationalValidation?.acceptanceRecommendation ?? 'not-assessed'), detail: execution?.verificationLevel === 'operational' ? `Recommendation: ${execution.operationalValidation?.acceptanceRecommendation}` : 'Not applicable', blocking: execution?.verificationLevel === 'operational' }
+    ];
+    const unmet = conditions.filter((condition) => condition.blocking && !condition.met);
+    return { closed: unmet.length === 0, requirementId: requirement.id, plan, execution, conditions, unmet };
+}
+function selectedReadinessPolicy(project, level) {
+    return project.readinessPolicies
+        .filter((record) => !record.archived && record.verificationLevel === level && record.approvalState === 'approved')
+        .sort((a, b) => b.revision - a.revision || b.updatedAt.localeCompare(a.updatedAt))[0]
+        ?? defaultReadinessPolicy(level);
+}
+function projectToday() {
+    return new Date().toISOString().slice(0, 10);
+}
+function rawReadinessFactors(project, requirement, level) {
+    const objects = project.objects.filter((record) => !record.archived && requirement.objectIds.includes(record.id));
+    const obligations = objects.flatMap((record) => record.inheritedObligations ?? []);
+    const interfaces = project.interfaces.filter((record) => !record.archived && (requirement.interfaceIds.includes(record.id) || objects.some((object) => object.interfaceIds.includes(record.id))));
+    const failures = project.failureModes.filter((record) => !record.archived && (record.requirementIds.includes(requirement.id) || record.sourceId === requirement.id));
+    const plans = project.verificationPlans.filter((record) => !record.archived && record.requirementIds.includes(requirement.id) && record.verificationLevel === level);
+    const executions = executionsForRequirement(project, requirement.id);
+    const levelExecutions = executions.filter((record) => record.verificationLevel === level);
+    const latest = levelExecutions[0];
+    const closure = verificationExecutionClosure(project, requirement, latest);
+    const allExceptions = levelExecutions.flatMap((record) => exceptionsForExecution(project, record.id));
+    const openExceptions = allExceptions.filter((record) => !['accepted', 'corrected', 'closed'].includes(record.status));
+    const descendants = descendantRequirements(project, requirement);
+    const lowerLevelTargets = descendants.length ? descendants : [];
+    const lowerLevelClosed = lowerLevelTargets.filter((child) => {
+        const childExecution = executionsForRequirement(project, child.id).find((record) => verificationLevelRank(record.verificationLevel) < verificationLevelRank(level));
+        return childExecution ? verificationExecutionClosure(project, child, childExecution).closed : false;
+    });
+    const work = project.workItems.filter((record) => !record.archived && record.requirementIds.includes(requirement.id));
+    const today = projectToday();
+    const projectBudget = project.projectBudgetLines.filter((record) => !record.archived && record.requirementIds.includes(requirement.id));
+    const relevantTechnical = project.technicalBudgets.filter((record) => !record.archived && record.allocations.some((allocation) => allocation.requirementId === requirement.id || objects.some((object) => object.id === allocation.objectId)));
+    const overTechnical = relevantTechnical.filter((budget) => {
+        const measured = budget.allocations.reduce((sum, allocation) => sum + (allocation.measuredActual ?? allocation.estimate), 0);
+        const capacity = budget.threshold ?? budget.totalAvailable;
+        return measured + budget.reserve > capacity;
+    });
+    const evidenceIds = new Set([...requirement.evidenceIds, ...levelExecutions.flatMap((record) => record.evidenceIds)]);
+    const evidence = project.documents.filter((record) => !record.archived && evidenceIds.has(record.id));
+    const currentEvidence = evidence.filter((record) => ['current', 'reviewed-current'].includes(record.currencyState ?? 'current') && !['stale', 'superseded'].includes(record.status));
+    const pendingImpacts = project.impactReviews
+        .filter((review) => !review.archived && review.status !== 'resolved')
+        .flatMap((review) => review.items.filter((item) => item.affectedRecordId === requirement.id || review.sourceRecordId === requirement.id))
+        .filter((item) => ['pending-review', 'deferred'].includes(item.disposition));
+    const operationalExecution = executions.find((record) => record.verificationLevel === 'operational');
+    const operationalClosure = operationalExecution ? verificationExecutionClosure(project, requirement, operationalExecution) : undefined;
+    const approvedPlans = plans.filter((record) => record.approvalState === 'approved');
+    const setupDefined = approvedPlans.some((plan) => {
+        const setup = plan.setupId ? project.verificationSetups.find((record) => record.id === plan.setupId && !record.archived) : undefined;
+        return Boolean(plan.configuration.trim() || setup?.configuration.trim());
+    });
+    return {
+        'allocation-coverage': { met: requirement.functionIds.length > 0 && requirement.objectIds.length > 0, detail: `${requirement.functionIds.length} function allocation(s), ${requirement.objectIds.length} implementation allocation(s)`, recordIds: [...requirement.functionIds, ...requirement.objectIds] },
+        'inherited-obligations': { met: obligations.every((item) => item.state !== 'pending-review'), detail: `${obligations.filter((item) => item.state === 'pending-review').length} pending inherited obligation(s)`, recordIds: objects.map((record) => record.id) },
+        'implementation-complete': { met: objects.length > 0 && objects.every((record) => record.implementationStatus === 'implemented'), detail: `${objects.filter((record) => record.implementationStatus === 'implemented').length}/${objects.length} implementation object(s) complete`, recordIds: objects.map((record) => record.id) },
+        'lower-level-verification': { met: level === 'unit' || lowerLevelTargets.length === 0 || lowerLevelClosed.length === lowerLevelTargets.length, detail: level === 'unit' ? 'No lower level below unit' : `${lowerLevelClosed.length}/${lowerLevelTargets.length} derived requirement(s) closed below ${level}`, recordIds: lowerLevelTargets.map((record) => record.id) },
+        'interfaces-verified': { met: interfaces.length === 0 || interfaces.every((record) => record.status === 'verified'), detail: `${interfaces.filter((record) => record.status === 'verified').length}/${interfaces.length} relevant interface(s) verified`, recordIds: interfaces.map((record) => record.id) },
+        'high-criticality-failures': { met: failures.every((record) => !['high', 'critical'].includes(record.criticalityCategory) || ['verified', 'accepted'].includes(record.mitigationStatus)), detail: `${failures.filter((record) => ['high', 'critical'].includes(record.criticalityCategory) && !['verified', 'accepted'].includes(record.mitigationStatus)).length} unresolved high/critical failure mode(s)`, recordIds: failures.map((record) => record.id) },
+        'approved-verification-plan': { met: approvedPlans.length > 0, detail: `${approvedPlans.length}/${plans.length} ${level} verification plan(s) approved`, recordIds: plans.map((record) => record.id) },
+        'configuration-defined': { met: setupDefined, detail: setupDefined ? 'Required configuration recorded in an approved plan or setup' : 'No approved plan/setup defines the required configuration', recordIds: approvedPlans.map((record) => record.id) },
+        'verification-closure': { met: closure.closed, detail: closure.closed ? `${latest?.identifier ?? 'Execution'} meets all closure conditions` : `${closure.unmet.length} closure condition(s) remain unmet`, recordIds: [closure.plan?.id, closure.execution?.id].filter((id) => Boolean(id)) },
+        'deviations-resolved': { met: openExceptions.length === 0 && levelExecutions.every((record) => !['required', 'scheduled'].includes(record.retestState)), detail: `${allExceptions.length - openExceptions.length}/${allExceptions.length} exception(s) dispositioned; ${levelExecutions.filter((record) => ['required', 'scheduled'].includes(record.retestState)).length} pending retest(s)`, recordIds: allExceptions.map((record) => record.id) },
+        'evidence-current': { met: evidence.length > 0 && currentEvidence.length === evidence.length, detail: `${currentEvidence.length}/${evidence.length} relevant evidence artifact(s) current`, recordIds: evidence.map((record) => record.id) },
+        'blocking-work-resolved': { met: work.every((record) => record.status !== 'blocked'), detail: `${work.filter((record) => record.status === 'blocked').length} blocked work item(s)`, recordIds: work.map((record) => record.id) },
+        'schedule-ready': { met: work.every((record) => record.status === 'done' || !record.plannedFinish || record.plannedFinish >= today), detail: `${work.filter((record) => record.status !== 'done' && record.plannedFinish && record.plannedFinish < today).length} late work item(s)`, recordIds: work.map((record) => record.id) },
+        'budget-available': { met: projectBudget.every((record) => record.forecast <= record.approved) && overTechnical.length === 0, detail: `${projectBudget.filter((record) => record.forecast > record.approved).length} financial overrun(s), ${overTechnical.length} technical budget overrun(s)`, recordIds: [...projectBudget.map((record) => record.id), ...relevantTechnical.map((record) => record.id)] },
+        'impact-reviews-dispositioned': { met: pendingImpacts.length === 0, detail: `${pendingImpacts.length} open or deferred impact item(s)`, recordIds: project.impactReviews.filter((record) => record.items.some((item) => pendingImpacts.includes(item))).map((record) => record.id) },
+        'operational-validation': { met: Boolean(operationalClosure?.closed && ['accept', 'conditional'].includes(operationalExecution?.operationalValidation.acceptanceRecommendation ?? 'not-assessed')), detail: operationalExecution ? `${operationalExecution.identifier}: ${operationalExecution.operationalValidation.acceptanceRecommendation}; ${operationalClosure?.unmet.length ?? 0} unmet closure condition(s)` : 'No operational validation execution', recordIds: operationalExecution ? [operationalExecution.id] : [] }
+    };
+}
+function evaluateRequirementReadiness(project, requirement, level) {
+    const policy = selectedReadinessPolicy(project, level);
+    const raw = rawReadinessFactors(project, requirement, level);
+    const factors = policy.factorRules
+        .filter((rule) => rule.enabled)
+        .map((rule) => ({
+        key: rule.key,
+        label: rule.label || exports.READINESS_FACTOR_LABELS[rule.key],
+        required: rule.required,
+        weight: Math.max(0, rule.weight || 0),
+        ...raw[rule.key]
+    }));
+    const totalWeight = factors.reduce((sum, factor) => sum + factor.weight, 0);
+    const metWeight = factors.filter((factor) => factor.met).reduce((sum, factor) => sum + factor.weight, 0);
+    const score = totalWeight ? Math.round((metWeight / totalWeight) * 100) : 0;
+    const requiredFailures = factors.filter((factor) => factor.required && !factor.met);
+    const override = activeReadinessOverride(project, requirement.id, level);
+    let status = score >= policy.minimumScore && (!policy.requireAllRequiredFactors || requiredFailures.length === 0) ? 'ready' : 'not-ready';
+    if (override)
+        status = override.kind === 'conditional-approval' ? 'conditionally-ready' : 'overridden';
+    const nextActions = requiredFailures.map((factor) => factor.label);
+    if (score < policy.minimumScore)
+        nextActions.push(`Raise readiness score from ${score}% to at least ${policy.minimumScore}%`);
+    if (override && !override.rationale.trim())
+        nextActions.push('Record the approved override rationale');
+    return { targetRecordId: requirement.id, level, score, status, policy, override, factors, requiredFailures, nextActions };
+}
+function readinessByLevel(project, requirement) {
+    return ['unit', 'integration', 'subsystem', 'system', 'operational']
+        .map((level) => evaluateRequirementReadiness(project, requirement, level));
 }
 
 },
@@ -5784,6 +8199,7 @@ exports.useProject = useProject;
 const react_1 = require("react");
 const factory_1 = require("../domain/factory");
 const sampleProject_1 = require("../data/sampleProject");
+const impact_1 = require("../domain/impact");
 const db_1 = require("../services/db");
 const id_1 = require("../utils/id");
 const ProjectContext = (0, react_1.createContext)(undefined);
@@ -5992,6 +8408,8 @@ function ProjectProvider({ children }) {
                 redoStack.current = [];
                 refreshUndoState();
             }
+            if (options.generateImpact !== false)
+                (0, impact_1.applyImpactAutomation)(current, draft, summary);
             const reconciled = (0, factory_1.reconcileProjectControlledRecords)(current, draft, summary);
             const touched = (0, factory_1.touchProject)(reconciled);
             projectRef.current = touched;
@@ -6016,6 +8434,7 @@ function ProjectProvider({ children }) {
             target.revision = current.revision;
             target.updatedAt = current.updatedAt;
             const action = `${direction === 'undo' ? 'Undo' : 'Redo'}: ${entry.summary}`;
+            (0, impact_1.applyImpactAutomation)(current, target, action);
             const reconciled = (0, factory_1.reconcileProjectControlledRecords)(current, target, action);
             const touched = (0, factory_1.touchProject)(reconciled);
             projectRef.current = touched;
@@ -6957,10 +9376,21 @@ exports.printProjectStatus = printProjectStatus;
 exports.exportRequirementsTraceabilityMatrix = exportRequirementsTraceabilityMatrix;
 exports.exportFailureAnalysis = exportFailureAnalysis;
 exports.exportEvidenceIndex = exportEvidenceIndex;
+exports.changeImpactMarkdown = changeImpactMarkdown;
+exports.downloadChangeImpactReport = downloadChangeImpactReport;
+exports.exportVerificationCrossReference = exportVerificationCrossReference;
+exports.exportVerificationExceptions = exportVerificationExceptions;
+exports.verificationStatusMarkdown = verificationStatusMarkdown;
+exports.downloadVerificationStatusReport = downloadVerificationStatusReport;
+exports.readinessReportMarkdown = readinessReportMarkdown;
+exports.downloadReadinessReport = downloadReadinessReport;
+exports.operationalValidationMarkdown = operationalValidationMarkdown;
+exports.downloadOperationalValidationReport = downloadOperationalValidationReport;
 const calculations_1 = require("../domain/calculations");
 const files_1 = require("./files");
 const dates_1 = require("../utils/dates");
 const text_1 = require("../utils/text");
+const recordLifecycle_1 = require("../domain/recordLifecycle");
 function mdEscape(value) {
     return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
@@ -6969,7 +9399,7 @@ function requirementDossierMarkdown(project, requirement) {
     const objects = project.objects.filter((record) => requirement.objectIds.includes(record.id));
     const failures = project.failureModes.filter((record) => requirement.failureModeIds.includes(record.id));
     const plans = project.verificationPlans.filter((record) => requirement.verificationPlanIds.includes(record.id));
-    const runs = project.testExecutions.filter((record) => requirement.testExecutionIds.includes(record.id));
+    const runs = project.testExecutions.filter((record) => !record.archived && (requirement.testExecutionIds.includes(record.id) || record.requirementIds.includes(requirement.id))).sort((a, b) => b.executedAt.localeCompare(a.executedAt));
     const evidence = (0, calculations_1.evidenceForRequirement)(project, requirement);
     const closure = (0, calculations_1.verificationClosure)(project, requirement);
     const readiness = (0, calculations_1.requirementReadiness)(project, requirement);
@@ -7029,7 +9459,13 @@ ${plans.length ? plans.map((plan) => `- ${plan.identifier} — ${plan.title} (${
 
 ### As-run results
 
-${runs.length ? runs.map((run) => `- ${run.identifier} — ${(0, dates_1.formatDate)(run.executedAt)} — **${(0, text_1.humanize)(run.result)}** — configuration: ${run.systemConfiguration}`).join('\n') : '- No executions recorded'}
+${runs.length ? runs.map((run) => {
+        const plan = project.verificationPlans.find((record) => record.id === run.verificationPlanId);
+        const setup = project.verificationSetups.find((record) => record.id === run.setupId);
+        const testCase = project.testCases.find((record) => record.id === run.testCaseId);
+        const exceptions = (0, calculations_1.executionExceptions)(project, run.id);
+        return `- ${run.identifier} — ${(0, dates_1.formatDate)(run.executedAt)} — **${(0, text_1.humanize)(run.verificationMethod)} / ${(0, text_1.humanize)(run.verificationLevel)}** — **${(0, text_1.humanize)(run.result)}** — reviewer: **${(0, text_1.humanize)(run.reviewerDisposition)}** — currency: **${(0, text_1.humanize)(run.currencyState ?? 'current')}** — plan ${plan?.identifier ?? 'missing'} r${run.verificationPlanRevision}; case ${testCase ? `${testCase.identifier} r${run.testCaseRevision ?? 'missing'}` : 'not used'}; setup ${setup ? `${setup.identifier} r${run.setupRevision ?? 'missing'}` : 'not used'} — configuration: ${run.systemConfiguration}${exceptions.length ? ` — ${exceptions.length} structured exception(s)` : ''}${run.rerunOfId ? ` — controlled rerun of ${project.testExecutions.find((record) => record.id === run.rerunOfId)?.identifier ?? run.rerunOfId}` : ''}${run.staleReason ? ` — currency review note: ${run.staleReason}` : ''}`;
+    }).join('\n') : '- No executions recorded'}
 
 ### Closure conditions
 
@@ -7041,7 +9477,16 @@ ${failures.length ? failures.map((failure) => `- **${failure.identifier}: ${fail
 
 ## Evidence
 
-${evidence.length ? evidence.map((document) => `- ${document.identifier} — ${document.title}, revision ${document.revision}, ${(0, text_1.humanize)(document.status)}${document.integrityFingerprint ? `, fingerprint ${document.integrityFingerprint}` : ''}`).join('\n') : '- No evidence attached.'}
+${evidence.length ? evidence.map((document) => `- ${document.identifier} — ${document.title}, revision ${document.revision}, ${(0, text_1.humanize)(document.status)}, currency ${(0, text_1.humanize)(document.currencyState ?? 'current')}${document.staleReason ? `, review note ${document.staleReason}` : ''}${document.integrityFingerprint ? `, fingerprint ${document.integrityFingerprint}` : ''}`).join('\n') : '- No evidence attached.'}
+
+## Change impact
+
+${project.impactReviews.filter((review) => !review.archived && (review.sourceRecordId === requirement.id || review.items.some((item) => item.affectedRecordId === requirement.id))).length
+        ? project.impactReviews.filter((review) => !review.archived && (review.sourceRecordId === requirement.id || review.items.some((item) => item.affectedRecordId === requirement.id))).map((review) => {
+            const affected = review.items.filter((item) => item.affectedRecordId === requirement.id);
+            return `- ${review.identifier} — ${(0, text_1.humanize)(review.status)} — source revision ${review.sourceRevisionBefore} to ${review.sourceRevisionAfter}${review.sourceRecordId === requirement.id ? ' — this requirement is the changed source' : ''}${affected.length ? ` — ${affected.map((item) => `${(0, text_1.humanize)(item.disposition)} via ${item.path.map((step) => step.relationship).join(' → ') || 'direct change'}`).join('; ')}` : ''}`;
+        }).join('\n')
+        : '- No impact review references this requirement.'}
 
 ## Current status
 
@@ -7049,9 +9494,9 @@ ${evidence.length ? evidence.map((document) => `- ${document.identifier} — ${d
 - **Allocation:** ${(0, text_1.humanize)((0, calculations_1.deriveAllocationState)(requirement))}
 - **Implementation:** ${(0, text_1.humanize)(requirement.statuses.implementation)}
 - **Verification:** ${(0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, requirement))}
-- **Validation:** ${(0, text_1.humanize)(requirement.statuses.validation)}
+- **Validation:** ${(0, text_1.humanize)((0, calculations_1.deriveValidationState)(project, requirement))}
 - **Evidence:** ${(0, text_1.humanize)((0, calculations_1.deriveEvidenceState)(project, requirement))}
-- **Readiness:** ${readiness.score}%
+- **Readiness:** ${(0, text_1.humanize)(readiness.status)} at ${readiness.score}%${readiness.override ? ` under ${readiness.override.identifier}` : ''}
 - **Blockers:** ${requirement.blockers.length ? requirement.blockers.join('; ') : 'None recorded'}
 
 ## Revision history
@@ -7083,12 +9528,19 @@ function projectStatusMarkdown(project) {
 | Late work items | ${cockpit.lateWork} |
 | Pending reviews | ${cockpit.pendingReviews} |
 | Open change requests | ${cockpit.changeRequests} |
+| Open impact reviews | ${cockpit.openImpactReviews} |
+| Pending impact items | ${cockpit.pendingImpactItems} |
+| Potentially stale results | ${cockpit.staleResults} |
+| Open verification exceptions | ${cockpit.openVerificationExceptions} |
+| Requirements not ready | ${cockpit.readinessNotReady} |
+| Pending readiness waivers or overrides | ${cockpit.pendingReadinessOverrides} |
+| Operationally accepted requirements | ${cockpit.operationalAccepted} |
 
 ## Requirement status
 
-| Identifier | Requirement | Definition | Allocation | Implementation | Verification | Evidence | Owner | Due |
-|---|---|---|---|---|---|---|---|---|
-${project.requirements.map((requirement) => `| ${requirement.identifier} | ${mdEscape(requirement.title)} | ${(0, text_1.humanize)(requirement.statuses.definition)} | ${(0, text_1.humanize)((0, calculations_1.deriveAllocationState)(requirement))} | ${(0, text_1.humanize)(requirement.statuses.implementation)} | ${(0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, requirement))} | ${(0, text_1.humanize)((0, calculations_1.deriveEvidenceState)(project, requirement))} | ${mdEscape(requirement.owner)} | ${(0, dates_1.formatDate)(requirement.dueDate)} |`).join('\n')}
+| Identifier | Requirement | Definition | Allocation | Implementation | Verification | Validation | Readiness | Evidence | Owner | Due |
+|---|---|---|---|---|---|---|---:|---|---|---|
+${project.requirements.map((requirement) => { const readiness = (0, calculations_1.requirementReadiness)(project, requirement); return `| ${requirement.identifier} | ${mdEscape(requirement.title)} | ${(0, text_1.humanize)(requirement.statuses.definition)} | ${(0, text_1.humanize)((0, calculations_1.deriveAllocationState)(requirement))} | ${(0, text_1.humanize)(requirement.statuses.implementation)} | ${(0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, requirement))} | ${(0, text_1.humanize)((0, calculations_1.deriveValidationState)(project, requirement))} | ${(0, text_1.humanize)(readiness.status)} ${readiness.score}% | ${(0, text_1.humanize)((0, calculations_1.deriveEvidenceState)(project, requirement))} | ${mdEscape(requirement.owner)} | ${(0, dates_1.formatDate)(requirement.dueDate)} |`; }).join('\n')}
 
 ## Project delivery budget
 
@@ -7111,7 +9563,7 @@ ${project.failureModes.filter((failure) => !['verified', 'accepted'].includes(fa
 
 ## Evidence index
 
-${project.documents.map((document) => `- ${document.identifier} — ${document.title}, revision ${document.revision}, ${(0, text_1.humanize)(document.status)}, owner ${document.owner}`).join('\n') || '- No documents'}
+${project.documents.map((document) => `- ${document.identifier} — ${document.title}, revision ${document.revision}, ${(0, text_1.humanize)(document.status)}, currency ${(0, text_1.humanize)(document.currencyState ?? 'current')}, owner ${document.owner}`).join('\n') || '- No documents'}
 `;
 }
 function downloadProjectStatus(project) {
@@ -7129,12 +9581,15 @@ function printProjectStatus(project) {
   <tr><th>Requirements</th><td>${cockpit.totalRequirements}</td><th>Allocation coverage</th><td>${cockpit.allocationPercent}%</td></tr>
   <tr><th>Not yet verified</th><td>${cockpit.unverified}</td><th>Evidence gaps</th><td>${cockpit.evidenceGaps}</td></tr>
   <tr><th>Open high-criticality failures</th><td>${cockpit.highFailures}</td><th>Late work</th><td>${cockpit.lateWork}</td></tr>
+  <tr><th>Open impact reviews</th><td>${cockpit.openImpactReviews}</td><th>Potentially stale results</th><td>${cockpit.staleResults}</td></tr>
+  <tr><th>Open verification exceptions</th><td>${cockpit.openVerificationExceptions}</td><th>Requirements not ready</th><td>${cockpit.readinessNotReady}</td></tr>
+  <tr><th>Pending readiness overrides</th><td>${cockpit.pendingReadinessOverrides}</td><th>Operationally accepted</th><td>${cockpit.operationalAccepted}</td></tr>
   </tbody></table>
-  <h2>Requirements</h2><table><thead><tr><th>Identifier</th><th>Requirement</th><th>Owner</th><th>Verification</th><th>Evidence</th><th>Next action</th></tr></thead><tbody>
-  ${project.requirements.map((requirement) => `<tr><td>${escaped(requirement.identifier)}</td><td><strong>${escaped(requirement.title)}</strong><br>${escaped(requirement.statement)}</td><td>${escaped(requirement.owner)}</td><td class="status">${escaped((0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, requirement)))}</td><td>${escaped((0, text_1.humanize)((0, calculations_1.deriveEvidenceState)(project, requirement)))}</td><td>${escaped(requirement.nextAction)}</td></tr>`).join('')}
+  <h2>Requirements</h2><table><thead><tr><th>Identifier</th><th>Requirement</th><th>Owner</th><th>Verification</th><th>Validation</th><th>Readiness</th><th>Evidence</th><th>Next action</th></tr></thead><tbody>
+  ${project.requirements.map((requirement) => `<tr><td>${escaped(requirement.identifier)}</td><td><strong>${escaped(requirement.title)}</strong><br>${escaped(requirement.statement)}</td><td>${escaped(requirement.owner)}</td><td class="status">${escaped((0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, requirement)))}</td><td>${escaped((0, text_1.humanize)((0, calculations_1.deriveValidationState)(project, requirement)))}</td><td>${escaped(`${(0, text_1.humanize)((0, calculations_1.requirementReadiness)(project, requirement).status)} ${(0, calculations_1.requirementReadiness)(project, requirement).score}%`)}</td><td>${escaped((0, text_1.humanize)((0, calculations_1.deriveEvidenceState)(project, requirement)))}</td><td>${escaped(requirement.nextAction)}</td></tr>`).join('')}
   </tbody></table>
   <h2>Project delivery budget</h2><table><tbody><tr><th>Approved</th><td>${budget.approved.toLocaleString()} ${escaped(project.projectBudgetLines[0]?.currency ?? '')}</td><th>Actual</th><td>${budget.actual.toLocaleString()}</td><th>Forecast</th><td>${budget.forecast.toLocaleString()}</td><th>Variance</th><td>${budget.variance.toLocaleString()}</td></tr></tbody></table>
-  <h2>Evidence index</h2><table><thead><tr><th>Identifier</th><th>Title</th><th>Revision</th><th>Status</th><th>Fingerprint</th></tr></thead><tbody>${project.documents.map((document) => `<tr><td>${escaped(document.identifier)}</td><td>${escaped(document.title)}</td><td>${document.revision}</td><td>${escaped((0, text_1.humanize)(document.status))}</td><td>${escaped(document.integrityFingerprint ?? 'Not recorded')}</td></tr>`).join('')}</tbody></table>
+  <h2>Evidence index</h2><table><thead><tr><th>Identifier</th><th>Title</th><th>Revision</th><th>Status</th><th>Currency</th><th>Fingerprint</th></tr></thead><tbody>${project.documents.map((document) => `<tr><td>${escaped(document.identifier)}</td><td>${escaped(document.title)}</td><td>${document.revision}</td><td>${escaped((0, text_1.humanize)(document.status))}</td><td>${escaped((0, text_1.humanize)(document.currencyState ?? 'current'))}</td><td>${escaped(document.integrityFingerprint ?? 'Not recorded')}</td></tr>`).join('')}</tbody></table>
   <footer>Generated locally by LOOM. This report organizes project evidence; it does not certify compliance, safety, verification, validation, or acceptance.</footer>
   </body></html>`;
     const reportWindow = window.open('', '_blank');
@@ -7192,12 +9647,271 @@ function exportEvidenceIndex(project) {
         owner: document.owner,
         date: document.date,
         status: document.status,
+        currency_state: document.currencyState ?? 'current',
+        currency_review_note: document.staleReason ?? '',
         approval_state: document.approvalState,
         file_name: document.fileName ?? '',
         file_size: document.fileSize ?? '',
         integrity_fingerprint: document.integrityFingerprint ?? '',
         linked_records: document.linkedRecordIds.join('; ')
     })));
+}
+function impactReviewMarkdown(project, review) {
+    const source = (0, recordLifecycle_1.findControlledRecord)(project, review.sourceRecordId)?.record;
+    const sourceLabel = source ? `${source.identifier} — ${(0, recordLifecycle_1.recordPrimaryText)(source)}` : review.sourceRecordId;
+    const changedFields = review.sourceChanges.map((change) => `| ${mdEscape(change.path)} | ${mdEscape(JSON.stringify(change.before) ?? 'Not present')} | ${mdEscape(JSON.stringify(change.after) ?? 'Not present')} |`).join('\n');
+    const items = review.items.map((item) => {
+        const affected = (0, recordLifecycle_1.findControlledRecord)(project, item.affectedRecordId)?.record;
+        const affectedLabel = affected ? `${affected.identifier} — ${(0, recordLifecycle_1.recordPrimaryText)(affected)}` : item.affectedRecordId;
+        const path = item.path.map((step) => step.label).join(' → ') || 'Direct impact';
+        return `| ${mdEscape(affectedLabel)} | ${item.categories.map(text_1.humanize).join('; ')} | ${(0, text_1.humanize)(item.severity)} | ${(0, text_1.humanize)(item.disposition)} | ${(0, text_1.humanize)(item.stalenessDisposition)} | ${mdEscape(path)} | ${mdEscape(item.dispositionRationale || item.reason)} |`;
+    }).join('\n');
+    return `# ${review.identifier} — Change-Impact Report
+
+- **Project:** ${project.name}
+- **Project revision:** ${project.revision}
+- **LOOM version:** ${project.applicationVersion}
+- **Generated:** ${(0, dates_1.formatDateTime)(new Date().toISOString())}
+- **Source:** ${sourceLabel}
+- **Source revision:** ${review.sourceRevisionBefore} → ${review.sourceRevisionAfter}
+- **Review status:** ${(0, text_1.humanize)(review.status)}
+
+## Trigger
+
+${review.triggerSummary}
+
+## Source-field changes
+
+| Field | Before | After |
+|---|---|---|
+${changedFields || '| None recorded | — | — |'}
+
+## Potentially affected records
+
+| Record | Categories | Severity | Disposition | Currency decision | Explainable path | Rationale |
+|---|---|---|---|---|---|---|
+${items || '| None | — | — | — | — | — | — |'}
+
+## Engineering control statement
+
+This report identifies potentially affected records through stored traceability. It does not silently revise child requirements, invalidate historical results, certify compliance, or replace engineering review.
+`;
+}
+function changeImpactMarkdown(project, reviewId) {
+    const selected = reviewId ? project.impactReviews.filter((review) => review.id === reviewId) : project.impactReviews;
+    if (!selected.length)
+        return `# ${project.name} — Change-Impact Report\n\nNo impact reviews are recorded.`;
+    return selected.map((review) => impactReviewMarkdown(project, review)).join('\n\n---\n\n');
+}
+function downloadChangeImpactReport(project, reviewId) {
+    const review = reviewId ? project.impactReviews.find((candidate) => candidate.id === reviewId) : undefined;
+    const fileName = review ? `${review.identifier.toLowerCase()}-${(0, files_1.slug)(review.title)}-change-impact.md` : `${(0, files_1.slug)(project.name)}-change-impact-report.md`;
+    (0, files_1.downloadBlob)(new Blob([changeImpactMarkdown(project, reviewId)], { type: 'text/markdown;charset=utf-8' }), fileName);
+}
+function exportVerificationCrossReference(project) {
+    (0, files_1.exportCsv)(`${(0, files_1.slug)(project.name)}-verification-cross-reference.csv`, project.requirements.flatMap((requirement) => {
+        const plans = project.verificationPlans.filter((plan) => !plan.archived && plan.requirementIds.includes(requirement.id));
+        if (!plans.length)
+            return [{
+                    requirement: requirement.identifier,
+                    requirement_revision: requirement.revision,
+                    title: requirement.title,
+                    intended_method: requirement.verificationIntent.method,
+                    intended_level: requirement.verificationIntent.level,
+                    verification_plan: '',
+                    plan_revision: '',
+                    plan_approval: '',
+                    reusable_setup: '',
+                    test_case: '',
+                    execution: '',
+                    execution_revision: '',
+                    executed_at: '',
+                    as_run_method: '',
+                    as_run_level: '',
+                    result: '',
+                    reviewer_disposition: '',
+                    configuration_conformance: '',
+                    currency: '',
+                    exceptions: '',
+                    retest: '',
+                    verification_state: (0, calculations_1.deriveVerificationState)(project, requirement),
+                    validation_state: (0, calculations_1.deriveValidationState)(project, requirement)
+                }];
+        return plans.flatMap((plan) => {
+            const executions = project.testExecutions.filter((execution) => !execution.archived && execution.verificationPlanId === plan.id && execution.requirementIds.includes(requirement.id));
+            const cases = project.testCases.filter((record) => !record.archived && record.verificationPlanId === plan.id);
+            const setup = project.verificationSetups.find((record) => record.id === plan.setupId);
+            if (!executions.length)
+                return [{
+                        requirement: requirement.identifier,
+                        requirement_revision: requirement.revision,
+                        title: requirement.title,
+                        intended_method: requirement.verificationIntent.method,
+                        intended_level: requirement.verificationIntent.level,
+                        verification_plan: plan.identifier,
+                        plan_revision: plan.revision,
+                        plan_approval: plan.approvalState,
+                        reusable_setup: setup?.identifier ?? '',
+                        test_case: cases.map((record) => record.identifier).join('; '),
+                        execution: '',
+                        execution_revision: '',
+                        executed_at: '',
+                        as_run_method: '',
+                        as_run_level: '',
+                        result: '',
+                        reviewer_disposition: '',
+                        configuration_conformance: '',
+                        currency: '',
+                        exceptions: '',
+                        retest: '',
+                        verification_state: (0, calculations_1.deriveVerificationState)(project, requirement),
+                        validation_state: (0, calculations_1.deriveValidationState)(project, requirement)
+                    }];
+            return executions.map((execution) => ({
+                requirement: requirement.identifier,
+                requirement_revision: requirement.revision,
+                title: requirement.title,
+                intended_method: requirement.verificationIntent.method,
+                intended_level: requirement.verificationIntent.level,
+                verification_plan: plan.identifier,
+                plan_revision: execution.verificationPlanRevision,
+                plan_approval: plan.approvalState,
+                reusable_setup: project.verificationSetups.find((record) => record.id === execution.setupId)?.identifier ?? '',
+                test_case: project.testCases.find((record) => record.id === execution.testCaseId)?.identifier ?? '',
+                execution: execution.identifier,
+                execution_revision: execution.revision,
+                executed_at: execution.executedAt,
+                as_run_method: execution.verificationMethod,
+                as_run_level: execution.verificationLevel,
+                result: execution.result,
+                reviewer_disposition: execution.reviewerDisposition,
+                configuration_conformance: execution.configurationConformance,
+                currency: execution.currencyState,
+                exceptions: (0, calculations_1.executionExceptions)(project, execution.id).map((record) => `${record.identifier}:${record.status}`).join('; '),
+                retest: execution.retestState,
+                verification_state: (0, calculations_1.deriveVerificationState)(project, requirement),
+                validation_state: (0, calculations_1.deriveValidationState)(project, requirement)
+            }));
+        });
+    }));
+}
+function exportVerificationExceptions(project) {
+    (0, files_1.exportCsv)(`${(0, files_1.slug)(project.name)}-verification-exceptions.csv`, project.verificationExceptions.map((record) => {
+        const execution = project.testExecutions.find((candidate) => candidate.id === record.executionId);
+        return {
+            identifier: record.identifier,
+            title: record.title,
+            kind: record.kind,
+            severity: record.severity,
+            execution: execution?.identifier ?? record.executionId,
+            requirements: record.requirementIds.map((id) => project.requirements.find((candidate) => candidate.id === id)?.identifier ?? id).join('; '),
+            description: record.description,
+            status: record.status,
+            disposition: record.disposition,
+            requires_retest: record.requiresRetest,
+            retest_execution: project.testExecutions.find((candidate) => candidate.id === record.retestExecutionId)?.identifier ?? '',
+            due_date: record.dueDate ?? '',
+            owner: record.owner,
+            evidence: record.evidenceIds.map((id) => project.documents.find((candidate) => candidate.id === id)?.identifier ?? id).join('; ')
+        };
+    }));
+}
+function verificationStatusMarkdown(project) {
+    const requirements = project.requirements.filter((record) => !record.archived);
+    const lines = requirements.map((requirement) => {
+        const state = (0, calculations_1.deriveVerificationState)(project, requirement);
+        const validation = (0, calculations_1.deriveValidationState)(project, requirement);
+        const closure = (0, calculations_1.verificationClosure)(project, requirement);
+        const latest = closure.execution ?? (0, calculations_1.latestExecutionForRequirement)(project, requirement.id);
+        const open = closure.conditions.filter((condition) => condition.blocking && !condition.met);
+        return `| ${requirement.identifier} | ${mdEscape(requirement.title)} | ${(0, text_1.humanize)(requirement.verificationIntent.method)} | ${(0, text_1.humanize)(requirement.verificationIntent.level)} | ${(0, text_1.humanize)(state)} | ${(0, text_1.humanize)(validation)} | ${latest?.identifier ?? '—'} | ${latest ? (0, text_1.humanize)(latest.result) : '—'} | ${latest ? (0, text_1.humanize)(latest.reviewerDisposition) : '—'} | ${latest ? (0, text_1.humanize)(latest.currencyState) : '—'} | ${open.length ? mdEscape(open.map((condition) => condition.label).join('; ')) : 'None'} |`;
+    }).join('\n');
+    return `# ${project.name} — Verification and Validation Status Report
+
+**Project revision:** ${project.revision}  
+**Application:** LOOM v${project.applicationVersion}  
+**Generated:** ${(0, dates_1.formatDateTime)(new Date().toISOString())}
+
+## Status summary
+
+| Requirement | Title | Method | Level | Verification | Validation | Latest activity | Result | Reviewer | Currency | Unmet closure conditions |
+|---|---|---|---|---|---|---|---|---|---|---|
+${lines || '| None | — | — | — | — | — | — | — | — | — | — |'}
+
+## Open exceptions
+
+${project.verificationExceptions.filter((record) => !record.archived && !['accepted', 'corrected', 'closed'].includes(record.status)).map((record) => `- **${record.identifier} — ${record.title}**: ${(0, text_1.humanize)(record.severity)} ${(0, text_1.humanize)(record.kind)}, ${(0, text_1.humanize)(record.status)}. ${record.disposition || record.description}`).join('\n') || '- None'}
+
+## Control statement
+
+Verification closure is derived from approved intent, the exact as-run plan/case/setup revisions, method-specific records, acceptance criteria, configuration conformity, reviewer disposition, resolved exceptions and retests, and current evidence. A status label alone does not close a requirement.
+`;
+}
+function downloadVerificationStatusReport(project) {
+    (0, files_1.downloadBlob)(new Blob([verificationStatusMarkdown(project)], { type: 'text/markdown;charset=utf-8' }), `${(0, files_1.slug)(project.name)}-verification-validation-status.md`);
+}
+function readinessReportMarkdown(project) {
+    const rows = project.requirements.filter((record) => !record.archived).map((requirement) => {
+        const readiness = (0, calculations_1.assessRequirementReadiness)(project, requirement, requirement.verificationIntent.level);
+        const open = readiness.factors.filter((factor) => !factor.met).map((factor) => factor.label).join('; ');
+        return `| ${requirement.identifier} | ${mdEscape(requirement.title)} | ${(0, text_1.humanize)(requirement.verificationIntent.level)} | ${(0, text_1.humanize)(readiness.status)} | ${readiness.score}% | ${readiness.policy?.identifier ?? 'Default policy'} | ${readiness.override?.identifier ?? '—'} | ${mdEscape(open || 'None')} |`;
+    }).join('\n');
+    const overrides = project.readinessOverrides.map((record) => `- ${record.identifier} — ${record.title}; ${(0, text_1.humanize)(record.kind)}; ${(0, text_1.humanize)(record.approvalState)}; target ${(0, recordLifecycle_1.findControlledRecord)(project, record.targetRecordId)?.record.identifier ?? record.targetRecordId}; reviewer ${record.reviewer || 'not assigned'}; rationale: ${record.rationale}`).join('\n');
+    return `# ${project.name} — V-Model Readiness Report
+
+**Project revision:** ${project.revision}  
+**Application:** LOOM v${project.applicationVersion}  
+**Generated:** ${(0, dates_1.formatDateTime)(new Date().toISOString())}
+
+## Requirement readiness
+
+| Requirement | Title | Gate level | Status | Score | Policy | Override | Open factors |
+|---|---|---|---|---:|---|---|---|
+${rows || '| None | — | — | — | — | — | — | — |'}
+
+## Waivers and overrides
+
+${overrides || '- None'}
+
+## Control statement
+
+Readiness is a reproducible assessment of stored engineering facts. Approved local overrides remain visible and never erase the factors they override.
+`;
+}
+function downloadReadinessReport(project) {
+    (0, files_1.downloadBlob)(new Blob([readinessReportMarkdown(project)], { type: 'text/markdown;charset=utf-8' }), `${(0, files_1.slug)(project.name)}-v-model-readiness.md`);
+}
+function operationalValidationMarkdown(project) {
+    const runs = project.testExecutions.filter((record) => !record.archived && record.verificationLevel === 'operational');
+    return `# ${project.name} — Operational Validation Summary
+
+**Project revision:** ${project.revision}  
+**Application:** LOOM v${project.applicationVersion}  
+**Generated:** ${(0, dates_1.formatDateTime)(new Date().toISOString())}
+
+${runs.length ? runs.map((run) => {
+        const context = run.operationalValidation;
+        const requirements = run.requirementIds.map((id) => project.requirements.find((record) => record.id === id)?.identifier ?? id).join(', ');
+        return `## ${run.identifier} — ${run.title}
+
+- **Requirements:** ${requirements}
+- **Executed:** ${(0, dates_1.formatDateTime)(run.executedAt)}
+- **Representative user:** ${context.representativeUser || 'Not recorded'}
+- **Stakeholder need:** ${context.stakeholderNeed || 'Not recorded'}
+- **Scenario:** ${context.operationalScenario || 'Not recorded'}
+- **Mission or use objective:** ${context.missionObjective || 'Not recorded'}
+- **Suitability observations:** ${context.suitabilityObservations || 'Not recorded'}
+- **Result:** ${(0, text_1.humanize)(run.result)}
+- **Reviewer disposition:** ${(0, text_1.humanize)(run.reviewerDisposition)}
+- **Acceptance recommendation:** ${(0, text_1.humanize)(context.acceptanceRecommendation)}
+- **Currency:** ${(0, text_1.humanize)(run.currencyState)}
+- **Evidence:** ${run.evidenceIds.map((id) => project.documents.find((record) => record.id === id)?.identifier ?? id).join(', ') || 'None'}
+`;
+    }).join('\n') : 'No operational validation activity is recorded.'}
+`;
+}
+function downloadOperationalValidationReport(project) {
+    (0, files_1.downloadBlob)(new Blob([operationalValidationMarkdown(project)], { type: 'text/markdown;charset=utf-8' }), `${(0, files_1.slug)(project.name)}-operational-validation-summary.md`);
 }
 
 },
@@ -7305,6 +10019,7 @@ exports.ArchitectureView = ArchitectureView;
 const react_1 = require("react");
 const factory_1 = require("../domain/factory");
 const calculations_1 = require("../domain/calculations");
+const impact_1 = require("../domain/impact");
 const ProjectContext_1 = require("../hooks/ProjectContext");
 const id_1 = require("../utils/id");
 const text_1 = require("../utils/text");
@@ -7416,7 +10131,8 @@ function ArchitectureView() {
                 state: 'pending-review',
                 localParameters: '',
                 rationale: '',
-                affectedByParentChange: false
+                affectedByParentChange: false,
+                reviewHistory: []
             })),
             implementationStatus: 'not-started'
         };
@@ -7476,8 +10192,25 @@ function ArchitectureView() {
                 obligation.state = value;
             else
                 obligation[field] = value;
-            obligation.reviewedAt = new Date().toISOString();
         }, `Reviewed inherited obligation: ${field} updated`);
+    };
+    const completeObligationReview = (objectId, obligationId) => {
+        const object = project.objects.find((candidate) => candidate.id === objectId);
+        const obligation = object?.inheritedObligations.find((candidate) => candidate.id === obligationId);
+        if (!object || !obligation)
+            return notify('Inherited obligation not found.', 'danger');
+        if (obligation.state === 'pending-review')
+            return notify('Select a disposition before completing the review.', 'warning');
+        if (['tailored', 'not-applicable', 'superseded'].includes(obligation.state) && !obligation.rationale.trim()) {
+            return notify('Record a rationale for this inherited-obligation disposition.', 'warning');
+        }
+        if (obligation.state === 'accepted-with-local-parameters' && !obligation.localParameters.trim()) {
+            return notify('Record the local parameters before completing this disposition.', 'warning');
+        }
+        updateProject((draft) => {
+            (0, impact_1.reviewInheritedObligation)(draft, objectId, obligationId, obligation.state, obligation.rationale, obligation.localParameters, 'Local user');
+        }, `Inherited obligation dispositioned: ${obligation.state}`, { generateImpact: false });
+        notify('Inherited obligation review completed without changing the parent or child requirement text.', 'success');
     };
     const toggleRequirementFunction = (requirementId, functionId) => {
         updateProject((draft) => {
@@ -7581,21 +10314,39 @@ function ArchitectureView() {
                     selectedObject.inheritedObligations.length ? React.createElement("div", { className: "obligation-list" }, selectedObject.inheritedObligations.map((obligation) => {
                         const requirement = project.requirements.find((record) => record.id === obligation.requirementId);
                         const rationaleRequired = ['tailored', 'not-applicable', 'superseded'].includes(obligation.state);
-                        return React.createElement("div", { className: "obligation-card", key: obligation.id },
+                        const localParametersRequired = obligation.state === 'accepted-with-local-parameters';
+                        return React.createElement("div", { className: `obligation-card ${obligation.affectedByParentChange ? 'obligation-card--review' : ''}`, key: obligation.id },
                             React.createElement("div", { className: "obligation-card__header" },
                                 React.createElement("div", null,
                                     React.createElement("span", null,
                                         requirement?.identifier ?? 'Unknown requirement',
                                         " \u00B7 Source revision ",
-                                        obligation.sourceRequirementRevision),
+                                        obligation.sourceRequirementRevision,
+                                        obligation.targetSourceRequirementRevision ? ` → ${obligation.targetSourceRequirementRevision}` : ''),
                                     React.createElement("strong", null, requirement?.title ?? 'Dangling reference')),
-                                React.createElement(StatusBadge_1.StatusBadge, { value: obligation.state, compact: true })),
+                                React.createElement(StatusBadge_1.StatusBadge, { value: obligation.affectedByParentChange ? 'review-required' : obligation.state, compact: true })),
+                            obligation.affectedByParentChange ? React.createElement("div", { className: "obligation-review-alert" },
+                                React.createElement(Icon_1.Icon, { name: "warning" }),
+                                React.createElement("div", null,
+                                    React.createElement("strong", null, "Parent revision changed"),
+                                    React.createElement("p", null, obligation.reviewReason || 'Review this obligation against the current parent requirement.'),
+                                    React.createElement("small", null,
+                                        "Previous disposition: ",
+                                        (0, text_1.humanize)(obligation.previousState ?? 'pending-review'),
+                                        " \u00B7 Previous source revision ",
+                                        obligation.previousSourceRequirementRevision ?? obligation.sourceRequirementRevision))) : null,
                             React.createElement(ui_1.Field, { label: "Disposition" },
                                 React.createElement(ui_1.Select, { value: obligation.state, onChange: (event) => updateObligation(selectedObject.id, obligation.id, 'state', event.target.value) }, ['accepted-as-written', 'accepted-with-local-parameters', 'tailored', 'decomposed', 'satisfied-at-parent', 'not-applicable', 'superseded', 'pending-review'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
-                            React.createElement(ui_1.Field, { label: "Local parameters" },
+                            React.createElement(ui_1.Field, { label: `Local parameters${localParametersRequired ? ' — required' : ''}`, error: localParametersRequired && !obligation.localParameters.trim() ? 'Record the local parameters.' : undefined },
                                 React.createElement(ui_1.Input, { value: obligation.localParameters, onChange: (event) => updateObligation(selectedObject.id, obligation.id, 'localParameters', event.target.value) })),
                             React.createElement(ui_1.Field, { label: `Rationale${rationaleRequired ? ' — required' : ''}`, error: rationaleRequired && !obligation.rationale.trim() ? 'Record a rationale for this disposition.' : undefined },
-                                React.createElement(ui_1.Textarea, { rows: 2, value: obligation.rationale, onChange: (event) => updateObligation(selectedObject.id, obligation.id, 'rationale', event.target.value) })));
+                                React.createElement(ui_1.Textarea, { rows: 2, value: obligation.rationale, onChange: (event) => updateObligation(selectedObject.id, obligation.id, 'rationale', event.target.value) })),
+                            React.createElement("div", { className: "obligation-card__footer" },
+                                React.createElement("span", null,
+                                    obligation.reviewHistory.length,
+                                    " completed review",
+                                    obligation.reviewHistory.length === 1 ? '' : 's'),
+                                React.createElement(ui_1.Button, { size: "small", variant: "primary", icon: "check", disabled: obligation.state === 'pending-review', onClick: () => completeObligationReview(selectedObject.id, obligation.id) }, "Complete review")));
                     })) : React.createElement("div", { className: "positive-empty" },
                         React.createElement(Icon_1.Icon, { name: "check" }),
                         "No parent obligations are pending on this object."))) : React.createElement(ui_1.EmptyState, { icon: "architecture", title: "Select an implementation object", description: "Open an object to inspect its functions, requirements, interfaces, implementation state, and inherited obligations." }))) : null,
@@ -7814,6 +10565,7 @@ const dates_1 = require("../utils/dates");
 const id_1 = require("../utils/id");
 const text_1 = require("../utils/text");
 const Icon_1 = require("../components/Icon");
+const ImpactReviewWorkspace_1 = require("../components/ImpactReviewWorkspace");
 const Modal_1 = require("../components/Modal");
 const StatusBadge_1 = require("../components/StatusBadge");
 const Tabs_1 = require("../components/Tabs");
@@ -7831,14 +10583,19 @@ function snapshot(project) {
         objects: project.objects,
         interfaces: project.interfaces,
         verificationPlans: project.verificationPlans,
+        verificationSetups: project.verificationSetups,
         testCases: project.testCases,
         testExecutions: project.testExecutions,
+        verificationExceptions: project.verificationExceptions,
+        readinessPolicies: project.readinessPolicies,
+        readinessOverrides: project.readinessOverrides,
         failureModes: project.failureModes,
         workItems: project.workItems,
         workDependencies: project.workDependencies,
         projectBudgetLines: project.projectBudgetLines,
         technicalBudgets: project.technicalBudgets,
         documents: project.documents,
+        impactReviews: project.impactReviews,
         links: project.links
     });
 }
@@ -7853,13 +10610,18 @@ function recordIdentifier(project, id) {
         project.objects,
         project.interfaces,
         project.verificationPlans,
+        project.verificationSetups,
         project.testCases,
         project.testExecutions,
+        project.verificationExceptions,
+        project.readinessPolicies,
+        project.readinessOverrides,
         project.failureModes,
         project.workItems,
         project.projectBudgetLines,
         project.technicalBudgets,
         project.documents,
+        project.impactReviews,
         project.decisions,
         project.assumptions,
         project.issuesActions,
@@ -7868,8 +10630,8 @@ function recordIdentifier(project, id) {
     return arrays.flat().find((record) => record.id === id)?.identifier ?? id;
 }
 function BaselinesView() {
-    const { project, updateProject, notify } = (0, ProjectContext_1.useProject)();
-    const [activeTab, setActiveTab] = (0, react_1.useState)('baselines');
+    const { project, updateProject, updateSettings, notify } = (0, ProjectContext_1.useProject)();
+    const [activeTab, setActiveTab] = (0, react_1.useState)(project.settings.activeTabs.baselines ?? 'baselines');
     const [baselineModal, setBaselineModal] = (0, react_1.useState)(false);
     const [changeModal, setChangeModal] = (0, react_1.useState)(false);
     const [baselineForm, setBaselineForm] = (0, react_1.useState)(blankBaseline);
@@ -7882,6 +10644,15 @@ function BaselinesView() {
     const leftBaseline = project.baselines.find((baseline) => baseline.id === leftBaselineId);
     const rightBaseline = project.baselines.find((baseline) => baseline.id === rightBaselineId);
     const differences = (0, react_1.useMemo)(() => leftBaseline && rightBaseline && leftBaseline.id !== rightBaseline.id ? (0, calculations_1.compareBaselines)(leftBaseline, rightBaseline) : [], [leftBaseline, rightBaseline]);
+    (0, react_1.useEffect)(() => {
+        const requested = project.settings.activeTabs.baselines;
+        if (requested && requested !== activeTab)
+            setActiveTab(requested);
+    }, [project.settings.activeTabs.baselines]);
+    const selectTab = (tab) => {
+        setActiveTab(tab);
+        updateSettings((settings) => { settings.activeTabs.baselines = tab; });
+    };
     const differenceTotals = (0, react_1.useMemo)(() => differences.reduce((totals, difference) => ({
         added: totals.added + difference.added.length,
         removed: totals.removed + difference.removed.length,
@@ -7890,6 +10661,7 @@ function BaselinesView() {
     const tabs = [
         { id: 'baselines', label: 'Baselines', icon: 'baseline', count: project.baselines.length },
         { id: 'compare', label: 'Compare', icon: 'refresh', count: differences.length ? differenceTotals.added + differenceTotals.removed + differenceTotals.changed : undefined },
+        { id: 'impacts', label: 'Impact review', icon: 'warning', count: project.impactReviews.filter((review) => review.status !== 'resolved').length },
         { id: 'changes', label: 'Change requests', icon: 'edit', count: project.changeRequests.filter((request) => request.implementationStatus !== 'closed').length }
     ];
     const affectedChoices = (0, react_1.useMemo)(() => [
@@ -7948,7 +10720,8 @@ function BaselinesView() {
             reviewer: changeForm.reviewer.trim(),
             approval: '',
             implementationStatus: 'not-started',
-            resultingRevisionIds: []
+            resultingRevisionIds: [],
+            impactReviewIds: []
         };
         updateProject((draft) => {
             draft.changeRequests.push(record);
@@ -7978,11 +10751,12 @@ function BaselinesView() {
         verification: baseline.snapshot.verificationPlans.length + baseline.snapshot.testExecutions.length,
         failures: baseline.snapshot.failureModes.length,
         work: baseline.snapshot.workItems.length,
-        evidence: baseline.snapshot.documents.length
+        evidence: baseline.snapshot.documents.length,
+        impacts: (baseline.snapshot.impactReviews ?? []).length
     });
     return (React.createElement("div", { className: "view-stack" },
         React.createElement(ui_1.SectionHeader, { eyebrow: "Configuration control", title: "Baselines", description: "Understand what changed, why it changed, who accepted it, and which requirements, tests, evidence, schedule, or budgets must be reviewed again.", actions: React.createElement(ui_1.Button, { variant: "primary", icon: "lock", onClick: () => setBaselineModal(true) }, "Create baseline") }),
-        React.createElement(Tabs_1.Tabs, { options: tabs, active: activeTab, onChange: setActiveTab }),
+        React.createElement(Tabs_1.Tabs, { options: tabs, active: activeTab, onChange: selectTab }),
         activeTab === 'baselines' ? (React.createElement("div", { className: "baseline-layout" },
             React.createElement(ui_1.Panel, null,
                 React.createElement(ui_1.PanelHeader, { title: "Named baselines", description: "Each baseline retains exact revisions and typed relationships without freezing the live project." }),
@@ -8061,7 +10835,7 @@ function BaselinesView() {
                             selectedBaseline.snapshot.workDependencies.length,
                             " schedule dependencies"))),
                 React.createElement("div", { className: "inspector-actions" },
-                    React.createElement(ui_1.Button, { icon: "refresh", onClick: () => { setLeftBaselineId(project.baselines[0]?.id ?? selectedBaseline.id); setRightBaselineId(selectedBaseline.id); setActiveTab('compare'); } }, "Compare baseline"))) : null)) : null,
+                    React.createElement(ui_1.Button, { icon: "refresh", onClick: () => { setLeftBaselineId(project.baselines[0]?.id ?? selectedBaseline.id); setRightBaselineId(selectedBaseline.id); selectTab('compare'); } }, "Compare baseline"))) : null)) : null,
         activeTab === 'compare' ? (React.createElement("div", { className: "view-stack" },
             React.createElement(ui_1.Panel, null,
                 React.createElement(ui_1.PanelHeader, { title: "Baseline comparison", description: "Compare controlled record contents, thresholds, allocations, test criteria, schedule, budgets, evidence, and other stored fields.", actions: React.createElement(ui_1.Button, { icon: "download", onClick: exportComparison, disabled: !differences.length }, "Export comparison") }),
@@ -8117,6 +10891,7 @@ function BaselinesView() {
                             React.createElement(Icon_1.Icon, { name: expandedDifference === difference.entity ? 'chevron-down' : 'chevron-right' })),
                         expandedDifference === difference.entity ? React.createElement(DifferenceTable, { difference: difference }) : null);
                 }))) : null)) : null,
+        activeTab === 'impacts' ? React.createElement(ImpactReviewWorkspace_1.ImpactReviewWorkspace, null) : null,
         activeTab === 'changes' ? (React.createElement("div", { className: "view-stack" },
             React.createElement("div", { className: "section-toolbar" },
                 React.createElement("div", null,
@@ -8292,7 +11067,7 @@ function MetricCard({ icon, label, value, note, tone = 'neutral', onClick }) {
         React.createElement(Icon_1.Icon, { name: "arrow-right", size: 16, className: "metric-card__arrow" })));
 }
 function CockpitView({ navigate = () => undefined }) {
-    const { project } = (0, ProjectContext_1.useProject)();
+    const { project, updateSettings } = (0, ProjectContext_1.useProject)();
     const cockpit = (0, react_1.useMemo)(() => (0, calculations_1.projectCockpit)(project), [project]);
     const attention = (0, react_1.useMemo)(() => (0, calculations_1.recordsNeedingAttention)(project), [project]);
     const topObjects = (0, react_1.useMemo)(() => project.objects.filter((object) => !object.parentId && !object.archived).map((object) => ({ object, readiness: (0, calculations_1.objectReadiness)(project, object) })), [project]);
@@ -8300,6 +11075,18 @@ function CockpitView({ navigate = () => undefined }) {
         const values = project.requirements.map((requirement) => (0, calculations_1.deriveVerificationState)(project, requirement));
         return ['passed', 'failed', 'blocked', 'ready', 'planned', 'unplanned'].map((status) => ({ status, count: values.filter((value) => value === status).length }));
     }, [project]);
+    const openVerificationTab = (tab) => {
+        updateSettings((settings) => {
+            settings.activeTabs.verification = tab;
+            settings.activeSection = 'verification';
+        });
+    };
+    const openBaselinesTab = (tab) => {
+        updateSettings((settings) => {
+            settings.activeTabs.baselines = tab;
+            settings.activeSection = 'baselines';
+        });
+    };
     const evidenceCounts = (0, react_1.useMemo)(() => {
         const values = project.requirements.map((requirement) => (0, calculations_1.deriveEvidenceState)(project, requirement));
         return ['complete', 'incomplete', 'missing', 'stale', 'under-review'].map((status) => ({ status, count: values.filter((value) => value === status).length }));
@@ -8309,7 +11096,7 @@ function CockpitView({ navigate = () => undefined }) {
         project.archived ? React.createElement("div", { className: "banner banner--warning" },
             React.createElement(Icon_1.Icon, { name: "archive" }),
             "This project is archived. Restore it from the project menu before making controlled changes.") : null,
-        React.createElement("div", { className: "thread-ribbon", "aria-label": "Digital engineering thread" }, ['Requirement', 'Verification intent', 'Failure analysis', 'Function', 'Implementation', 'Test result', 'Evidence', 'Acceptance'].map((label, index, array) => (React.createElement("div", { className: "thread-ribbon__step", key: label },
+        React.createElement("div", { className: "thread-ribbon", "aria-label": "Digital engineering thread" }, ['Requirement', 'Verification intent', 'Failure analysis', 'Function', 'Implementation', 'Verification result', 'Evidence', 'Acceptance'].map((label, index, array) => (React.createElement("div", { className: "thread-ribbon__step", key: label },
             React.createElement("span", null, String(index + 1).padStart(2, '0')),
             React.createElement("strong", null, label),
             index < array.length - 1 ? React.createElement(Icon_1.Icon, { name: "arrow-right", size: 16 }) : null)))),
@@ -8321,17 +11108,29 @@ function CockpitView({ navigate = () => undefined }) {
             React.createElement(MetricCard, { icon: "evidence", label: "Evidence gaps", value: cockpit.evidenceGaps, note: `${cockpit.staleEvidence} stale or superseded artifact(s)`, tone: cockpit.evidenceGaps ? 'watch' : 'good', onClick: () => navigate('evidence') }),
             React.createElement(MetricCard, { icon: "calendar", label: "Late work", value: cockpit.lateWork, note: "Open items past planned finish", tone: cockpit.lateWork ? 'danger' : 'good', onClick: () => navigate('execution') }),
             React.createElement(MetricCard, { icon: "budget", label: "Forecast variance", value: new Intl.NumberFormat(undefined, { style: 'currency', currency: project.projectBudgetLines[0]?.currency || 'USD', maximumFractionDigits: 0 }).format(cockpit.budget.variance), note: "Approved minus forecast", tone: cockpit.budget.variance < 0 ? 'danger' : 'good', onClick: () => navigate('execution') }),
-            React.createElement(MetricCard, { icon: "baseline", label: "Change control", value: cockpit.changeRequests, note: `${cockpit.pendingReviews} pending review(s)`, tone: cockpit.changeRequests ? 'watch' : 'neutral', onClick: () => navigate('baselines') })),
+            React.createElement(MetricCard, { icon: "warning", label: "Impact reviews", value: cockpit.openImpactReviews, note: `${cockpit.pendingImpactItems} downstream item(s) pending`, tone: cockpit.openImpactReviews ? 'danger' : 'good', onClick: () => openBaselinesTab('impacts') }),
+            React.createElement(MetricCard, { icon: "verification", label: "Verification exceptions", value: cockpit.openVerificationExceptions, note: "Open deviations, anomalies, and retests", tone: cockpit.openVerificationExceptions ? 'danger' : 'good', onClick: () => openVerificationTab('exceptions') }),
+            React.createElement(MetricCard, { icon: "cockpit", label: "Not ready", value: cockpit.readinessNotReady, note: `${cockpit.pendingReadinessOverrides} waiver or override request(s)`, tone: cockpit.readinessNotReady ? 'watch' : 'good', onClick: () => openVerificationTab('readiness') }),
+            React.createElement(MetricCard, { icon: "verification", label: "Potentially stale results", value: cockpit.staleResults, note: "Historical results retained for review", tone: cockpit.staleResults ? 'watch' : 'good', onClick: () => navigate('verification') }),
+            React.createElement(MetricCard, { icon: "baseline", label: "Change control", value: cockpit.changeRequests, note: `${cockpit.pendingReviews} conventional review(s)`, tone: cockpit.changeRequests ? 'watch' : 'neutral', onClick: () => openBaselinesTab('changes') })),
         React.createElement("div", { className: "cockpit-grid cockpit-grid--main" },
             React.createElement(ui_1.Panel, null,
                 React.createElement(ui_1.PanelHeader, { title: "Actionable exceptions", description: "Every row opens the area where the underlying record can be resolved." }),
-                attention.length ? (React.createElement("div", { className: "exception-list" }, attention.slice(0, 10).map((row) => (React.createElement("button", { key: `${row.kind}-${row.id}`, onClick: () => navigate(row.kind === 'Failure mode' ? 'failure' : row.kind === 'Work item' ? 'execution' : row.kind === 'Evidence' ? 'evidence' : row.kind === 'Verification' ? 'verification' : 'requirements') },
-                    React.createElement("span", { className: `exception-list__marker exception-list__marker--${row.severity}`, "aria-hidden": "true" }),
-                    React.createElement("span", null,
-                        React.createElement("strong", null, row.title),
-                        React.createElement("small", null, row.kind)),
-                    React.createElement("span", null, row.reason),
-                    React.createElement(Icon_1.Icon, { name: "arrow-right", size: 16 })))))) : React.createElement("div", { className: "positive-empty" },
+                attention.length ? (React.createElement("div", { className: "exception-list" }, attention.slice(0, 10).map((row) => {
+                    const destination = row.kind === 'Failure mode' ? 'failure'
+                        : row.kind === 'Work item' ? 'execution'
+                            : row.kind === 'Evidence' ? 'evidence'
+                                : ['Verification', 'Verification exception', 'Readiness override'].includes(row.kind) ? 'verification'
+                                    : row.kind === 'Impact review' ? 'baselines'
+                                        : 'requirements';
+                    return React.createElement("button", { key: `${row.kind}-${row.id}`, onClick: () => row.kind === 'Impact review' ? openBaselinesTab('impacts') : row.kind === 'Verification exception' ? openVerificationTab('exceptions') : row.kind === 'Readiness override' ? openVerificationTab('waivers') : navigate(destination) },
+                        React.createElement("span", { className: `exception-list__marker exception-list__marker--${row.severity}`, "aria-hidden": "true" }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, row.title),
+                            React.createElement("small", null, row.kind)),
+                        React.createElement("span", null, row.reason),
+                        React.createElement(Icon_1.Icon, { name: "arrow-right", size: 16 }));
+                }))) : React.createElement("div", { className: "positive-empty" },
                     React.createElement(Icon_1.Icon, { name: "check" }),
                     "No current exceptions meet the attention threshold.")),
             React.createElement(ui_1.Panel, null,
@@ -8399,7 +11198,7 @@ function CockpitView({ navigate = () => undefined }) {
                             React.createElement("td", null,
                                 React.createElement(StatusBadge_1.StatusBadge, { value: item.status, compact: true })),
                             React.createElement("td", null, item.blockedReason || item.description)))),
-                        project.changeRequests.slice(0, 3).map((request) => (React.createElement("tr", { key: request.id, onClick: () => navigate('baselines'), tabIndex: 0 },
+                        project.changeRequests.slice(0, 3).map((request) => (React.createElement("tr", { key: request.id, onClick: () => openBaselinesTab('changes'), tabIndex: 0 },
                             React.createElement("td", null,
                                 React.createElement("strong", null, request.identifier),
                                 React.createElement("br", null),
@@ -8456,10 +11255,16 @@ function recordLabel(project, id) {
         ?? project.objects.find((record) => record.id === id)?.identifier
         ?? project.interfaces.find((record) => record.id === id)?.identifier
         ?? project.verificationPlans.find((record) => record.id === id)?.identifier
+        ?? project.verificationSetups.find((record) => record.id === id)?.identifier
+        ?? project.testCases.find((record) => record.id === id)?.identifier
         ?? project.testExecutions.find((record) => record.id === id)?.identifier
+        ?? project.verificationExceptions.find((record) => record.id === id)?.identifier
+        ?? project.readinessPolicies.find((record) => record.id === id)?.identifier
+        ?? project.readinessOverrides.find((record) => record.id === id)?.identifier
         ?? project.failureModes.find((record) => record.id === id)?.identifier
         ?? project.workItems.find((record) => record.id === id)?.identifier
         ?? project.changeRequests.find((record) => record.id === id)?.identifier
+        ?? project.impactReviews.find((record) => record.id === id)?.identifier
         ?? id;
 }
 function EvidenceView() {
@@ -8481,7 +11286,7 @@ function EvidenceView() {
     ];
     const filteredDocuments = (0, react_1.useMemo)(() => {
         const query = search.trim().toLowerCase();
-        return project.documents.filter((document) => !query || [document.identifier, document.title, document.documentType, document.owner, document.author, document.description, document.status, ...document.tags].join(' ').toLowerCase().includes(query));
+        return project.documents.filter((document) => !query || [document.identifier, document.title, document.documentType, document.owner, document.author, document.description, document.status, document.currencyState ?? 'current', ...document.tags].join(' ').toLowerCase().includes(query));
     }, [project.documents, search]);
     const evidenceCoverage = (0, react_1.useMemo)(() => {
         const complete = project.requirements.filter((requirement) => (0, calculations_1.deriveEvidenceState)(project, requirement) === 'complete').length;
@@ -8495,9 +11300,14 @@ function EvidenceView() {
         ...project.objects.map((record) => ({ id: record.id, group: 'Architecture objects', label: `${record.identifier} · ${record.name}` })),
         ...project.interfaces.map((record) => ({ id: record.id, group: 'Interfaces', label: `${record.identifier} · ${record.title}` })),
         ...project.verificationPlans.map((record) => ({ id: record.id, group: 'Verification plans', label: `${record.identifier} · ${record.title}` })),
-        ...project.testExecutions.map((record) => ({ id: record.id, group: 'Test executions', label: `${record.identifier} · ${record.title}` })),
+        ...project.verificationSetups.map((record) => ({ id: record.id, group: 'Verification setups', label: `${record.identifier} · ${record.title}` })),
+        ...project.testCases.map((record) => ({ id: record.id, group: 'Parameterized test cases', label: `${record.identifier} · ${record.title}` })),
+        ...project.testExecutions.map((record) => ({ id: record.id, group: 'Verification executions', label: `${record.identifier} · ${record.title}` })),
+        ...project.verificationExceptions.map((record) => ({ id: record.id, group: 'Verification exceptions', label: `${record.identifier} · ${record.title}` })),
+        ...project.readinessOverrides.map((record) => ({ id: record.id, group: 'Readiness waivers and overrides', label: `${record.identifier} · ${record.title}` })),
         ...project.failureModes.map((record) => ({ id: record.id, group: 'Failure modes', label: `${record.identifier} · ${record.failureMode}` })),
-        ...project.workItems.map((record) => ({ id: record.id, group: 'Work items', label: `${record.identifier} · ${record.title}` }))
+        ...project.workItems.map((record) => ({ id: record.id, group: 'Work items', label: `${record.identifier} · ${record.title}` })),
+        ...project.impactReviews.map((record) => ({ id: record.id, group: 'Impact reviews', label: `${record.identifier} · ${record.title}` }))
     ], [project]);
     const toggleLink = (id) => setDocumentForm((current) => ({ ...current, linkedRecordIds: current.linkedRecordIds.includes(id) ? current.linkedRecordIds.filter((value) => value !== id) : [...current.linkedRecordIds, id] }));
     const addDocument = async () => {
@@ -8525,7 +11335,10 @@ function EvidenceView() {
                 integrityFingerprint: fingerprint,
                 webLink: documentForm.webLink.trim() || undefined,
                 approvalState: documentForm.approvalState,
-                linkedRecordIds: [...documentForm.linkedRecordIds]
+                linkedRecordIds: [...documentForm.linkedRecordIds],
+                currencyState: documentForm.status === 'superseded' ? 'superseded' : documentForm.status === 'stale' ? 'stale' : 'current',
+                staleReason: '',
+                staleSourceIds: []
             };
             updateProject((draft) => {
                 draft.documents.push(record);
@@ -8587,6 +11400,10 @@ function EvidenceView() {
                 history: [],
                 revisionHistory: [],
                 status: 'current',
+                currencyState: 'current',
+                staleReason: '',
+                staleDetectedAt: undefined,
+                staleSourceIds: [],
                 fileName: file.name,
                 mimeType: file.type,
                 fileSize: file.size,
@@ -8598,6 +11415,7 @@ function EvidenceView() {
                 const prior = draft.documents.find((document) => document.id === oldDocument.id);
                 if (prior) {
                     prior.status = 'superseded';
+                    prior.currencyState = 'superseded';
                     prior.supersededById = replacement.id;
                 }
                 draft.documents.push(replacement);
@@ -8628,8 +11446,14 @@ function EvidenceView() {
         (0, files_1.exportCsv)(`${project.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${level}-verification-summary.csv`, project.testExecutions.filter((run) => planIds.has(run.verificationPlanId)).map((run) => ({
             execution: run.identifier,
             title: run.title,
+            method: run.verificationMethod,
             level,
             plan: project.verificationPlans.find((plan) => plan.id === run.verificationPlanId)?.identifier ?? '',
+            plan_revision: run.verificationPlanRevision,
+            setup: project.verificationSetups.find((setup) => setup.id === run.setupId)?.identifier ?? '',
+            setup_revision: run.setupRevision ?? '',
+            test_case: project.testCases.find((testCase) => testCase.id === run.testCaseId)?.identifier ?? '',
+            test_case_revision: run.testCaseRevision ?? '',
             requirements: run.requirementIds.map((id) => project.requirements.find((requirement) => requirement.id === id)?.identifier ?? id).join('; '),
             executed_at: run.executedAt,
             operator: run.operator,
@@ -8638,6 +11462,15 @@ function EvidenceView() {
             software_version: run.softwareVersion,
             firmware_version: run.firmwareVersion,
             result: run.result,
+            reviewer: run.reviewer,
+            reviewer_disposition: run.reviewerDisposition,
+            acceptance_criteria_satisfied: run.acceptanceCriteriaSatisfied,
+            configuration_conformance: run.configurationConformance,
+            currency: run.currencyState,
+            rerun_of: project.testExecutions.find((candidate) => candidate.id === run.rerunOfId)?.identifier ?? '',
+            retest_state: run.retestState,
+            exceptions: project.verificationExceptions.filter((record) => record.executionId === run.id).map((record) => `${record.identifier}:${record.status}`).join('; '),
+            operational_recommendation: run.operationalValidation?.acceptanceRecommendation ?? '',
             evidence: run.evidenceIds.map((id) => project.documents.find((document) => document.id === id)?.identifier ?? id).join('; '),
             deviations: run.deviations
         })));
@@ -8648,7 +11481,13 @@ function EvidenceView() {
                 React.createElement(ui_1.Button, { size: "small", icon: "print", onClick: () => (0, reports_1.printProjectStatus)(project) }, "Print or PDF")) },
         { title: 'Requirements Traceability Matrix', description: 'Requirement-to-parent, function, object, interface, verification, and evidence cross-reference.', icon: 'table', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportRequirementsTraceabilityMatrix)(project) }, "Comma-Separated Values (CSV)") },
         { title: 'Failure Modes, Effects, and Criticality Analysis report', description: 'Failure modes, effects, scores, mitigations, owners, and due dates.', icon: 'failure', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportFailureAnalysis)(project) }, "CSV") },
-        { title: 'Evidence index', description: 'Controlled document metadata, revisions, fingerprints, status, approval, and linked records.', icon: 'evidence', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportEvidenceIndex)(project) }, "CSV") }
+        { title: 'Evidence index', description: 'Controlled document metadata, revisions, fingerprints, status, approval, currency, and linked records.', icon: 'evidence', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportEvidenceIndex)(project) }, "CSV") },
+        { title: 'Change-impact report', description: 'Source revisions, changed fields, explainable paths, review dispositions, and result or evidence currency decisions.', icon: 'baseline', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.downloadChangeImpactReport)(project) }, "Markdown") },
+        { title: 'Verification and validation status', description: 'Method, level, latest as-run activity, reviewer disposition, currency, and every unmet closure condition.', icon: 'verification', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.downloadVerificationStatusReport)(project) }, "Markdown") },
+        { title: 'Verification cross-reference', description: 'Requirement-to-plan, setup, parameterized case, execution, exception, reviewer, and result traceability.', icon: 'table', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportVerificationCrossReference)(project) }, "CSV") },
+        { title: 'Verification exception register', description: 'Deviations, anomalies, blocked conditions, retest obligations, dispositions, owners, and evidence.', icon: 'warning', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.exportVerificationExceptions)(project) }, "CSV") },
+        { title: 'V-model readiness report', description: 'Requirement readiness by applicable gate, score, policy, waiver, override, and open factor.', icon: 'cockpit', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.downloadReadinessReport)(project) }, "Markdown") },
+        { title: 'Operational validation summary', description: 'Representative users, scenarios, suitability observations, result, reviewer disposition, and acceptance recommendation.', icon: 'eye', actions: React.createElement(ui_1.Button, { size: "small", icon: "download", onClick: () => (0, reports_1.downloadOperationalValidationReport)(project) }, "Markdown") }
     ];
     return (React.createElement("div", { className: "view-stack" },
         React.createElement(ui_1.SectionHeader, { eyebrow: "Supporting documents and evidence", title: "Evidence", description: "Every artifact remains connected to the controlled record it supports, with revision history and integrity metadata for change detection.", actions: React.createElement(ui_1.Button, { variant: "primary", icon: "upload", onClick: () => setDocumentModal(true) }, "Attach evidence") }),
@@ -8673,9 +11512,9 @@ function EvidenceView() {
                             "/",
                             evidenceCoverage.total,
                             " complete")),
-                    React.createElement("div", { className: `metric-card ${project.documents.some((document) => document.status === 'stale') ? 'metric-card--warning' : ''}` },
+                    React.createElement("div", { className: `metric-card ${project.documents.some((document) => ['potentially-stale', 'stale', 'superseded'].includes(document.currencyState ?? document.status)) ? 'metric-card--warning' : ''}` },
                         React.createElement("span", null, "Stale"),
-                        React.createElement("strong", null, project.documents.filter((document) => document.status === 'stale').length),
+                        React.createElement("strong", null, project.documents.filter((document) => ['potentially-stale', 'stale', 'superseded'].includes(document.currencyState ?? document.status)).length),
                         React.createElement("small", null,
                             evidenceCoverage.stale,
                             " requirement(s) affected")),
@@ -8695,6 +11534,7 @@ function EvidenceView() {
                                     React.createElement("th", null, "Type"),
                                     React.createElement("th", null, "Revision"),
                                     React.createElement("th", null, "Status"),
+                                    React.createElement("th", null, "Currency"),
                                     React.createElement("th", null, "Owner"),
                                     React.createElement("th", null, "Date"),
                                     React.createElement("th", null, "File"),
@@ -8712,6 +11552,9 @@ function EvidenceView() {
                                 React.createElement("td", null,
                                     React.createElement(StatusBadge_1.StatusBadge, { value: document.status }),
                                     React.createElement("small", null, (0, text_1.humanize)(document.approvalState))),
+                                React.createElement("td", null,
+                                    React.createElement(StatusBadge_1.StatusBadge, { value: document.currencyState ?? 'current' }),
+                                    document.staleReason ? React.createElement("small", null, (0, text_1.truncate)(document.staleReason, 70)) : null),
                                 React.createElement("td", null, document.owner),
                                 React.createElement("td", null, (0, dates_1.formatDate)(document.date)),
                                 React.createElement("td", null, document.fileName ? React.createElement(React.Fragment, null,
@@ -8732,8 +11575,15 @@ function EvidenceView() {
                 React.createElement("div", { className: "inspector-section" },
                     React.createElement("div", { className: "inspector-status-row" },
                         React.createElement(StatusBadge_1.StatusBadge, { value: selectedDocument.status }),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: selectedDocument.currencyState ?? 'current' }),
                         React.createElement(StatusBadge_1.StatusBadge, { value: selectedDocument.approvalState })),
-                    React.createElement("p", null, selectedDocument.description || 'No description recorded.')),
+                    React.createElement("p", null, selectedDocument.description || 'No description recorded.'),
+                    selectedDocument.staleReason ? React.createElement("div", { className: "currency-review-note" },
+                        React.createElement(Icon_1.Icon, { name: "warning" }),
+                        React.createElement("div", null,
+                            React.createElement("strong", null, "Currency review"),
+                            React.createElement("p", null, selectedDocument.staleReason),
+                            React.createElement("small", null, selectedDocument.staleDetectedAt ? (0, dates_1.formatDate)(selectedDocument.staleDetectedAt) : 'Review date not recorded'))) : null),
                 React.createElement("div", { className: "inspector-section" },
                     React.createElement("h3", null, "Artifact"),
                     React.createElement("dl", { className: "definition-list definition-list--cards" },
@@ -8790,9 +11640,16 @@ function EvidenceView() {
                 React.createElement("div", { className: "inspector-actions" },
                     React.createElement(ui_1.Button, { icon: "eye", onClick: () => (0, files_1.downloadEvidence)(selectedDocument), disabled: !selectedDocument.contentDataUrl && !selectedDocument.webLink }, "Open artifact"),
                     React.createElement(ui_1.Button, { icon: "refresh", onClick: () => requestReplacement(selectedDocument.id), disabled: uploading }, "Revise file"),
-                    React.createElement(ui_1.Button, { variant: "ghost", icon: "warning", onClick: () => updateProject((draft) => { const document = draft.documents.find((record) => record.id === selectedDocument.id); if (document)
-                            document.status = document.status === 'stale' ? 'current' : 'stale'; draft.requirements.forEach((requirement) => { if (requirement.evidenceIds.includes(selectedDocument.id))
-                            requirement.statuses.evidence = document?.status === 'stale' ? 'stale' : 'complete'; }); }) }, selectedDocument.status === 'stale' ? 'Mark current' : 'Mark stale'))) : null)) : null,
+                    React.createElement(ui_1.Button, { variant: "ghost", icon: "warning", onClick: () => updateProject((draft) => { const document = draft.documents.find((record) => record.id === selectedDocument.id); if (document) {
+                            const makeCurrent = ['stale', 'potentially-stale'].includes(document.currencyState ?? document.status);
+                            document.status = makeCurrent ? 'current' : 'stale';
+                            document.currencyState = makeCurrent ? 'reviewed-current' : 'stale';
+                            document.staleReason = makeCurrent ? 'Manually reviewed and confirmed current.' : 'Manually marked stale.';
+                            document.staleDetectedAt = new Date().toISOString();
+                            if (makeCurrent)
+                                document.staleSourceIds = [];
+                        } draft.requirements.forEach((requirement) => { if (requirement.evidenceIds.includes(selectedDocument.id))
+                            requirement.statuses.evidence = document?.currencyState === 'stale' ? 'stale' : 'complete'; }); }, `${selectedDocument.identifier} evidence currency reviewed`, { generateImpact: false }) }, ['stale', 'potentially-stale'].includes(selectedDocument.currencyState ?? selectedDocument.status) ? 'Confirm current' : 'Mark stale'))) : null)) : null,
         activeTab === 'gaps' ? (React.createElement("div", { className: "view-stack" },
             React.createElement(ui_1.Panel, null,
                 React.createElement(ui_1.PanelHeader, { title: "Evidence coverage", description: "Requirement closure requires current, linked evidence rather than a manually selected status." }),
@@ -8827,7 +11684,7 @@ function EvidenceView() {
                             React.createElement("td", null, evidence.length ? evidence.map((document) => React.createElement("span", { className: "chip", key: document.id },
                                 document.identifier,
                                 " \u00B7 ",
-                                (0, text_1.humanize)(document.status))) : 'None'),
+                                (0, text_1.humanize)(document.currencyState ?? document.status))) : 'None'),
                             React.createElement("td", null, requirement.verificationIntent.requiredEvidence || 'Not defined'),
                             React.createElement("td", null, requirement.owner),
                             React.createElement("td", null, (0, dates_1.formatDate)(requirement.dueDate)),
@@ -8849,7 +11706,7 @@ function EvidenceView() {
                         !project.documents.some((document) => !document.linkedRecordIds.length) ? React.createElement("p", { className: "muted" }, "No unlinked artifacts.") : null),
                     React.createElement("div", null,
                         React.createElement("h3", null, "Stale or superseded"),
-                        project.documents.filter((document) => ['stale', 'superseded'].includes(document.status)).map((document) => React.createElement("button", { className: "exception-row", key: document.id, onClick: () => { setSelectedDocumentId(document.id); setActiveTab('documents'); } },
+                        project.documents.filter((document) => ['potentially-stale', 'stale', 'superseded'].includes(document.currencyState ?? document.status)).map((document) => React.createElement("button", { className: "exception-row", key: document.id, onClick: () => { setSelectedDocumentId(document.id); setActiveTab('documents'); } },
                             React.createElement(Icon_1.Icon, { name: "warning" }),
                             React.createElement("span", null,
                                 React.createElement("strong", null,
@@ -8857,11 +11714,11 @@ function EvidenceView() {
                                     " \u00B7 ",
                                     document.title),
                                 React.createElement("small", null,
-                                    (0, text_1.humanize)(document.status),
+                                    (0, text_1.humanize)(document.currencyState ?? document.status),
                                     " \u00B7 revision ",
                                     document.revision)),
                             React.createElement(Icon_1.Icon, { name: "chevron-right" }))),
-                        !project.documents.some((document) => ['stale', 'superseded'].includes(document.status)) ? React.createElement("p", { className: "muted" }, "No stale artifacts.") : null))))) : null,
+                        !project.documents.some((document) => ['potentially-stale', 'stale', 'superseded'].includes(document.currencyState ?? document.status)) ? React.createElement("p", { className: "muted" }, "No stale artifacts.") : null))))) : null,
         activeTab === 'reports' ? (React.createElement("div", { className: "view-stack" },
             React.createElement("div", { className: "report-grid" }, reportCards.map((report) => React.createElement(ui_1.Panel, { key: report.title, className: "report-card" },
                 React.createElement("div", { className: "report-card__icon" },
@@ -10378,6 +13235,7 @@ exports.VerificationView = VerificationView;
 const react_1 = require("react");
 const factory_1 = require("../domain/factory");
 const calculations_1 = require("../domain/calculations");
+const verification_1 = require("../domain/verification");
 const ProjectContext_1 = require("../hooks/ProjectContext");
 const id_1 = require("../utils/id");
 const dates_1 = require("../utils/dates");
@@ -10388,71 +13246,223 @@ const Progress_1 = require("../components/Progress");
 const StatusBadge_1 = require("../components/StatusBadge");
 const Tabs_1 = require("../components/Tabs");
 const ui_1 = require("../components/ui");
-const blankPlan = {
-    title: '', requirementIds: [], method: 'test', level: 'system', objective: '', criteria: '', preconditions: '', configuration: '', environment: '', equipment: '', instrumentation: '', personnel: '', safety: '', procedure: '', data: '', sampleSize: '', passFail: '', owner: 'Verification Lead', reviewer: '', plannedDate: '', approval: 'draft'
-};
-const blankExecution = {
-    planId: '', testCaseId: '', result: 'not-run', executedAt: new Date().toISOString().slice(0, 16), operator: '', reviewer: '', systemConfiguration: '', hardwareRevision: '', softwareVersion: '', firmwareVersion: '', environment: '', equipment: '', calibrationReference: '', inputData: '', outputData: '', observations: '', deviations: '', evidenceIds: []
-};
+const METHODS = ['test', 'analysis', 'inspection', 'demonstration', 'similarity', 'certification', 'combination', 'not-yet-determined'];
+const LEVELS = ['unit', 'integration', 'subsystem', 'system', 'operational'];
+const RESULTS = ['not-run', 'running', 'passed', 'failed', 'blocked', 'inconclusive', 'conditionally-accepted', 'waived', 'superseded'];
+const REVIEW_DISPOSITIONS = ['pending-review', 'accepted', 'rejected', 'conditionally-accepted', 'waived'];
+const CONFIGURATION_STATES = ['not-assessed', 'conforming', 'deviation-approved', 'nonconforming'];
+const RETEST_STATES = ['not-required', 'required', 'scheduled', 'completed', 'waived'];
+const OPERATIONAL_RECOMMENDATIONS = ['not-assessed', 'accept', 'conditional', 'reject', 'additional-evaluation'];
+const EXCEPTION_KINDS = ['deviation', 'anomaly', 'defect', 'observation'];
+const EXCEPTION_SEVERITIES = ['information', 'minor', 'major', 'critical'];
+const EXCEPTION_STATUSES = ['open', 'under-review', 'accepted', 'corrected', 'closed'];
+function blankPlan() {
+    return {
+        title: '', requirementIds: [], method: 'test', level: 'system',
+        objective: '', criteria: '', preconditions: '', configuration: '', environment: '', equipment: '', instrumentation: '',
+        personnel: '', safety: '', procedure: '', data: '', sampleSize: '', passFail: '', owner: 'Verification Lead', reviewer: '',
+        plannedDate: '', approval: 'draft', setupId: '', inheritedEnvironment: false,
+        inheritedAcceptanceRule: false, requiredReviewerDisposition: 'accepted',
+        allowConditionalAcceptance: false
+    };
+}
+function blankSetup() {
+    return {
+        title: '', owner: 'Verification Lead', applicableMethods: ['test'], configuration: '', environment: '',
+        equipment: '', instrumentation: '', personnel: '', safetyConsiderations: '', calibrationRequirements: '', documentIds: []
+    };
+}
+function blankTestCase() {
+    return {
+        title: '', planId: '', setupId: '', sharedSetup: '', expectedEvidence: '', inheritedAcceptanceRule: true,
+        steps: [{ id: (0, id_1.createId)('step'), instruction: '', expectedResult: '' }],
+        parameterDefinitions: []
+    };
+}
+function blankExecution() {
+    return {
+        planId: '', testCaseId: '', setupId: '', result: 'not-run',
+        executedAt: new Date().toISOString().slice(0, 16), operator: '', reviewer: '', reviewerDisposition: 'pending-review',
+        dispositionNotes: '', acceptanceCriteriaSatisfied: false, configurationConformance: 'not-assessed',
+        systemConfiguration: '', hardwareRevision: '', softwareVersion: '', firmwareVersion: '', environment: '', equipment: '',
+        calibrationReference: '', inputData: '', outputData: '', observations: '', deviations: '', parameterValues: {},
+        methodDetails: (0, verification_1.defaultVerificationMethodDetails)(), operationalValidation: (0, verification_1.defaultOperationalValidation)(), retestState: 'not-required',
+        retestReason: '', evidenceIds: [], rerunOfId: ''
+    };
+}
+function blankException() {
+    return {
+        executionId: '', kind: 'deviation', severity: 'minor',
+        title: '', description: '', status: 'open', disposition: '', requiresRetest: false,
+        dueDate: '', evidenceIds: []
+    };
+}
+function blankOverride() {
+    return {
+        targetRecordId: '', verificationLevel: 'system', kind: 'conditional-approval',
+        title: '', rationale: '', requestedBy: '', reviewer: '', expiresAt: '', factorKeys: []
+    };
+}
+function openControlledRecord(collection, recordId) {
+    window.dispatchEvent(new CustomEvent('loom:open-record', { detail: { collection, recordId } }));
+}
+function resultTone(result) {
+    if (result === 'passed')
+        return 'success';
+    if (['failed', 'blocked', 'inconclusive'].includes(result))
+        return 'danger';
+    if (['conditionally-accepted', 'waived'].includes(result))
+        return 'warning';
+    return 'default';
+}
+function linkedNames(ids, records) {
+    return ids.map((id) => records.find((record) => record.id === id)).filter((record) => Boolean(record));
+}
 function VerificationView() {
-    const { project, updateProject, notify } = (0, ProjectContext_1.useProject)();
-    const [activeTab, setActiveTab] = (0, react_1.useState)('plans');
+    const { project, updateProject, updateSettings, notify } = (0, ProjectContext_1.useProject)();
+    const [activeTab, setActiveTab] = (0, react_1.useState)(project.settings.activeTabs.verification ?? 'plans');
     const [planModal, setPlanModal] = (0, react_1.useState)(false);
+    const [setupModal, setSetupModal] = (0, react_1.useState)(false);
     const [executionModal, setExecutionModal] = (0, react_1.useState)(false);
     const [testCaseModal, setTestCaseModal] = (0, react_1.useState)(false);
+    const [exceptionModal, setExceptionModal] = (0, react_1.useState)(false);
+    const [overrideModal, setOverrideModal] = (0, react_1.useState)(false);
+    const [policyModal, setPolicyModal] = (0, react_1.useState)(false);
     const [plan, setPlan] = (0, react_1.useState)(blankPlan);
+    const [setup, setSetup] = (0, react_1.useState)(blankSetup);
     const [execution, setExecution] = (0, react_1.useState)(blankExecution);
-    const [testCase, setTestCase] = (0, react_1.useState)({ title: '', planId: '', setup: '', steps: [{ id: (0, id_1.createId)('step'), instruction: '', expectedResult: '' }] });
+    const [testCase, setTestCase] = (0, react_1.useState)(blankTestCase);
+    const [exception, setException] = (0, react_1.useState)(blankException);
+    const [override, setOverride] = (0, react_1.useState)(blankOverride);
+    const [selectedRequirementId, setSelectedRequirementId] = (0, react_1.useState)(project.requirements[0]?.id ?? '');
+    const [selectedReadinessLevel, setSelectedReadinessLevel] = (0, react_1.useState)('system');
     const [expandedReadiness, setExpandedReadiness] = (0, react_1.useState)();
+    const [policyDraft, setPolicyDraft] = (0, react_1.useState)({
+        minimumScore: 85,
+        requireAllRequiredFactors: true,
+        factorRules: (0, verification_1.defaultReadinessFactorRules)('system')
+    });
     const tabs = [
-        { id: 'plans', label: 'Plans', icon: 'document', count: project.verificationPlans.length },
-        ...(project.settings.mode === 'advanced' ? [{ id: 'cases', label: 'Test cases', icon: 'table', count: project.testCases.length }] : []),
-        { id: 'executions', label: 'Executions', icon: 'play', count: project.testExecutions.length },
+        { id: 'plans', label: 'Plans', icon: 'document', count: project.verificationPlans.filter((record) => !record.archived).length },
+        ...(project.settings.mode === 'advanced' ? [
+            { id: 'setups', label: 'Setups', icon: 'settings', count: project.verificationSetups.filter((record) => !record.archived).length },
+            { id: 'cases', label: 'Test cases', icon: 'table', count: project.testCases.filter((record) => !record.archived).length }
+        ] : []),
+        { id: 'executions', label: 'Executions', icon: 'play', count: project.testExecutions.filter((record) => !record.archived).length },
         { id: 'results', label: 'Results', icon: 'verification' },
+        ...(project.settings.mode === 'advanced' ? [{ id: 'exceptions', label: 'Exceptions', icon: 'warning', count: project.verificationExceptions.filter((record) => !record.archived && !['accepted', 'corrected', 'closed'].includes(record.status)).length }] : []),
+        { id: 'operational', label: 'Operational validation', icon: 'eye', count: project.testExecutions.filter((record) => !record.archived && record.verificationLevel === 'operational').length },
         { id: 'readiness', label: 'Readiness', icon: 'cockpit' }
     ];
     (0, react_1.useEffect)(() => {
-        if (!tabs.some((tab) => tab.id === activeTab))
+        const requested = project.settings.activeTabs.verification;
+        if (requested && requested !== activeTab && tabs.some((tab) => tab.id === requested))
+            setActiveTab(requested);
+        else if (!tabs.some((tab) => tab.id === activeTab))
             setActiveTab('plans');
-    }, [activeTab, tabs]);
+    }, [activeTab, project.settings.activeTabs.verification, tabs]);
+    const selectTab = (tab) => {
+        setActiveTab(tab);
+        updateSettings((settings) => { settings.activeTabs.verification = tab; });
+    };
+    (0, react_1.useEffect)(() => {
+        if (!project.requirements.some((record) => record.id === selectedRequirementId))
+            setSelectedRequirementId(project.requirements[0]?.id ?? '');
+    }, [project.requirements, selectedRequirementId]);
     const coverage = (0, react_1.useMemo)(() => {
-        const total = project.requirements.length;
-        const planned = project.requirements.filter((requirement) => project.verificationPlans.some((plan) => plan.requirementIds.includes(requirement.id))).length;
-        const passed = project.requirements.filter((requirement) => (0, calculations_1.deriveVerificationState)(project, requirement) === 'passed').length;
-        return { total, planned, passed, plannedPercent: total ? Math.round((planned / total) * 100) : 0, passedPercent: total ? Math.round((passed / total) * 100) : 0 };
+        const requirements = project.requirements.filter((record) => !record.archived);
+        const planned = requirements.filter((requirement) => project.verificationPlans.some((record) => !record.archived && record.requirementIds.includes(requirement.id))).length;
+        const closed = requirements.filter((requirement) => (0, calculations_1.verificationClosure)(project, requirement).closed).length;
+        const accepted = requirements.filter((requirement) => (0, calculations_1.deriveValidationState)(project, requirement) === 'accepted').length;
+        const openExceptions = project.verificationExceptions.filter((record) => !record.archived && !['accepted', 'corrected', 'closed'].includes(record.status)).length;
+        return {
+            total: requirements.length,
+            planned,
+            closed,
+            accepted,
+            openExceptions,
+            plannedPercent: requirements.length ? Math.round((planned / requirements.length) * 100) : 0,
+            closedPercent: requirements.length ? Math.round((closed / requirements.length) * 100) : 0
+        };
     }, [project]);
-    const togglePlanRequirement = (id) => setPlan((current) => ({ ...current, requirementIds: current.requirementIds.includes(id) ? current.requirementIds.filter((value) => value !== id) : [...current.requirementIds, id] }));
-    const toggleExecutionEvidence = (id) => setExecution((current) => ({ ...current, evidenceIds: current.evidenceIds.includes(id) ? current.evidenceIds.filter((value) => value !== id) : [...current.evidenceIds, id] }));
-    const openExecution = (planId) => {
-        setExecution({ ...blankExecution, planId: planId ?? '' });
+    const selectedPlan = project.verificationPlans.find((record) => record.id === execution.planId);
+    const selectedCase = project.testCases.find((record) => record.id === execution.testCaseId);
+    const selectedMethodFields = selectedPlan
+        ? [
+            ...(0, verification_1.methodSpecificRequirements)(selectedPlan.verificationMethod),
+            ...(selectedPlan.verificationMethod === 'combination'
+                ? execution.methodDetails.combinedMethods
+                    .filter((method) => !['test', 'combination', 'not-yet-determined'].includes(method))
+                    .flatMap((method) => (0, verification_1.methodSpecificRequirements)(method))
+                : [])
+        ].filter((field, index, fields) => fields.findIndex((candidate) => candidate.key === field.key) === index)
+        : [];
+    const selectedRequirement = project.requirements.find((record) => record.id === selectedRequirementId);
+    const selectedReadiness = selectedRequirement ? (0, calculations_1.assessRequirementReadiness)(project, selectedRequirement, selectedReadinessLevel) : undefined;
+    const togglePlanRequirement = (id) => setPlan((current) => ({
+        ...current,
+        requirementIds: current.requirementIds.includes(id) ? current.requirementIds.filter((value) => value !== id) : [...current.requirementIds, id]
+    }));
+    const toggleDocument = (current, setCurrent, id, key) => {
+        const values = (current[key] ?? []);
+        setCurrent({ ...current, [key]: values.includes(id) ? values.filter((value) => value !== id) : [...values, id] });
+    };
+    const openExecution = (planId, rerun, requestedCase) => {
+        const planRecord = project.verificationPlans.find((record) => record.id === (planId ?? rerun?.verificationPlanId));
+        const caseRecord = requestedCase ?? (rerun?.testCaseId ? project.testCases.find((record) => record.id === rerun.testCaseId) : undefined);
+        const next = blankExecution();
+        if (planRecord) {
+            next.planId = planRecord.id;
+            next.setupId = planRecord.setupId ?? '';
+            next.systemConfiguration = planRecord.configuration;
+            next.environment = planRecord.environment;
+            next.equipment = planRecord.equipment;
+        }
+        if (caseRecord) {
+            next.testCaseId = caseRecord.id;
+            next.setupId = caseRecord.setupId ?? next.setupId;
+            next.parameterValues = { ...caseRecord.parameterValues };
+        }
+        if (rerun) {
+            next.rerunOfId = rerun.id;
+            next.planId = rerun.verificationPlanId;
+            next.testCaseId = rerun.testCaseId ?? '';
+            next.setupId = rerun.setupId ?? '';
+            next.operator = rerun.operator;
+            next.reviewer = rerun.reviewer;
+            next.systemConfiguration = rerun.systemConfiguration;
+            next.hardwareRevision = rerun.hardwareRevision;
+            next.softwareVersion = rerun.softwareVersion;
+            next.firmwareVersion = rerun.firmwareVersion;
+            next.environment = rerun.environment;
+            next.equipment = rerun.equipment;
+            next.calibrationReference = rerun.calibrationReference;
+            next.inputData = rerun.inputData;
+            next.parameterValues = { ...rerun.parameterValues };
+            next.methodDetails = structuredClone(rerun.methodDetails);
+            next.operationalValidation = structuredClone(rerun.operationalValidation);
+            next.retestState = 'scheduled';
+            next.retestReason = rerun.retestReason || `Controlled rerun of ${rerun.identifier}.`;
+        }
+        setExecution(next);
         setExecutionModal(true);
     };
     const addPlan = () => {
         if (!plan.title.trim() || !plan.requirementIds.length)
             return notify('Enter a plan title and select at least one requirement.', 'warning');
+        if (!plan.criteria.trim())
+            return notify('Record acceptance criteria before creating the plan.', 'warning');
         const record = {
             ...(0, factory_1.controlledRecord)('ver', (0, id_1.nextIdentifier)('VER', project.verificationPlans.map((value) => value.identifier)), plan.title.trim(), plan.owner || 'Unassigned', plan.approval),
-            requirementIds: [...plan.requirementIds],
-            verificationMethod: plan.method,
-            verificationLevel: plan.level,
-            objective: plan.objective.trim(),
-            acceptanceCriteria: plan.criteria.trim(),
-            preconditions: plan.preconditions.trim(),
-            configuration: plan.configuration.trim(),
-            environment: plan.environment.trim(),
-            equipment: plan.equipment.trim(),
-            instrumentation: plan.instrumentation.trim(),
-            personnel: plan.personnel.trim(),
-            safetyConsiderations: plan.safety.trim(),
-            procedure: plan.procedure.trim(),
-            dataToCollect: plan.data.trim(),
-            sampleSize: plan.sampleSize.trim(),
-            passFailLogic: plan.passFail.trim() || plan.criteria.trim(),
-            reviewer: plan.reviewer.trim(),
-            plannedDate: plan.plannedDate || undefined,
-            dependencyIds: [],
-            documentIds: [],
-            approvalState: plan.approval,
+            requirementIds: [...plan.requirementIds], verificationMethod: plan.method, verificationLevel: plan.level,
+            objective: plan.objective.trim(), acceptanceCriteria: plan.criteria.trim(), preconditions: plan.preconditions.trim(),
+            configuration: plan.configuration.trim(), environment: plan.environment.trim(), equipment: plan.equipment.trim(),
+            instrumentation: plan.instrumentation.trim(), personnel: plan.personnel.trim(), safetyConsiderations: plan.safety.trim(),
+            procedure: plan.procedure.trim(), dataToCollect: plan.data.trim(), sampleSize: plan.sampleSize.trim(),
+            passFailLogic: plan.passFail.trim() || plan.criteria.trim(), reviewer: plan.reviewer.trim(), plannedDate: plan.plannedDate || undefined,
+            dependencyIds: [], documentIds: [], approvalState: plan.approval, setupId: plan.setupId || undefined,
+            inheritedEnvironment: plan.inheritedEnvironment, inheritedAcceptanceRule: plan.inheritedAcceptanceRule,
+            requiredReviewerDisposition: plan.requiredReviewerDisposition, allowConditionalAcceptance: plan.allowConditionalAcceptance,
             testCaseIds: []
         };
         updateProject((draft) => {
@@ -10467,42 +13477,87 @@ function VerificationView() {
                 requirement.verificationIntent.level = record.verificationLevel;
                 requirement.verificationIntent.acceptanceCriteria = record.acceptanceCriteria;
                 requirement.statuses.verification = record.approvalState === 'approved' ? 'ready' : 'planned';
-                draft.links.push({ id: (0, id_1.createId)('link'), type: 'verified-by', fromId: requirementId, toId: record.id, rationale: '', createdAt: new Date().toISOString(), createdBy: record.owner });
+                draft.links.push({ id: (0, id_1.createId)('link'), type: 'verified-by', fromId: requirementId, toId: record.id, rationale: 'Verification plan coverage', createdAt: new Date().toISOString(), createdBy: record.owner });
             });
-        });
-        setPlan(blankPlan);
+        }, `Created verification plan ${record.identifier}`);
+        setPlan(blankPlan());
         setPlanModal(false);
         notify(`${record.identifier} created.`, 'success');
     };
+    const addSetup = () => {
+        if (!setup.title.trim())
+            return notify('Enter a setup title.', 'warning');
+        if (!setup.configuration.trim() || !setup.environment.trim())
+            return notify('Record the reusable configuration and environment.', 'warning');
+        const record = {
+            ...(0, factory_1.controlledRecord)('setup', (0, id_1.nextIdentifier)('SETUP', project.verificationSetups.map((value) => value.identifier)), setup.title.trim(), setup.owner || 'Unassigned', 'ready'),
+            applicableMethods: [...setup.applicableMethods], configuration: setup.configuration.trim(), environment: setup.environment.trim(),
+            equipment: setup.equipment.trim(), instrumentation: setup.instrumentation.trim(), personnel: setup.personnel.trim(),
+            safetyConsiderations: setup.safetyConsiderations.trim(), calibrationRequirements: setup.calibrationRequirements.trim(), documentIds: [...setup.documentIds]
+        };
+        updateProject((draft) => { draft.verificationSetups.push(record); }, `Created verification setup ${record.identifier}`);
+        setSetup(blankSetup());
+        setSetupModal(false);
+        notify(`${record.identifier} created.`, 'success');
+    };
+    const addTestCase = () => {
+        if (!testCase.title.trim() || !testCase.planId)
+            return notify('Enter a title and select a verification plan.', 'warning');
+        const meaningfulSteps = testCase.steps.filter((step) => step.instruction.trim());
+        if (!meaningfulSteps.length)
+            return notify('Add at least one repeatable step.', 'warning');
+        const owner = project.verificationPlans.find((record) => record.id === testCase.planId)?.owner ?? 'Verification Lead';
+        const values = Object.fromEntries(testCase.parameterDefinitions.map((definition) => [definition.name, definition.defaultValue]));
+        const record = {
+            ...(0, factory_1.controlledRecord)('case', (0, id_1.nextIdentifier)('TC', project.testCases.map((value) => value.identifier)), testCase.title.trim(), owner, 'draft'),
+            verificationPlanId: testCase.planId, setupId: testCase.setupId || undefined, sharedSetup: testCase.sharedSetup.trim(),
+            steps: meaningfulSteps, parameterDefinitions: structuredClone(testCase.parameterDefinitions), parameterValues: values,
+            expectedEvidence: testCase.expectedEvidence.trim(), inheritedAcceptanceRule: testCase.inheritedAcceptanceRule
+        };
+        updateProject((draft) => {
+            draft.testCases.push(record);
+            const planRecord = draft.verificationPlans.find((value) => value.id === record.verificationPlanId);
+            if (planRecord && !planRecord.testCaseIds.includes(record.id))
+                planRecord.testCaseIds.push(record.id);
+        }, `Created parameterized test case ${record.identifier}`);
+        setTestCase(blankTestCase());
+        setTestCaseModal(false);
+        notify(`${record.identifier} created.`, 'success');
+    };
     const addExecution = () => {
-        const selectedPlan = project.verificationPlans.find((value) => value.id === execution.planId);
-        if (!selectedPlan)
+        const planRecord = project.verificationPlans.find((value) => value.id === execution.planId);
+        if (!planRecord)
             return notify('Select a verification plan.', 'warning');
         if (!execution.operator.trim())
             return notify('Record the operator for the as-run condition.', 'warning');
-        const runCount = project.testExecutions.filter((value) => value.verificationPlanId === selectedPlan.id).length;
+        if (!execution.systemConfiguration.trim())
+            return notify('Record the exact as-run configuration.', 'warning');
+        const caseRecord = execution.testCaseId ? project.testCases.find((value) => value.id === execution.testCaseId) : undefined;
+        const setupRecord = execution.setupId ? project.verificationSetups.find((value) => value.id === execution.setupId) : undefined;
+        const missingParameters = (caseRecord?.parameterDefinitions ?? []).filter((definition) => definition.required).filter((definition) => {
+            const value = execution.parameterValues[definition.name];
+            return value === undefined || String(value).trim() === '';
+        });
+        if (missingParameters.length)
+            return notify(`Record required parameters: ${missingParameters.map((definition) => definition.name).join(', ')}.`, 'warning');
+        const runCount = project.testExecutions.filter((value) => value.verificationPlanId === planRecord.id).length;
+        const sourceRun = execution.rerunOfId ? project.testExecutions.find((record) => record.id === execution.rerunOfId) : undefined;
         const record = {
-            ...(0, factory_1.controlledRecord)('run', (0, id_1.nextIdentifier)('RUN', project.testExecutions.map((value) => value.identifier)), `${selectedPlan.title} — Run ${runCount + 1}`, execution.operator, 'complete'),
-            verificationPlanId: selectedPlan.id,
-            testCaseId: execution.testCaseId || undefined,
-            requirementIds: [...selectedPlan.requirementIds],
-            executionNumber: runCount + 1,
-            executedAt: new Date(execution.executedAt || new Date().toISOString()).toISOString(),
-            operator: execution.operator.trim(),
-            reviewer: execution.reviewer.trim(),
-            systemConfiguration: execution.systemConfiguration.trim(),
-            hardwareRevision: execution.hardwareRevision.trim(),
-            softwareVersion: execution.softwareVersion.trim(),
-            firmwareVersion: execution.firmwareVersion.trim(),
-            environment: execution.environment.trim(),
-            equipment: execution.equipment.trim(),
-            calibrationReference: execution.calibrationReference.trim(),
-            inputData: execution.inputData.trim(),
-            outputData: execution.outputData.trim(),
-            observations: execution.observations.trim(),
-            deviations: execution.deviations.trim(),
-            result: execution.result,
-            evidenceIds: [...execution.evidenceIds]
+            ...(0, factory_1.controlledRecord)('run', (0, id_1.nextIdentifier)('RUN', project.testExecutions.map((value) => value.identifier)), `${planRecord.title} — Run ${runCount + 1}`, execution.operator.trim(), ['not-run', 'running'].includes(execution.result) ? execution.result : 'complete'),
+            verificationPlanId: planRecord.id, verificationPlanRevision: planRecord.revision, verificationMethod: planRecord.verificationMethod,
+            verificationLevel: planRecord.verificationLevel, testCaseId: caseRecord?.id, testCaseRevision: caseRecord?.revision,
+            setupId: setupRecord?.id, setupRevision: setupRecord?.revision, requirementIds: [...planRecord.requirementIds], executionNumber: runCount + 1,
+            executedAt: new Date(execution.executedAt || new Date().toISOString()).toISOString(), operator: execution.operator.trim(), reviewer: execution.reviewer.trim(),
+            systemConfiguration: execution.systemConfiguration.trim(), hardwareRevision: execution.hardwareRevision.trim(), softwareVersion: execution.softwareVersion.trim(),
+            firmwareVersion: execution.firmwareVersion.trim(), environment: execution.environment.trim(), equipment: execution.equipment.trim(),
+            calibrationReference: execution.calibrationReference.trim(), inputData: execution.inputData.trim(), outputData: execution.outputData.trim(),
+            observations: execution.observations.trim(), deviations: execution.deviations.trim(), parameterValues: { ...execution.parameterValues },
+            methodDetails: structuredClone(execution.methodDetails), operationalValidation: structuredClone(execution.operationalValidation),
+            acceptanceCriteriaSatisfied: execution.acceptanceCriteriaSatisfied, configurationConformance: execution.configurationConformance,
+            reviewerDisposition: execution.reviewerDisposition, reviewedAt: execution.reviewerDisposition === 'pending-review' ? undefined : new Date().toISOString(),
+            dispositionNotes: execution.dispositionNotes.trim(), exceptionIds: [], retestState: execution.retestState, retestReason: execution.retestReason.trim(),
+            rerunOfId: sourceRun?.id, rerunSequence: sourceRun ? (sourceRun.rerunSequence ?? sourceRun.executionNumber) + 1 : 1,
+            result: execution.result, evidenceIds: [...execution.evidenceIds], currencyState: 'current', staleReason: '', staleSourceIds: []
         };
         updateProject((draft) => {
             draft.testExecutions.push(record);
@@ -10510,244 +13565,601 @@ function VerificationView() {
                 const requirement = draft.requirements.find((value) => value.id === requirementId);
                 if (!requirement)
                     return;
-                requirement.testExecutionIds.push(record.id);
-                record.evidenceIds.forEach((evidenceId) => { if (!requirement.evidenceIds.includes(evidenceId))
-                    requirement.evidenceIds.push(evidenceId); });
-                requirement.statuses.verification = record.result === 'passed' ? 'passed' : record.result === 'failed' || record.result === 'inconclusive' ? 'failed' : record.result === 'blocked' ? 'blocked' : record.result === 'running' ? 'running' : record.result === 'waived' || record.result === 'conditionally-accepted' ? 'waived' : 'planned';
+                if (!requirement.testExecutionIds.includes(record.id))
+                    requirement.testExecutionIds.push(record.id);
+                requirement.statuses.verification = record.result === 'passed' ? 'passed' : record.result === 'failed' ? 'failed' : record.result === 'running' ? 'running' : 'planned';
+                draft.links.push({ id: (0, id_1.createId)('link'), type: 'verified-by', fromId: requirement.id, toId: record.id, rationale: `As-run ${(0, text_1.humanize)(record.verificationMethod)} result`, createdAt: new Date().toISOString(), createdBy: record.operator });
             });
-            record.evidenceIds.forEach((evidenceId) => {
-                const document = draft.documents.find((value) => value.id === evidenceId);
-                if (document && !document.linkedRecordIds.includes(record.id))
-                    document.linkedRecordIds.push(record.id);
-                draft.links.push({ id: (0, id_1.createId)('link'), type: 'supported-by', fromId: record.id, toId: evidenceId, rationale: 'As-run evidence', createdAt: new Date().toISOString(), createdBy: record.operator });
-            });
-        });
-        setExecution(blankExecution);
+            if (sourceRun) {
+                const prior = draft.testExecutions.find((value) => value.id === sourceRun.id);
+                if (prior)
+                    prior.retestState = record.result === 'passed' ? 'completed' : 'required';
+                draft.verificationExceptions.filter((value) => value.executionId === sourceRun.id && value.requiresRetest).forEach((finding) => {
+                    finding.retestExecutionId = record.id;
+                    if (record.result === 'passed') {
+                        finding.status = 'corrected';
+                        finding.disposition = `${finding.disposition}${finding.disposition ? '\n\n' : ''}Retest ${record.identifier} passed and satisfied the corrective-action verification.`;
+                    }
+                });
+                draft.links.push({ id: (0, id_1.createId)('link'), type: 'supersedes', fromId: record.id, toId: sourceRun.id, rationale: 'Controlled rerun preserves the earlier result while providing current evidence.', createdAt: new Date().toISOString(), createdBy: record.operator });
+            }
+        }, `${record.rerunOfId ? 'Recorded verification rerun' : 'Recorded verification execution'} ${record.identifier}`, { generateImpact: false });
+        setExecution(blankExecution());
         setExecutionModal(false);
-        notify(`${record.identifier} recorded as ${(0, text_1.humanize)(record.result)}. Prior results remain in history.`, record.result === 'passed' ? 'success' : record.result === 'failed' ? 'danger' : 'warning');
+        notify(`${record.identifier} recorded without overwriting earlier results.`, 'success');
     };
-    const addTestCase = () => {
-        const selectedPlan = project.verificationPlans.find((value) => value.id === testCase.planId);
-        if (!selectedPlan || !testCase.title.trim())
-            return notify('Enter a test-case title and select a verification plan.', 'warning');
+    const addException = () => {
+        const run = project.testExecutions.find((record) => record.id === exception.executionId);
+        if (!run)
+            return notify('Select a verification execution.', 'warning');
+        if (!exception.title.trim() || !exception.description.trim())
+            return notify('Enter a title and description.', 'warning');
+        if (!exception.disposition.trim() && exception.status !== 'open')
+            return notify('Record a disposition before moving the exception out of Open.', 'warning');
         const record = {
-            ...(0, factory_1.controlledRecord)('case', (0, id_1.nextIdentifier)('CASE', project.testCases.map((value) => value.identifier)), testCase.title.trim(), selectedPlan.owner, 'draft'),
-            verificationPlanId: selectedPlan.id,
-            sharedSetup: testCase.setup.trim(),
-            steps: testCase.steps.filter((step) => step.instruction.trim()).map((step) => ({ ...step, instruction: step.instruction.trim(), expectedResult: step.expectedResult.trim() })),
-            parameterValues: {}
+            ...(0, factory_1.controlledRecord)('exception', (0, id_1.nextIdentifier)('EXC', project.verificationExceptions.map((value) => value.identifier)), exception.title.trim(), run.owner || run.operator, exception.status),
+            executionId: run.id, kind: exception.kind, severity: exception.severity, description: exception.description.trim(),
+            requirementIds: [...run.requirementIds], status: exception.status, disposition: exception.disposition.trim(),
+            requiresRetest: exception.requiresRetest, dueDate: exception.dueDate || undefined, evidenceIds: [...exception.evidenceIds]
         };
         updateProject((draft) => {
-            draft.testCases.push(record);
-            const planRecord = draft.verificationPlans.find((value) => value.id === selectedPlan.id);
-            if (planRecord)
-                planRecord.testCaseIds.push(record.id);
-        });
-        setTestCase({ title: '', planId: '', setup: '', steps: [{ id: (0, id_1.createId)('step'), instruction: '', expectedResult: '' }] });
-        setTestCaseModal(false);
+            draft.verificationExceptions.push(record);
+            const executionRecord = draft.testExecutions.find((value) => value.id === run.id);
+            if (executionRecord) {
+                if (!executionRecord.exceptionIds.includes(record.id))
+                    executionRecord.exceptionIds.push(record.id);
+                if (record.requiresRetest) {
+                    executionRecord.retestState = 'required';
+                    executionRecord.retestReason = record.description;
+                }
+            }
+            record.requirementIds.forEach((requirementId) => draft.links.push({ id: (0, id_1.createId)('link'), type: 'impacts', fromId: record.id, toId: requirementId, rationale: `${(0, text_1.humanize)(record.kind)} discovered during ${run.identifier}`, createdAt: new Date().toISOString(), createdBy: record.owner }));
+        }, `Created verification exception ${record.identifier}`);
+        setException(blankException());
+        setExceptionModal(false);
         notify(`${record.identifier} created.`, 'success');
     };
-    const resultGroups = ['unit', 'integration', 'subsystem', 'system', 'operational'].map((level) => ({
-        level,
-        executions: project.testExecutions.filter((run) => project.verificationPlans.find((plan) => plan.id === run.verificationPlanId)?.verificationLevel === level)
-    }));
-    return (React.createElement("div", { className: "view-stack verification-view" },
-        React.createElement(ui_1.SectionHeader, { eyebrow: "Verification", title: "Plan intent, record as-run conditions, and close with evidence", description: "Verification is broader than testing. A requirement closes only when the applicable plan, result, criteria, evidence, review, and configuration conditions are satisfied.", actions: React.createElement(React.Fragment, null,
-                React.createElement(ui_1.Button, { icon: "play", onClick: () => openExecution() }, "Record execution"),
-                React.createElement(ui_1.Button, { icon: "plus", variant: "primary", onClick: () => setPlanModal(true) }, "New plan")) }),
-        React.createElement("div", { className: "verification-coverage" },
+    const updateExceptionStatus = (record, status) => {
+        if (!record.disposition.trim() && status !== 'open')
+            return notify('Open the controlled record and record a disposition before closing this exception.', 'warning');
+        updateProject((draft) => {
+            const finding = draft.verificationExceptions.find((value) => value.id === record.id);
+            if (!finding)
+                return;
+            finding.status = status;
+            finding.lifecycleState = status;
+        }, `Dispositioned verification exception ${record.identifier} as ${(0, text_1.humanize)(status)}`);
+    };
+    const openPolicyEditor = (level = selectedReadinessLevel) => {
+        const current = project.readinessPolicies.filter((record) => !record.archived && record.verificationLevel === level && record.approvalState === 'approved').sort((a, b) => b.revision - a.revision)[0];
+        setSelectedReadinessLevel(level);
+        setPolicyDraft({
+            minimumScore: current?.minimumScore ?? (level === 'operational' ? 90 : level === 'system' ? 85 : 80),
+            requireAllRequiredFactors: current?.requireAllRequiredFactors ?? true,
+            factorRules: structuredClone(current?.factorRules ?? (0, verification_1.defaultReadinessFactorRules)(level))
+        });
+        setPolicyModal(true);
+    };
+    const savePolicy = () => {
+        const current = project.readinessPolicies.filter((record) => !record.archived && record.verificationLevel === selectedReadinessLevel && record.approvalState === 'approved').sort((a, b) => b.revision - a.revision)[0];
+        updateProject((draft) => {
+            const target = current ? draft.readinessPolicies.find((record) => record.id === current.id) : undefined;
+            if (target) {
+                target.minimumScore = Math.max(0, Math.min(100, policyDraft.minimumScore));
+                target.requireAllRequiredFactors = policyDraft.requireAllRequiredFactors;
+                target.factorRules = structuredClone(policyDraft.factorRules);
+            }
+            else {
+                draft.readinessPolicies.push({
+                    ...(0, factory_1.controlledRecord)('gate', (0, id_1.nextIdentifier)('GATE', draft.readinessPolicies.map((value) => value.identifier)), `${(0, text_1.humanize)(selectedReadinessLevel)} readiness gate`, 'Systems Engineering Lead', 'approved'),
+                    verificationLevel: selectedReadinessLevel,
+                    minimumScore: Math.max(0, Math.min(100, policyDraft.minimumScore)),
+                    requireAllRequiredFactors: policyDraft.requireAllRequiredFactors,
+                    factorRules: structuredClone(policyDraft.factorRules),
+                    approvalState: 'approved'
+                });
+            }
+        }, `Revised ${(0, text_1.humanize)(selectedReadinessLevel)} readiness policy`);
+        setPolicyModal(false);
+        notify(`${(0, text_1.humanize)(selectedReadinessLevel)} readiness policy saved as a controlled revision.`, 'success');
+    };
+    const openOverride = (requirementId = selectedRequirementId, level = selectedReadinessLevel) => {
+        const requirement = project.requirements.find((record) => record.id === requirementId);
+        setOverride({ ...blankOverride(), targetRecordId: requirementId, verificationLevel: level, title: `${requirement?.identifier ?? 'Requirement'} ${(0, text_1.humanize)(level)} readiness request`, requestedBy: requirement?.owner ?? '', reviewer: 'Systems Engineering Lead' });
+        setOverrideModal(true);
+    };
+    const addOverride = () => {
+        if (!override.targetRecordId || !override.title.trim() || !override.rationale.trim() || !override.requestedBy.trim())
+            return notify('Select a target and record the title, requestor, and rationale.', 'warning');
+        if (!override.factorKeys.length)
+            return notify('Select at least one readiness factor affected by the request.', 'warning');
+        const record = {
+            ...(0, factory_1.controlledRecord)('override', (0, id_1.nextIdentifier)('OVR', project.readinessOverrides.map((value) => value.identifier)), override.title.trim(), override.requestedBy.trim(), 'under-review'),
+            targetRecordId: override.targetRecordId, verificationLevel: override.verificationLevel, kind: override.kind, rationale: override.rationale.trim(),
+            requestedBy: override.requestedBy.trim(), reviewer: override.reviewer.trim(), approvalState: 'under-review',
+            expiresAt: override.expiresAt || undefined, affectedRecordIds: [override.targetRecordId], factorKeys: [...override.factorKeys]
+        };
+        updateProject((draft) => { draft.readinessOverrides.push(record); }, `Created readiness override request ${record.identifier}`);
+        setOverride(blankOverride());
+        setOverrideModal(false);
+        notify(`${record.identifier} submitted for review.`, 'success');
+    };
+    const dispositionOverride = (id, approvalState) => {
+        updateProject((draft) => {
+            const record = draft.readinessOverrides.find((value) => value.id === id);
+            if (!record)
+                return;
+            record.approvalState = approvalState;
+            record.lifecycleState = approvalState;
+            if (approvalState === 'approved')
+                record.effectiveAt = new Date().toISOString();
+        }, `${(0, text_1.humanize)(approvalState)} readiness override`);
+    };
+    const latestExecutions = [...project.testExecutions].filter((record) => !record.archived).sort((a, b) => b.executedAt.localeCompare(a.executedAt));
+    const operationalExecutions = latestExecutions.filter((record) => record.verificationLevel === 'operational');
+    return (React.createElement("div", { className: "view-stack verification-workbench", "data-testid": "verification-workbench" },
+        React.createElement(ui_1.SectionHeader, { eyebrow: "Verify upward", title: "Plan intent, record as-run conditions, and close with evidence", description: "Verification may use test, analysis, inspection, demonstration, similarity, certification, or a controlled combination. Historical failures remain visible after reruns.", actions: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { icon: "plus", onClick: () => { setPlan(blankPlan()); setPlanModal(true); } }, "Create plan"),
+                React.createElement(ui_1.Button, { variant: "primary", icon: "play", onClick: () => openExecution() }, "Record verification")) }),
+        React.createElement(ui_1.Panel, { className: "verification-coverage" },
             React.createElement("div", null,
-                React.createElement("span", null, "Plan coverage"),
+                React.createElement("span", null, "Verification planned"),
                 React.createElement("strong", null,
                     coverage.planned,
                     "/",
                     coverage.total),
-                React.createElement(Progress_1.ProgressBar, { value: coverage.plannedPercent, showValue: false })),
+                React.createElement(Progress_1.ProgressBar, { value: coverage.plannedPercent, showValue: false, size: "small" })),
             React.createElement("div", null,
-                React.createElement("span", null, "Passing closure"),
+                React.createElement("span", null, "Requirements closed"),
                 React.createElement("strong", null,
-                    coverage.passed,
+                    coverage.closed,
                     "/",
                     coverage.total),
-                React.createElement(Progress_1.ProgressBar, { value: coverage.passedPercent, showValue: false })),
+                React.createElement(Progress_1.ProgressBar, { value: coverage.closedPercent, showValue: false, size: "small", tone: coverage.closedPercent === 100 ? 'success' : 'default' })),
+            React.createElement("div", null,
+                React.createElement("span", null, "Operationally accepted"),
+                React.createElement("strong", null, coverage.accepted),
+                React.createElement("small", null, "Validation in representative use")),
+            React.createElement("div", null,
+                React.createElement("span", null, "Open exceptions"),
+                React.createElement("strong", null, coverage.openExceptions),
+                React.createElement("small", null, "Deviation, anomaly, defect, or observation")),
             React.createElement("div", { className: "verification-coverage__note" },
                 React.createElement(Icon_1.Icon, { name: "info" }),
-                React.createElement("span", null, "A passed execution does not erase earlier failed results and does not by itself prove closure."))),
-        React.createElement(Tabs_1.Tabs, { options: tabs, active: activeTab, onChange: setActiveTab }),
-        activeTab === 'plans' ? React.createElement(ui_1.Panel, { className: "panel--flush" }, project.verificationPlans.length ? React.createElement("div", { className: "data-table-wrap" },
-            React.createElement("table", { className: "data-table" },
-                React.createElement("thead", null,
-                    React.createElement("tr", null,
-                        React.createElement("th", null, "Plan"),
-                        React.createElement("th", null, "Method"),
-                        React.createElement("th", null, "Level"),
-                        React.createElement("th", null, "Requirements"),
-                        React.createElement("th", null, "Acceptance criteria"),
-                        React.createElement("th", null, "Owner"),
-                        React.createElement("th", null, "Planned"),
-                        React.createElement("th", null, "Approval"),
-                        React.createElement("th", null))),
-                React.createElement("tbody", null, project.verificationPlans.map((record) => React.createElement("tr", { key: record.id },
-                    React.createElement("td", null,
-                        React.createElement("strong", null,
+                React.createElement("span", null, "Closure is derived from approved intent, exact revisions, completed as-run records, acceptance criteria, configuration conformity, reviewer disposition, resolved exceptions, retest, and current evidence."))),
+        React.createElement(Tabs_1.Tabs, { options: tabs, active: activeTab, onChange: selectTab }),
+        activeTab === 'plans' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "Verification plans", description: "Plan the method and level before recording the as-run result.", actions: React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => { setPlan(blankPlan()); setPlanModal(true); } }, "Add plan") }),
+            project.verificationPlans.filter((record) => !record.archived).length ? React.createElement("div", { className: "verification-card-grid" }, project.verificationPlans.filter((record) => !record.archived).map((record) => {
+                const setupRecord = project.verificationSetups.find((value) => value.id === record.setupId);
+                const requirements = linkedNames(record.requirementIds, project.requirements);
+                const runs = project.testExecutions.filter((value) => value.verificationPlanId === record.id && !value.archived);
+                return React.createElement("article", { key: record.id, className: "verification-card" },
+                    React.createElement("header", null,
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "mono-label" },
+                                record.identifier,
+                                " \u00B7 revision ",
+                                record.revision),
+                            React.createElement("h3", null, record.title)),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.approvalState })),
+                    React.createElement("div", { className: "verification-card__facts" },
+                        React.createElement("span", null,
+                            React.createElement("strong", null, (0, text_1.humanize)(record.verificationMethod)),
+                            React.createElement("small", null, "Method")),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, (0, text_1.humanize)(record.verificationLevel)),
+                            React.createElement("small", null, "Level")),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, runs.length),
+                            React.createElement("small", null, "Executions"))),
+                    React.createElement("p", null, record.objective || 'No objective recorded.'),
+                    React.createElement("div", { className: "verification-card__criterion" },
+                        React.createElement("strong", null, "Acceptance"),
+                        React.createElement("span", null, record.acceptanceCriteria || 'Not defined')),
+                    React.createElement("div", { className: "chip-row" }, requirements.map((value) => React.createElement("button", { key: value.id, className: "record-chip", onClick: () => openControlledRecord('requirements', value.id) }, value.identifier))),
+                    setupRecord ? React.createElement("small", { className: "verification-card__setup" },
+                        "Setup: ",
+                        setupRecord.identifier,
+                        " revision ",
+                        setupRecord.revision,
+                        " \u00B7 ",
+                        record.inheritedEnvironment ? 'environment inherited' : 'plan-specific environment') : null,
+                    React.createElement("footer", null,
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('verificationPlans', record.id) }, "Open controlled record"),
+                        React.createElement(ui_1.Button, { size: "small", variant: "primary", icon: "play", onClick: () => openExecution(record.id) }, "Record execution")));
+            })) : React.createElement(ui_1.EmptyState, { icon: "verification", title: "No verification plans", description: "Create a plan from a requirement and choose the appropriate verification method.", action: React.createElement(ui_1.Button, { onClick: () => setPlanModal(true) }, "Create plan") }))) : null,
+        activeTab === 'setups' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "Reusable verification setups", description: "Reference shared configuration, environment, equipment, personnel, safety, and calibration conditions instead of copying them into every plan.", actions: React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => { setSetup(blankSetup()); setSetupModal(true); } }, "Add setup") }),
+            project.verificationSetups.filter((record) => !record.archived).length ? React.createElement("div", { className: "verification-card-grid" }, project.verificationSetups.filter((record) => !record.archived).map((record) => React.createElement("article", { key: record.id, className: "verification-card verification-card--setup" },
+                React.createElement("header", null,
+                    React.createElement("div", null,
+                        React.createElement("span", { className: "mono-label" },
                             record.identifier,
-                            " \u00B7 ",
-                            record.title),
+                            " \u00B7 revision ",
+                            record.revision),
+                        React.createElement("h3", null, record.title)),
+                    React.createElement(StatusBadge_1.StatusBadge, { value: record.lifecycleState })),
+                React.createElement("div", { className: "chip-row" }, record.applicableMethods.map((method) => React.createElement("span", { key: method, className: "record-chip record-chip--static" }, (0, text_1.humanize)(method)))),
+                React.createElement("dl", { className: "compact-definition-list" },
+                    React.createElement("dt", null, "Configuration"),
+                    React.createElement("dd", null, record.configuration || 'Not recorded'),
+                    React.createElement("dt", null, "Environment"),
+                    React.createElement("dd", null, record.environment || 'Not recorded'),
+                    React.createElement("dt", null, "Equipment"),
+                    React.createElement("dd", null, record.equipment || 'Not recorded'),
+                    React.createElement("dt", null, "Calibration"),
+                    React.createElement("dd", null, record.calibrationRequirements || 'Not recorded')),
+                React.createElement("footer", null,
+                    React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('verificationSetups', record.id) }, "Open controlled record"))))) : React.createElement(ui_1.EmptyState, { icon: "settings", title: "No reusable setups", description: "Create a reusable setup for configurations and environments shared by multiple verification activities.", action: React.createElement(ui_1.Button, { onClick: () => setSetupModal(true) }, "Create setup") }))) : null,
+        activeTab === 'cases' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "Parameterized test cases", description: "Reuse steps and setup while recording the exact parameter values used for each run.", actions: React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => { setTestCase(blankTestCase()); setTestCaseModal(true); } }, "Add test case") }),
+            project.testCases.filter((record) => !record.archived).length ? React.createElement("div", { className: "verification-card-grid" }, project.testCases.filter((record) => !record.archived).map((record) => {
+                const planRecord = project.verificationPlans.find((value) => value.id === record.verificationPlanId);
+                const setupRecord = project.verificationSetups.find((value) => value.id === record.setupId);
+                return React.createElement("article", { key: record.id, className: "verification-card" },
+                    React.createElement("header", null,
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "mono-label" },
+                                record.identifier,
+                                " \u00B7 revision ",
+                                record.revision),
+                            React.createElement("h3", null, record.title)),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.lifecycleState })),
+                    React.createElement("p", null, record.sharedSetup || 'No shared setup description.'),
+                    React.createElement("div", { className: "verification-card__facts" },
+                        React.createElement("span", null,
+                            React.createElement("strong", null, record.steps.length),
+                            React.createElement("small", null, "Steps")),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, record.parameterDefinitions.length),
+                            React.createElement("small", null, "Parameters")),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, record.inheritedAcceptanceRule ? 'Inherited' : 'Local'),
+                            React.createElement("small", null, "Acceptance rule"))),
+                    React.createElement("small", null,
+                        planRecord ? `${planRecord.identifier} · ${(0, text_1.humanize)(planRecord.verificationMethod)}` : 'Plan missing',
+                        setupRecord ? ` · ${setupRecord.identifier}` : ''),
+                    record.parameterDefinitions.length ? React.createElement("div", { className: "parameter-summary" }, record.parameterDefinitions.map((definition) => React.createElement("span", { key: definition.id },
+                        React.createElement("strong", null, definition.name),
                         React.createElement("small", null,
-                            "Revision ",
-                            record.revision)),
-                    React.createElement("td", null, (0, text_1.humanize)(record.verificationMethod)),
-                    React.createElement("td", null, (0, text_1.humanize)(record.verificationLevel)),
-                    React.createElement("td", null,
-                        React.createElement("div", { className: "tag-list tag-list--inline" }, record.requirementIds.map((id) => React.createElement("span", { key: id }, project.requirements.find((value) => value.id === id)?.identifier ?? 'Missing')))),
-                    React.createElement("td", null, (0, text_1.truncate)(record.acceptanceCriteria || 'Not defined', 100)),
-                    React.createElement("td", null, record.owner),
-                    React.createElement("td", null, (0, dates_1.formatDate)(record.plannedDate)),
-                    React.createElement("td", null,
-                        React.createElement(ui_1.Select, { value: record.approvalState, onChange: (event) => updateProject((draft) => { const planRecord = draft.verificationPlans.find((value) => value.id === record.id); if (planRecord)
-                                planRecord.approvalState = event.target.value; }) }, ['draft', 'under-review', 'approved', 'superseded'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
-                    React.createElement("td", null,
-                        React.createElement(ui_1.Button, { size: "small", icon: "play", onClick: () => openExecution(record.id) }, "Run"))))))) : React.createElement(ui_1.EmptyState, { icon: "verification", title: "No verification plans", description: "Create a plan that states method, level, acceptance criteria, configuration, environment, and required evidence.", action: React.createElement(ui_1.Button, { icon: "plus", variant: "primary", onClick: () => setPlanModal(true) }, "New plan") })) : null,
-        activeTab === 'cases' ? React.createElement(ui_1.Panel, { className: "panel--flush" },
-            project.testCases.length ? React.createElement("div", { className: "data-table-wrap" },
-                React.createElement("table", { className: "data-table" },
-                    React.createElement("thead", null,
-                        React.createElement("tr", null,
-                            React.createElement("th", null, "Test case"),
-                            React.createElement("th", null, "Verification plan"),
-                            React.createElement("th", null, "Shared setup"),
-                            React.createElement("th", null, "Steps"),
-                            React.createElement("th", null, "Revision"))),
-                    React.createElement("tbody", null, project.testCases.map((record) => React.createElement("tr", { key: record.id },
-                        React.createElement("td", null,
-                            React.createElement("strong", null,
+                            String(definition.defaultValue),
+                            " ",
+                            definition.unit)))) : null,
+                    React.createElement("footer", null,
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('testCases', record.id) }, "Open controlled record"),
+                        React.createElement(ui_1.Button, { size: "small", variant: "primary", onClick: () => openExecution(record.verificationPlanId, undefined, record) }, "Use case")));
+            })) : React.createElement(ui_1.EmptyState, { icon: "table", title: "No parameterized test cases", description: "Create repeatable steps and explicit parameter definitions for test-based verification.", action: React.createElement(ui_1.Button, { onClick: () => setTestCaseModal(true) }, "Create test case") }))) : null,
+        activeTab === 'executions' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "As-run verification executions", description: "Each execution retains the exact plan, case, setup, configuration, method details, evidence, and reviewer disposition used at the time.", actions: React.createElement(ui_1.Button, { size: "small", icon: "play", onClick: () => openExecution() }, "Record execution") }),
+            latestExecutions.length ? React.createElement("div", { className: "execution-ledger" }, latestExecutions.map((record) => {
+                const planRecord = project.verificationPlans.find((value) => value.id === record.verificationPlanId);
+                const caseRecord = project.testCases.find((value) => value.id === record.testCaseId);
+                const setupRecord = project.verificationSetups.find((value) => value.id === record.setupId);
+                const findings = project.verificationExceptions.filter((value) => value.executionId === record.id && !value.archived);
+                return React.createElement("article", { key: record.id, className: `execution-row execution-row--${resultTone(record.result)}` },
+                    React.createElement("div", { className: "execution-row__identity" },
+                        React.createElement("span", { className: "mono-label" }, record.identifier),
+                        React.createElement("strong", null, record.title),
+                        React.createElement("small", null,
+                            (0, dates_1.formatDateTime)(record.executedAt),
+                            " \u00B7 ",
+                            record.operator)),
+                    React.createElement("div", { className: "execution-row__status" },
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.result }),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.currencyState ?? 'current' }),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.reviewerDisposition ?? 'pending-review' })),
+                    React.createElement("div", { className: "execution-row__method" },
+                        React.createElement("strong", null, (0, text_1.humanize)(record.verificationMethod)),
+                        React.createElement("small", null,
+                            (0, text_1.humanize)(record.verificationLevel),
+                            " \u00B7 run ",
+                            record.executionNumber)),
+                    React.createElement("div", { className: "execution-row__revision" },
+                        React.createElement("strong", null,
+                            "Plan r",
+                            record.verificationPlanRevision),
+                        React.createElement("small", null,
+                            caseRecord ? `Case r${record.testCaseRevision}` : 'No case',
+                            " \u00B7 ",
+                            setupRecord ? `Setup r${record.setupRevision}` : 'No setup')),
+                    React.createElement("div", { className: "execution-row__exceptions" },
+                        React.createElement("strong", null, findings.length),
+                        React.createElement("small", null,
+                            "Exception",
+                            findings.length === 1 ? '' : 's',
+                            " \u00B7 retest ",
+                            (0, text_1.humanize)(record.retestState ?? 'not-required'))),
+                    React.createElement("div", { className: "execution-row__actions" },
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('testExecutions', record.id) }, "Open"),
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", icon: "refresh", onClick: () => openExecution(record.verificationPlanId, record) }, "Clone as rerun"),
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", icon: "warning", onClick: () => { setException({ ...blankException(), executionId: record.id, title: `${record.identifier} verification finding` }); setExceptionModal(true); } }, "Add exception")),
+                    record.rerunOfId ? React.createElement("div", { className: "execution-row__rerun" },
+                        React.createElement(Icon_1.Icon, { name: "history", size: 14 }),
+                        React.createElement("span", null,
+                            "Controlled rerun of ",
+                            project.testExecutions.find((value) => value.id === record.rerunOfId)?.identifier ?? 'earlier execution',
+                            "; the prior result remains in history.")) : null,
+                    planRecord ? React.createElement("span", { className: "sr-only" }, planRecord.title) : null);
+            })) : React.createElement(ui_1.EmptyState, { icon: "play", title: "No verification executions", description: "Record the as-run condition for a test, analysis, inspection, demonstration, similarity assessment, certification review, or combined activity.", action: React.createElement(ui_1.Button, { onClick: () => openExecution() }, "Record verification") }))) : null,
+        activeTab === 'results' ? (React.createElement("div", { className: "result-card-list" },
+            latestExecutions.map((record) => {
+                const requirement = project.requirements.find((value) => record.requirementIds.includes(value.id));
+                const closure = requirement ? (0, verification_1.verificationExecutionClosure)(project, requirement, record) : undefined;
+                return React.createElement(ui_1.Panel, { key: record.id, className: "result-card" },
+                    React.createElement("div", { className: "result-card__header" },
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "mono-label" },
                                 record.identifier,
                                 " \u00B7 ",
-                                record.title)),
-                        React.createElement("td", null, project.verificationPlans.find((value) => value.id === record.verificationPlanId)?.identifier ?? 'Missing plan'),
-                        React.createElement("td", null, (0, text_1.truncate)(record.sharedSetup, 100)),
-                        React.createElement("td", null, record.steps.length),
-                        React.createElement("td", null, record.revision)))))) : React.createElement(ui_1.EmptyState, { icon: "table", title: "No reusable test cases", description: "Create a parameterized case with shared setup, steps, and expected results.", action: React.createElement(ui_1.Button, { icon: "plus", variant: "primary", onClick: () => setTestCaseModal(true) }, "New test case") }),
-            React.createElement("div", { className: "panel-footer-actions" },
-                React.createElement(ui_1.Button, { icon: "plus", onClick: () => setTestCaseModal(true) }, "New test case"))) : null,
-        activeTab === 'executions' ? React.createElement(ui_1.Panel, { className: "panel--flush" }, project.testExecutions.length ? React.createElement("div", { className: "data-table-wrap" },
-            React.createElement("table", { className: "data-table" },
-                React.createElement("thead", null,
-                    React.createElement("tr", null,
-                        React.createElement("th", null, "Execution"),
-                        React.createElement("th", null, "Plan"),
-                        React.createElement("th", null, "Level"),
-                        React.createElement("th", null, "As-run date"),
-                        React.createElement("th", null, "Configuration"),
-                        React.createElement("th", null, "Operator"),
-                        React.createElement("th", null, "Evidence"),
-                        React.createElement("th", null, "Result"))),
-                React.createElement("tbody", null, [...project.testExecutions].sort((a, b) => b.executedAt.localeCompare(a.executedAt)).map((record) => { const planRecord = project.verificationPlans.find((value) => value.id === record.verificationPlanId); return React.createElement("tr", { key: record.id },
-                    React.createElement("td", null,
-                        React.createElement("strong", null, record.identifier),
-                        React.createElement("small", null,
-                            "Run ",
-                            record.executionNumber,
-                            " \u00B7 Revision ",
-                            record.revision)),
-                    React.createElement("td", null,
-                        planRecord?.identifier ?? 'Missing plan',
-                        " \u00B7 ",
-                        planRecord?.title),
-                    React.createElement("td", null, (0, text_1.humanize)(planRecord?.verificationLevel ?? 'unknown')),
-                    React.createElement("td", null, (0, dates_1.formatDateTime)(record.executedAt)),
-                    React.createElement("td", null,
-                        React.createElement("strong", null, record.systemConfiguration || 'Not recorded'),
-                        React.createElement("small", null,
-                            "Hardware ",
-                            record.hardwareRevision || '—',
-                            " \u00B7 Software ",
-                            record.softwareVersion || '—',
-                            " \u00B7 Firmware ",
-                            record.firmwareVersion || '—')),
-                    React.createElement("td", null,
-                        record.operator,
-                        React.createElement("small", null, record.reviewer ? `Reviewed by ${record.reviewer}` : 'Reviewer not recorded')),
-                    React.createElement("td", null, record.evidenceIds.length),
-                    React.createElement("td", null,
-                        React.createElement(StatusBadge_1.StatusBadge, { value: record.result }))); })))) : React.createElement(ui_1.EmptyState, { icon: "play", title: "No as-run executions", description: "Record the exact plan revision, operator, system configuration, environment, equipment, deviations, result, and evidence.", action: React.createElement(ui_1.Button, { icon: "play", variant: "primary", onClick: () => openExecution() }, "Record execution") })) : null,
-        activeTab === 'results' ? React.createElement("div", { className: "verification-level-grid" }, resultGroups.map(({ level, executions }) => React.createElement(ui_1.Panel, { key: level },
-            React.createElement(ui_1.PanelHeader, { title: `${(0, text_1.humanize)(level)} level`, description: `${executions.length} execution record(s)` }),
-            executions.length ? React.createElement("div", { className: "result-card-list" }, executions.map((record) => React.createElement("div", { className: "result-card", key: record.id },
-                React.createElement("div", null,
-                    React.createElement(StatusBadge_1.StatusBadge, { value: record.result }),
-                    React.createElement("span", null,
-                        record.identifier,
-                        " \u00B7 ",
-                        (0, dates_1.formatDate)(record.executedAt))),
-                React.createElement("strong", null, project.verificationPlans.find((value) => value.id === record.verificationPlanId)?.title ?? 'Missing verification plan'),
-                React.createElement("p", null, record.outputData || record.observations || 'No result summary recorded.'),
-                React.createElement("small", null,
-                    record.systemConfiguration || 'Configuration not recorded',
-                    " \u00B7 ",
-                    record.evidenceIds.length,
-                    " evidence artifact(s)")))) : React.createElement("div", { className: "result-level-empty" },
-                "No ",
-                level,
-                "-level result has been recorded.")))) : null,
-        activeTab === 'readiness' ? React.createElement(ui_1.Panel, { className: "panel--flush" },
-            React.createElement("div", { className: "readiness-table" },
-                React.createElement("div", { className: "readiness-table__header" },
-                    React.createElement("span", null, "Requirement"),
-                    React.createElement("span", null, "Plan"),
-                    React.createElement("span", null, "Latest state"),
-                    React.createElement("span", null, "Closure"),
-                    React.createElement("span", null, "Readiness"),
-                    React.createElement("span", null)),
-                project.requirements.map((requirement) => { const plans = project.verificationPlans.filter((plan) => plan.requirementIds.includes(requirement.id)); const closure = (0, calculations_1.verificationClosure)(project, requirement); const readiness = (0, calculations_1.requirementReadiness)(project, requirement); const expanded = expandedReadiness === requirement.id; return React.createElement("div", { className: "readiness-table__group", key: requirement.id },
-                    React.createElement("button", { className: "readiness-table__row", onClick: () => setExpandedReadiness(expanded ? undefined : requirement.id) },
+                                (0, text_1.humanize)(record.verificationLevel)),
+                            React.createElement("h3", null, record.title)),
+                        React.createElement("div", { className: "result-card__badges" },
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.result }),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.currencyState ?? 'current' }))),
+                    React.createElement("p", null, record.outputData || record.observations || 'No result narrative recorded.'),
+                    React.createElement("div", { className: "result-card__facts" },
                         React.createElement("span", null,
-                            React.createElement("strong", null, requirement.identifier),
-                            React.createElement("small", null, requirement.title)),
-                        React.createElement("span", null, plans.length ? plans.map((plan) => plan.identifier).join(', ') : 'None'),
+                            React.createElement("strong", null, (0, text_1.humanize)(record.verificationMethod)),
+                            React.createElement("small", null, "Method")),
                         React.createElement("span", null,
-                            React.createElement(StatusBadge_1.StatusBadge, { value: (0, calculations_1.deriveVerificationState)(project, requirement), compact: true })),
+                            React.createElement("strong", null, record.evidenceIds.length),
+                            React.createElement("small", null, "Evidence")),
                         React.createElement("span", null,
-                            closure.conditions.filter((condition) => condition.met).length,
-                            "/",
-                            closure.conditions.length),
+                            React.createElement("strong", null,
+                                closure?.conditions.filter((condition) => condition.blocking && condition.met).length ?? 0,
+                                "/",
+                                closure?.conditions.filter((condition) => condition.blocking).length ?? 0),
+                            React.createElement("small", null, "Closure"))),
+                    closure ? React.createElement("div", { className: "closure-list closure-list--compact" }, closure.conditions.filter((condition) => condition.blocking).map((condition) => React.createElement("div", { key: condition.key, className: condition.met ? 'is-met' : 'is-open' },
+                        React.createElement(Icon_1.Icon, { name: condition.met ? 'check' : 'warning', size: 14 }),
                         React.createElement("span", null,
-                            React.createElement(Progress_1.ProgressBar, { value: readiness.score, size: "small" })),
-                        React.createElement(Icon_1.Icon, { name: "chevron-down", className: expanded ? 'is-rotated' : '' })),
-                    expanded ? React.createElement("div", { className: "readiness-table__detail" },
+                            React.createElement("strong", null, condition.label),
+                            React.createElement("small", null, condition.detail))))) : null,
+                    React.createElement("footer", null,
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('testExecutions', record.id) }, "Open execution"),
+                        requirement ? React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('requirements', requirement.id) }, "Open requirement") : null,
+                        !closure?.closed ? React.createElement(ui_1.Button, { size: "small", variant: "primary", icon: "refresh", onClick: () => openExecution(record.verificationPlanId, record) }, "Plan rerun") : null));
+            }),
+            !latestExecutions.length ? React.createElement(ui_1.Panel, null,
+                React.createElement(ui_1.EmptyState, { icon: "verification", title: "No results", description: "Results appear after a verification execution is recorded." })) : null)) : null,
+        activeTab === 'exceptions' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "Deviations, anomalies, defects, and observations", description: "Findings remain traceable to the as-run execution and may impose a controlled retest obligation.", actions: React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => { setException(blankException()); setExceptionModal(true); } }, "Add exception") }),
+            project.verificationExceptions.filter((record) => !record.archived).length ? React.createElement("div", { className: "exception-ledger" }, project.verificationExceptions.filter((record) => !record.archived).map((record) => {
+                const run = project.testExecutions.find((value) => value.id === record.executionId);
+                const rerun = project.testExecutions.find((value) => value.id === record.retestExecutionId);
+                return React.createElement("article", { key: record.id, className: `exception-card exception-card--${record.severity}` },
+                    React.createElement("header", null,
                         React.createElement("div", null,
-                            React.createElement("h3", null, "Closure conditions"),
-                            closure.conditions.map((condition) => React.createElement("span", { key: condition.label, className: condition.met ? 'is-met' : 'is-open' },
-                                React.createElement(Icon_1.Icon, { name: condition.met ? 'check' : 'close', size: 14 }),
-                                condition.label))),
+                            React.createElement("span", { className: "mono-label" },
+                                record.identifier,
+                                " \u00B7 ",
+                                (0, text_1.humanize)(record.kind)),
+                            React.createElement("h3", null, record.title)),
                         React.createElement("div", null,
-                            React.createElement("h3", null, "Readiness factors"),
-                            readiness.factors.map((factor) => React.createElement("span", { key: factor.label, className: factor.met ? 'is-met' : 'is-open' },
-                                React.createElement(Icon_1.Icon, { name: factor.met ? 'check' : 'warning', size: 14 }),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.severity }),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.status }))),
+                    React.createElement("p", null, record.description),
+                    React.createElement("div", { className: "exception-card__meta" },
+                        React.createElement("span", null, run?.identifier ?? 'Execution missing'),
+                        React.createElement("span", null, record.requiresRetest ? `Retest ${rerun?.identifier ?? 'required'}` : 'No retest required'),
+                        record.dueDate ? React.createElement("span", null,
+                            "Due ",
+                            (0, dates_1.formatDate)(record.dueDate)) : null),
+                    record.disposition ? React.createElement("div", { className: "exception-card__disposition" },
+                        React.createElement("strong", null, "Disposition"),
+                        React.createElement("span", null, record.disposition)) : null,
+                    React.createElement("footer", null,
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('verificationExceptions', record.id) }, "Open controlled record"),
+                        record.requiresRetest && run ? React.createElement(ui_1.Button, { size: "small", variant: "ghost", icon: "refresh", onClick: () => openExecution(run.verificationPlanId, run) }, "Create retest") : null,
+                        !['accepted', 'corrected', 'closed'].includes(record.status) ? React.createElement(React.Fragment, null,
+                            React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => updateExceptionStatus(record, 'accepted') }, "Accept"),
+                            React.createElement(ui_1.Button, { size: "small", variant: "primary", onClick: () => updateExceptionStatus(record, 'closed') }, "Close")) : null));
+            })) : React.createElement(ui_1.EmptyState, { icon: "check", title: "No verification exceptions", description: "Create an exception when an as-run activity departs from plan, reveals an anomaly or defect, or produces a noteworthy observation.", action: React.createElement(ui_1.Button, { onClick: () => setExceptionModal(true) }, "Add exception") }))) : null,
+        activeTab === 'operational' ? (React.createElement(ui_1.Panel, null,
+            React.createElement(ui_1.PanelHeader, { title: "Operational validation", description: "Validate the system in an intended or representative use context with stakeholder needs, representative users, suitability observations, and an acceptance recommendation.", actions: React.createElement(ui_1.Button, { size: "small", icon: "play", onClick: () => openExecution(project.verificationPlans.find((record) => record.verificationLevel === 'operational')?.id) }, "Record operational validation") }),
+            operationalExecutions.length ? React.createElement("div", { className: "operational-grid" }, operationalExecutions.map((record) => {
+                const requirement = project.requirements.find((value) => record.requirementIds.includes(value.id));
+                const closure = requirement ? (0, verification_1.verificationExecutionClosure)(project, requirement, record) : undefined;
+                return React.createElement("article", { key: record.id, className: "operational-card" },
+                    React.createElement("header", null,
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "mono-label" },
+                                record.identifier,
+                                " \u00B7 ",
+                                (0, dates_1.formatDate)(record.executedAt)),
+                            React.createElement("h3", null, record.title)),
+                        React.createElement(StatusBadge_1.StatusBadge, { value: record.operationalValidation.acceptanceRecommendation })),
+                    React.createElement("dl", { className: "compact-definition-list" },
+                        React.createElement("dt", null, "Stakeholder need"),
+                        React.createElement("dd", null, record.operationalValidation.stakeholderNeed || 'Not recorded'),
+                        React.createElement("dt", null, "Scenario"),
+                        React.createElement("dd", null, record.operationalValidation.operationalScenario || 'Not recorded'),
+                        React.createElement("dt", null, "Representative user"),
+                        React.createElement("dd", null, record.operationalValidation.representativeUser || 'Not recorded'),
+                        React.createElement("dt", null, "Mission objective"),
+                        React.createElement("dd", null, record.operationalValidation.missionObjective || 'Not recorded'),
+                        React.createElement("dt", null, "Suitability"),
+                        React.createElement("dd", null, record.operationalValidation.suitabilityObservations || 'Not recorded')),
+                    React.createElement("div", { className: "operational-card__footer" },
+                        React.createElement("span", null,
+                            React.createElement("strong", null, requirement ? (0, text_1.humanize)((0, calculations_1.deriveValidationState)(project, requirement)) : 'Unlinked'),
+                            React.createElement("small", null, "Validation state")),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, closure?.closed ? 'Closed' : `${closure?.unmet.length ?? 0} open`),
+                            React.createElement("small", null, "Evidence closure"))),
+                    React.createElement("footer", null,
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('testExecutions', record.id) }, "Open execution"),
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", icon: "refresh", onClick: () => openExecution(record.verificationPlanId, record) }, "Repeat scenario")));
+            })) : React.createElement(ui_1.EmptyState, { icon: "eye", title: "No operational validation", description: "Create an operational-level plan and record a representative scenario before recommending acceptance.", action: React.createElement(ui_1.Button, { onClick: () => openExecution(project.verificationPlans.find((record) => record.verificationLevel === 'operational')?.id) }, "Record operational validation") }))) : null,
+        activeTab === 'readiness' ? (React.createElement("div", { className: "readiness-workbench" },
+            React.createElement(ui_1.Panel, { className: "readiness-controls" },
+                React.createElement(ui_1.PanelHeader, { title: "Readiness gate", description: "Select a requirement and integration level. Every score is explainable and every exception remains visible.", actions: React.createElement(ui_1.Button, { size: "small", variant: "ghost", icon: "settings", onClick: () => openPolicyEditor() }, "Edit policy") }),
+                React.createElement("div", { className: "form-grid form-grid--compact" },
+                    React.createElement(ui_1.Field, { label: "Requirement" },
+                        React.createElement(ui_1.Select, { value: selectedRequirementId, onChange: (event) => setSelectedRequirementId(event.target.value) }, project.requirements.filter((record) => !record.archived).map((record) => React.createElement("option", { key: record.id, value: record.id },
+                            record.identifier,
+                            " \u00B7 ",
+                            record.title)))),
+                    React.createElement(ui_1.Field, { label: "Verification level" },
+                        React.createElement(ui_1.Select, { value: selectedReadinessLevel, onChange: (event) => setSelectedReadinessLevel(event.target.value) }, LEVELS.map((level) => React.createElement("option", { key: level, value: level }, (0, text_1.humanize)(level)))))),
+                selectedRequirement && selectedReadiness ? React.createElement(React.Fragment, null,
+                    React.createElement("div", { className: "readiness-hero" },
+                        React.createElement("div", null,
+                            React.createElement("span", { className: "mono-label" },
+                                selectedRequirement.identifier,
+                                " \u00B7 ",
+                                (0, text_1.humanize)(selectedReadinessLevel)),
+                            React.createElement("h2", null, selectedRequirement.title),
+                            React.createElement("p", null,
+                                selectedReadiness.policy?.identifier ?? 'Default policy',
+                                " \u00B7 minimum ",
+                                selectedReadiness.policy?.minimumScore ?? 80,
+                                "%")),
+                        React.createElement("div", { className: `readiness-score readiness-score--${selectedReadiness.status}` },
+                            React.createElement("strong", null,
+                                selectedReadiness.score,
+                                "%"),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: selectedReadiness.status }))),
+                    React.createElement(Progress_1.ProgressBar, { value: selectedReadiness.score, tone: selectedReadiness.status === 'ready' ? 'success' : selectedReadiness.status === 'not-ready' ? 'danger' : 'warning' }),
+                    selectedReadiness.override ? React.createElement("div", { className: "readiness-override-alert" },
+                        React.createElement(Icon_1.Icon, { name: "warning" }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null,
+                                selectedReadiness.override.identifier,
+                                " \u00B7 ",
+                                (0, text_1.humanize)(selectedReadiness.override.kind)),
+                            React.createElement("small", null, selectedReadiness.override.rationale))) : null,
+                    React.createElement("div", { className: "readiness-factor-table" }, selectedReadiness.factors.map((factor) => React.createElement("div", { key: factor.key, className: factor.met ? 'is-met' : 'is-open' },
+                        React.createElement("span", { className: "readiness-factor-table__state" },
+                            React.createElement(Icon_1.Icon, { name: factor.met ? 'check' : 'warning', size: 15 })),
+                        React.createElement("div", null,
+                            React.createElement("strong", null,
+                                factor.label,
+                                factor.required ? ' · required' : '',
+                                factor.overridden ? ' · overridden' : ''),
+                            React.createElement("small", null, factor.detail),
+                            !factor.met ? React.createElement("em", null,
+                                "Next: ",
+                                factor.nextAction) : null),
+                        React.createElement("span", { className: "readiness-factor-table__weight" },
+                            "\u00D7",
+                            factor.weight)))),
+                    React.createElement("div", { className: "readiness-actions" },
+                        React.createElement(ui_1.Button, { variant: "ghost", onClick: () => openControlledRecord('requirements', selectedRequirement.id) }, "Open requirement"),
+                        React.createElement(ui_1.Button, { variant: "primary", icon: "warning", onClick: () => openOverride() }, "Request controlled exception"))) : React.createElement(ui_1.EmptyState, { icon: "cockpit", title: "Select a requirement", description: "Readiness factors will appear here." })),
+            React.createElement(ui_1.Panel, null,
+                React.createElement(ui_1.PanelHeader, { title: "Readiness by requirement", description: "Open a row to see every required factor, policy threshold, and controlled override." }),
+                React.createElement("div", { className: "readiness-table" },
+                    React.createElement("div", { className: "readiness-table__header" },
+                        React.createElement("span", null, "Requirement"),
+                        React.createElement("span", null, "Level"),
+                        React.createElement("span", null, "Score"),
+                        React.createElement("span", null, "Status"),
+                        React.createElement("span", null, "Next gap"),
+                        React.createElement("span", null)),
+                    project.requirements.filter((record) => !record.archived).map((record) => {
+                        const evaluation = (0, calculations_1.assessRequirementReadiness)(project, record, record.verificationIntent.level);
+                        const open = expandedReadiness === record.id;
+                        const next = evaluation.factors.find((factor) => factor.required && !factor.met) ?? evaluation.factors.find((factor) => !factor.met);
+                        return React.createElement("div", { key: record.id },
+                            React.createElement("button", { className: "readiness-table__row", onClick: () => setExpandedReadiness(open ? undefined : record.id) },
                                 React.createElement("span", null,
-                                    React.createElement("strong", null, factor.label),
-                                    React.createElement("small", null, factor.detail)))))) : null); }))) : null,
-        React.createElement(Modal_1.Modal, { open: planModal, onClose: () => setPlanModal(false), title: "Create verification plan", description: "Describe how compliance will be established before recording a result.", width: "wide", footer: React.createElement(React.Fragment, null,
+                                    React.createElement("strong", null, record.identifier),
+                                    React.createElement("small", null, record.title)),
+                                React.createElement("span", null, (0, text_1.humanize)(record.verificationIntent.level)),
+                                React.createElement("span", null,
+                                    evaluation.score,
+                                    "%"),
+                                React.createElement(StatusBadge_1.StatusBadge, { value: evaluation.status }),
+                                React.createElement("span", null, next?.label ?? 'All applicable factors met'),
+                                React.createElement(Icon_1.Icon, { name: open ? 'chevron-down' : 'chevron-right', size: 15 })),
+                            open ? React.createElement("div", { className: "readiness-table__detail" },
+                                React.createElement("div", null,
+                                    React.createElement("h3", null, "Readiness factors"),
+                                    evaluation.factors.map((factor) => React.createElement("span", { key: factor.key, className: factor.met ? 'is-met' : 'is-open' },
+                                        React.createElement(Icon_1.Icon, { name: factor.met ? 'check' : 'warning', size: 14 }),
+                                        React.createElement("small", null,
+                                            factor.label,
+                                            ": ",
+                                            factor.detail)))),
+                                React.createElement("div", null,
+                                    React.createElement("h3", null, "Control"),
+                                    React.createElement("span", null,
+                                        React.createElement("strong", null, "Policy"),
+                                        React.createElement("small", null,
+                                            evaluation.policy?.identifier ?? 'Default',
+                                            " \u00B7 minimum ",
+                                            evaluation.policy?.minimumScore ?? 80,
+                                            "%")),
+                                    React.createElement("span", null,
+                                        React.createElement("strong", null, "Verification state"),
+                                        React.createElement("small", null, (0, text_1.humanize)((0, calculations_1.deriveVerificationState)(project, record)))),
+                                    React.createElement("span", null,
+                                        React.createElement("strong", null, "Validation state"),
+                                        React.createElement("small", null, (0, text_1.humanize)((0, calculations_1.deriveValidationState)(project, record)))),
+                                    React.createElement("div", { className: "button-row" },
+                                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => { setSelectedRequirementId(record.id); setSelectedReadinessLevel(record.verificationIntent.level); } }, "Inspect above"),
+                                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openOverride(record.id, record.verificationIntent.level) }, "Request exception")))) : null);
+                    }))),
+            project.readinessOverrides.filter((record) => !record.archived).length ? React.createElement(ui_1.Panel, null,
+                React.createElement(ui_1.PanelHeader, { title: "Readiness exceptions and waivers", description: "Overrides never delete failed factors. Approval, rationale, scope, effective date, and expiry remain visible." }),
+                React.createElement("div", { className: "override-ledger" }, project.readinessOverrides.filter((record) => !record.archived).map((record) => {
+                    const target = project.requirements.find((value) => value.id === record.targetRecordId);
+                    return React.createElement("article", { key: record.id },
+                        React.createElement("header", null,
+                            React.createElement("div", null,
+                                React.createElement("span", { className: "mono-label" },
+                                    record.identifier,
+                                    " \u00B7 ",
+                                    (0, text_1.humanize)(record.verificationLevel)),
+                                React.createElement("h3", null, record.title)),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.approvalState })),
+                        React.createElement("p", null, record.rationale),
+                        React.createElement("div", { className: "chip-row" }, record.factorKeys.map((key) => React.createElement("span", { key: key, className: "record-chip record-chip--static" }, verification_1.READINESS_FACTOR_LABELS[key]))),
+                        React.createElement("small", null,
+                            target?.identifier ?? 'Target missing',
+                            " \u00B7 requested by ",
+                            record.requestedBy,
+                            " \u00B7 reviewer ",
+                            record.reviewer || 'not assigned',
+                            record.expiresAt ? ` · expires ${(0, dates_1.formatDate)(record.expiresAt)}` : ''),
+                        React.createElement("footer", null,
+                            React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => openControlledRecord('readinessOverrides', record.id) }, "Open record"),
+                            record.approvalState === 'under-review' ? React.createElement(React.Fragment, null,
+                                React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => dispositionOverride(record.id, 'rejected') }, "Reject"),
+                                React.createElement(ui_1.Button, { size: "small", variant: "primary", onClick: () => dispositionOverride(record.id, 'approved') }, "Approve")) : null));
+                }))) : null)) : null,
+        React.createElement(Modal_1.Modal, { open: planModal, onClose: () => setPlanModal(false), title: "Create verification plan", description: "Verification is broader than testing. Select the method that establishes compliance.", width: "wide", footer: React.createElement(React.Fragment, null,
                 React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setPlanModal(false) }, "Cancel"),
                 React.createElement(ui_1.Button, { variant: "primary", onClick: addPlan }, "Create plan")) },
             React.createElement("div", { className: "form-grid" },
-                React.createElement(ui_1.Field, { label: "Plan title", required: true, className: "field--wide" },
+                React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
                     React.createElement(ui_1.Input, { autoFocus: true, value: plan.title, onChange: (event) => setPlan({ ...plan, title: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Method" },
-                    React.createElement(ui_1.Select, { value: plan.method, onChange: (event) => setPlan({ ...plan, method: event.target.value }) }, ['test', 'analysis', 'inspection', 'demonstration', 'similarity', 'certification', 'combination', 'not-yet-determined'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                    React.createElement(ui_1.Select, { value: plan.method, onChange: (event) => setPlan({ ...plan, method: event.target.value }) }, METHODS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
                 React.createElement(ui_1.Field, { label: "Level" },
-                    React.createElement(ui_1.Select, { value: plan.level, onChange: (event) => setPlan({ ...plan, level: event.target.value }) }, ['unit', 'integration', 'subsystem', 'system', 'operational'].map((value) => React.createElement("option", { key: value }, (0, text_1.humanize)(value))))),
+                    React.createElement(ui_1.Select, { value: plan.level, onChange: (event) => setPlan({ ...plan, level: event.target.value }) }, LEVELS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
                 React.createElement(ui_1.Field, { label: "Owner" },
                     React.createElement(ui_1.Input, { value: plan.owner, onChange: (event) => setPlan({ ...plan, owner: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Reviewer" },
                     React.createElement(ui_1.Input, { value: plan.reviewer, onChange: (event) => setPlan({ ...plan, reviewer: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Approval state" },
+                    React.createElement(ui_1.Select, { value: plan.approval, onChange: (event) => setPlan({ ...plan, approval: event.target.value }) }, ['draft', 'under-review', 'approved', 'superseded'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Reusable setup" },
+                    React.createElement(ui_1.Select, { value: plan.setupId, onChange: (event) => setPlan({ ...plan, setupId: event.target.value }) },
+                        React.createElement("option", { value: "" }, "No shared setup"),
+                        project.verificationSetups.filter((record) => !record.archived).map((record) => React.createElement("option", { key: record.id, value: record.id },
+                            record.identifier,
+                            " \u00B7 ",
+                            record.title)))),
+                React.createElement(ui_1.Field, { label: "Required reviewer disposition" },
+                    React.createElement(ui_1.Select, { value: plan.requiredReviewerDisposition, onChange: (event) => setPlan({ ...plan, requiredReviewerDisposition: event.target.value }) }, REVIEW_DISPOSITIONS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
                 React.createElement(ui_1.Field, { label: "Planned date" },
                     React.createElement(ui_1.Input, { type: "date", value: plan.plannedDate, onChange: (event) => setPlan({ ...plan, plannedDate: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Approval state" },
-                    React.createElement(ui_1.Select, { value: plan.approval, onChange: (event) => setPlan({ ...plan, approval: event.target.value }) }, ['draft', 'under-review', 'approved'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
                 React.createElement("div", { className: "field--wide" },
                     React.createElement("span", { className: "field__label" }, "Requirements covered *"),
-                    React.createElement("div", { className: "selection-list selection-list--compact" }, project.requirements.map((requirement) => React.createElement("label", { key: requirement.id, className: plan.requirementIds.includes(requirement.id) ? 'is-selected' : '' },
+                    React.createElement("div", { className: "selection-list selection-list--compact" }, project.requirements.filter((record) => !record.archived).map((requirement) => React.createElement("label", { key: requirement.id, className: plan.requirementIds.includes(requirement.id) ? 'is-selected' : '' },
                         React.createElement("input", { type: "checkbox", checked: plan.requirementIds.includes(requirement.id), onChange: () => togglePlanRequirement(requirement.id) }),
                         React.createElement("span", null,
                             React.createElement("strong", null,
@@ -10774,89 +14186,78 @@ function VerificationView() {
                 React.createElement(ui_1.Field, { label: "Safety considerations", className: "field--wide" },
                     React.createElement(ui_1.Textarea, { rows: 2, value: plan.safety, onChange: (event) => setPlan({ ...plan, safety: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Procedure", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 5, value: plan.procedure, onChange: (event) => setPlan({ ...plan, procedure: event.target.value }) })),
+                    React.createElement(ui_1.Textarea, { rows: 4, value: plan.procedure, onChange: (event) => setPlan({ ...plan, procedure: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Data to collect" },
                     React.createElement(ui_1.Textarea, { rows: 2, value: plan.data, onChange: (event) => setPlan({ ...plan, data: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Sample size" },
                     React.createElement(ui_1.Input, { value: plan.sampleSize, onChange: (event) => setPlan({ ...plan, sampleSize: event.target.value }) })),
                 React.createElement(ui_1.Field, { label: "Pass or fail logic", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 2, value: plan.passFail, onChange: (event) => setPlan({ ...plan, passFail: event.target.value }) })))),
-        React.createElement(Modal_1.Modal, { open: executionModal, onClose: () => setExecutionModal(false), title: "Record as-run execution", description: "Record what actually ran. Never overwrite an earlier failure when a later run passes.", width: "wide", footer: React.createElement(React.Fragment, null,
-                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setExecutionModal(false) }, "Cancel"),
-                React.createElement(ui_1.Button, { variant: "primary", onClick: addExecution }, "Record execution")) },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: plan.passFail, onChange: (event) => setPlan({ ...plan, passFail: event.target.value }) })),
+                React.createElement("div", { className: "field--wide checkbox-grid" },
+                    React.createElement(ui_1.Checkbox, { label: "Inherit setup environment", description: "Reference the reusable setup instead of copying its environment.", checked: plan.inheritedEnvironment, onChange: (event) => setPlan({ ...plan, inheritedEnvironment: event.target.checked }) }),
+                    React.createElement(ui_1.Checkbox, { label: "Inherit acceptance rule", description: "Use a controlled parent or shared rule without duplicating it.", checked: plan.inheritedAcceptanceRule, onChange: (event) => setPlan({ ...plan, inheritedAcceptanceRule: event.target.checked }) }),
+                    React.createElement(ui_1.Checkbox, { label: "Allow conditional acceptance", description: "Reviewer conditions remain explicit and visible.", checked: plan.allowConditionalAcceptance, onChange: (event) => setPlan({ ...plan, allowConditionalAcceptance: event.target.checked }) })))),
+        React.createElement(Modal_1.Modal, { open: setupModal, onClose: () => setSetupModal(false), title: "Create reusable verification setup", description: "Define shared as-planned configuration and environment once; executions still record the exact as-run condition.", width: "large", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setSetupModal(false) }, "Cancel"),
+                React.createElement(ui_1.Button, { variant: "primary", onClick: addSetup }, "Create setup")) },
             React.createElement("div", { className: "form-grid" },
-                React.createElement(ui_1.Field, { label: "Verification plan", required: true, className: "field--wide" },
-                    React.createElement(ui_1.Select, { value: execution.planId, onChange: (event) => setExecution({ ...execution, planId: event.target.value, testCaseId: '' }) },
-                        React.createElement("option", { value: "" }, "Select plan"),
-                        project.verificationPlans.map((value) => React.createElement("option", { key: value.id, value: value.id },
-                            value.identifier,
-                            " \u00B7 ",
-                            value.title)))),
-                project.testCases.some((value) => value.verificationPlanId === execution.planId) ? React.createElement(ui_1.Field, { label: "Test case" },
-                    React.createElement(ui_1.Select, { value: execution.testCaseId, onChange: (event) => setExecution({ ...execution, testCaseId: event.target.value }) },
-                        React.createElement("option", { value: "" }, "No specific case"),
-                        project.testCases.filter((value) => value.verificationPlanId === execution.planId).map((value) => React.createElement("option", { key: value.id, value: value.id },
-                            value.identifier,
-                            " \u00B7 ",
-                            value.title)))) : null,
-                React.createElement(ui_1.Field, { label: "Result" },
-                    React.createElement(ui_1.Select, { value: execution.result, onChange: (event) => setExecution({ ...execution, result: event.target.value }) }, ['not-run', 'running', 'passed', 'failed', 'blocked', 'inconclusive', 'conditionally-accepted', 'waived', 'superseded'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
-                React.createElement(ui_1.Field, { label: "Date and time" },
-                    React.createElement(ui_1.Input, { type: "datetime-local", value: execution.executedAt, onChange: (event) => setExecution({ ...execution, executedAt: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Operator", required: true },
-                    React.createElement(ui_1.Input, { value: execution.operator, onChange: (event) => setExecution({ ...execution, operator: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Reviewer" },
-                    React.createElement(ui_1.Input, { value: execution.reviewer, onChange: (event) => setExecution({ ...execution, reviewer: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "System configuration", required: true, className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 2, value: execution.systemConfiguration, onChange: (event) => setExecution({ ...execution, systemConfiguration: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Hardware revision" },
-                    React.createElement(ui_1.Input, { value: execution.hardwareRevision, onChange: (event) => setExecution({ ...execution, hardwareRevision: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Software version" },
-                    React.createElement(ui_1.Input, { value: execution.softwareVersion, onChange: (event) => setExecution({ ...execution, softwareVersion: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Firmware version" },
-                    React.createElement(ui_1.Input, { value: execution.firmwareVersion, onChange: (event) => setExecution({ ...execution, firmwareVersion: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Environment" },
-                    React.createElement(ui_1.Input, { value: execution.environment, onChange: (event) => setExecution({ ...execution, environment: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Equipment" },
-                    React.createElement(ui_1.Input, { value: execution.equipment, onChange: (event) => setExecution({ ...execution, equipment: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Calibration reference" },
-                    React.createElement(ui_1.Input, { value: execution.calibrationReference, onChange: (event) => setExecution({ ...execution, calibrationReference: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Input data", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 2, value: execution.inputData, onChange: (event) => setExecution({ ...execution, inputData: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Output data", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 2, value: execution.outputData, onChange: (event) => setExecution({ ...execution, outputData: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Observations", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 3, value: execution.observations, onChange: (event) => setExecution({ ...execution, observations: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Deviations from plan", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 3, value: execution.deviations, onChange: (event) => setExecution({ ...execution, deviations: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Input, { autoFocus: true, value: setup.title, onChange: (event) => setSetup({ ...setup, title: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Owner" },
+                    React.createElement(ui_1.Input, { value: setup.owner, onChange: (event) => setSetup({ ...setup, owner: event.target.value }) })),
                 React.createElement("div", { className: "field--wide" },
-                    React.createElement("span", { className: "field__label" }, "Existing evidence artifacts"),
-                    React.createElement("div", { className: "selection-list selection-list--compact" }, project.documents.length ? project.documents.map((document) => React.createElement("label", { key: document.id, className: execution.evidenceIds.includes(document.id) ? 'is-selected' : '' },
-                        React.createElement("input", { type: "checkbox", checked: execution.evidenceIds.includes(document.id), onChange: () => toggleExecutionEvidence(document.id) }),
+                    React.createElement("span", { className: "field__label" }, "Applicable methods"),
+                    React.createElement("div", { className: "checkbox-grid" }, METHODS.filter((method) => method !== 'not-yet-determined').map((method) => React.createElement(ui_1.Checkbox, { key: method, label: (0, text_1.humanize)(method), checked: setup.applicableMethods.includes(method), onChange: () => setSetup({ ...setup, applicableMethods: setup.applicableMethods.includes(method) ? setup.applicableMethods.filter((value) => value !== method) : [...setup.applicableMethods, method] }) })))),
+                React.createElement(ui_1.Field, { label: "Configuration", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 3, value: setup.configuration, onChange: (event) => setSetup({ ...setup, configuration: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Environment", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.environment, onChange: (event) => setSetup({ ...setup, environment: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Equipment" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.equipment, onChange: (event) => setSetup({ ...setup, equipment: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Instrumentation" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.instrumentation, onChange: (event) => setSetup({ ...setup, instrumentation: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Personnel" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.personnel, onChange: (event) => setSetup({ ...setup, personnel: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Safety considerations" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.safetyConsiderations, onChange: (event) => setSetup({ ...setup, safetyConsiderations: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Calibration requirements", className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: setup.calibrationRequirements, onChange: (event) => setSetup({ ...setup, calibrationRequirements: event.target.value }) })),
+                React.createElement("div", { className: "field--wide" },
+                    React.createElement("span", { className: "field__label" }, "Supporting documents"),
+                    React.createElement("div", { className: "selection-list selection-list--compact" }, project.documents.map((document) => React.createElement("label", { key: document.id, className: setup.documentIds.includes(document.id) ? 'is-selected' : '' },
+                        React.createElement("input", { type: "checkbox", checked: setup.documentIds.includes(document.id), onChange: () => toggleDocument(setup, setSetup, document.id, 'documentIds') }),
                         React.createElement("span", null,
                             React.createElement("strong", null,
                                 document.identifier,
                                 " \u00B7 ",
                                 document.title),
-                            React.createElement("small", null,
-                                (0, text_1.humanize)(document.status),
-                                " \u00B7 revision ",
-                                document.revision)))) : React.createElement("p", { className: "muted-text" }, "No evidence artifacts exist yet. Add them in the Evidence library."))))),
-        React.createElement(Modal_1.Modal, { open: testCaseModal, onClose: () => setTestCaseModal(false), title: "Create reusable test case", description: "Record shared setup, repeatable steps, and expected results.", width: "large", footer: React.createElement(React.Fragment, null,
+                            React.createElement("small", null, (0, text_1.humanize)(document.status))))))))),
+        React.createElement(Modal_1.Modal, { open: testCaseModal, onClose: () => setTestCaseModal(false), title: "Create parameterized test case", description: "Record shared setup, repeatable steps, expected evidence, and named parameters with defaults.", width: "wide", footer: React.createElement(React.Fragment, null,
                 React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setTestCaseModal(false) }, "Cancel"),
                 React.createElement(ui_1.Button, { variant: "primary", onClick: addTestCase }, "Create test case")) },
             React.createElement("div", { className: "form-grid" },
                 React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
                     React.createElement(ui_1.Input, { autoFocus: true, value: testCase.title, onChange: (event) => setTestCase({ ...testCase, title: event.target.value }) })),
-                React.createElement(ui_1.Field, { label: "Verification plan", required: true, className: "field--wide" },
-                    React.createElement(ui_1.Select, { value: testCase.planId, onChange: (event) => setTestCase({ ...testCase, planId: event.target.value }) },
+                React.createElement(ui_1.Field, { label: "Verification plan", required: true },
+                    React.createElement(ui_1.Select, { value: testCase.planId, onChange: (event) => { const planId = event.target.value; const planRecord = project.verificationPlans.find((record) => record.id === planId); setTestCase({ ...testCase, planId, setupId: planRecord?.setupId ?? '' }); } },
                         React.createElement("option", { value: "" }, "Select plan"),
-                        project.verificationPlans.map((value) => React.createElement("option", { key: value.id, value: value.id },
+                        project.verificationPlans.filter((record) => !record.archived).map((value) => React.createElement("option", { key: value.id, value: value.id },
                             value.identifier,
                             " \u00B7 ",
                             value.title)))),
-                React.createElement(ui_1.Field, { label: "Shared setup", className: "field--wide" },
-                    React.createElement(ui_1.Textarea, { rows: 3, value: testCase.setup, onChange: (event) => setTestCase({ ...testCase, setup: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Reusable setup" },
+                    React.createElement(ui_1.Select, { value: testCase.setupId, onChange: (event) => setTestCase({ ...testCase, setupId: event.target.value }) },
+                        React.createElement("option", { value: "" }, "Use plan setup"),
+                        project.verificationSetups.filter((record) => !record.archived).map((value) => React.createElement("option", { key: value.id, value: value.id },
+                            value.identifier,
+                            " \u00B7 ",
+                            value.title)))),
+                React.createElement(ui_1.Field, { label: "Shared setup description", className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 3, value: testCase.sharedSetup, onChange: (event) => setTestCase({ ...testCase, sharedSetup: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Expected evidence", className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 2, value: testCase.expectedEvidence, onChange: (event) => setTestCase({ ...testCase, expectedEvidence: event.target.value }) })),
+                React.createElement("div", { className: "field--wide" },
+                    React.createElement(ui_1.Checkbox, { label: "Use inherited acceptance rule", description: "The case references the approved plan or parent rule rather than copying it.", checked: testCase.inheritedAcceptanceRule, onChange: (event) => setTestCase({ ...testCase, inheritedAcceptanceRule: event.target.checked }) })),
                 React.createElement("div", { className: "field--wide test-step-editor" },
                     React.createElement("div", { className: "test-step-editor__header" },
                         React.createElement("span", { className: "field__label" }, "Steps"),
@@ -10865,7 +14266,234 @@ function VerificationView() {
                         React.createElement("span", null, index + 1),
                         React.createElement(ui_1.Input, { placeholder: "Instruction", value: step.instruction, onChange: (event) => setTestCase({ ...testCase, steps: testCase.steps.map((value) => value.id === step.id ? { ...value, instruction: event.target.value } : value) }) }),
                         React.createElement(ui_1.Input, { placeholder: "Expected result", value: step.expectedResult, onChange: (event) => setTestCase({ ...testCase, steps: testCase.steps.map((value) => value.id === step.id ? { ...value, expectedResult: event.target.value } : value) }) }),
-                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => setTestCase({ ...testCase, steps: testCase.steps.filter((value) => value.id !== step.id) }) }, "Remove"))))))));
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => setTestCase({ ...testCase, steps: testCase.steps.filter((value) => value.id !== step.id) }) }, "Remove")))),
+                React.createElement("div", { className: "field--wide parameter-editor" },
+                    React.createElement("div", { className: "test-step-editor__header" },
+                        React.createElement("span", { className: "field__label" }, "Parameters"),
+                        React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => setTestCase({ ...testCase, parameterDefinitions: [...testCase.parameterDefinitions, { id: (0, id_1.createId)('param'), name: '', description: '', unit: '', dataType: 'text', defaultValue: '', required: true }] }) }, "Add parameter")),
+                    testCase.parameterDefinitions.length ? testCase.parameterDefinitions.map((definition) => React.createElement("div", { key: definition.id, className: "parameter-editor__row" },
+                        React.createElement(ui_1.Input, { placeholder: "Name", value: definition.name, onChange: (event) => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.map((value) => value.id === definition.id ? { ...value, name: event.target.value } : value) }) }),
+                        React.createElement(ui_1.Input, { placeholder: "Unit", value: definition.unit, onChange: (event) => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.map((value) => value.id === definition.id ? { ...value, unit: event.target.value } : value) }) }),
+                        React.createElement(ui_1.Select, { value: definition.dataType, onChange: (event) => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.map((value) => value.id === definition.id ? { ...value, dataType: event.target.value, defaultValue: event.target.value === 'boolean' ? false : '' } : value) }) },
+                            React.createElement("option", { value: "text" }, "Text"),
+                            React.createElement("option", { value: "number" }, "Number"),
+                            React.createElement("option", { value: "boolean" }, "Boolean")),
+                        React.createElement(ui_1.Input, { placeholder: "Default", value: String(definition.defaultValue), onChange: (event) => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.map((value) => value.id === definition.id ? { ...value, defaultValue: value.dataType === 'number' ? Number(event.target.value) : value.dataType === 'boolean' ? event.target.value === 'true' : event.target.value } : value) }) }),
+                        React.createElement(ui_1.Checkbox, { label: "Required", checked: definition.required, onChange: (event) => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.map((value) => value.id === definition.id ? { ...value, required: event.target.checked } : value) }) }),
+                        React.createElement(ui_1.Button, { size: "small", variant: "ghost", onClick: () => setTestCase({ ...testCase, parameterDefinitions: testCase.parameterDefinitions.filter((value) => value.id !== definition.id) }) }, "Remove"))) : React.createElement("p", { className: "muted-text" }, "No parameters. Add parameters when the same steps will run under different controlled values.")))),
+        React.createElement(Modal_1.Modal, { open: executionModal, onClose: () => setExecutionModal(false), title: execution.rerunOfId ? "Record controlled verification rerun" : "Record as-run verification", description: "Record exactly what was performed. The earlier result remains intact when a rerun is created.", width: "full", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setExecutionModal(false) }, "Cancel"),
+                React.createElement(ui_1.Button, { variant: "primary", onClick: addExecution }, "Record execution")) },
+            React.createElement("div", { className: "execution-form" },
+                React.createElement("section", null,
+                    React.createElement("h3", null, "Intent and identity"),
+                    React.createElement("div", { className: "form-grid" },
+                        React.createElement(ui_1.Field, { label: "Verification plan", required: true, className: "field--wide" },
+                            React.createElement(ui_1.Select, { value: execution.planId, onChange: (event) => { const planId = event.target.value; const planRecord = project.verificationPlans.find((record) => record.id === planId); setExecution({ ...execution, planId, testCaseId: '', setupId: planRecord?.setupId ?? '', systemConfiguration: planRecord?.configuration ?? '', environment: planRecord?.environment ?? '', equipment: planRecord?.equipment ?? '', methodDetails: (0, verification_1.defaultVerificationMethodDetails)(), operationalValidation: (0, verification_1.defaultOperationalValidation)() }); } },
+                                React.createElement("option", { value: "" }, "Select plan"),
+                                project.verificationPlans.filter((record) => !record.archived).map((value) => React.createElement("option", { key: value.id, value: value.id },
+                                    value.identifier,
+                                    " \u00B7 ",
+                                    value.title,
+                                    " \u00B7 ",
+                                    (0, text_1.humanize)(value.verificationMethod))))),
+                        project.testCases.some((value) => value.verificationPlanId === execution.planId && !value.archived) ? React.createElement(ui_1.Field, { label: "Parameterized test case" },
+                            React.createElement(ui_1.Select, { value: execution.testCaseId, onChange: (event) => { const testCaseId = event.target.value; const caseRecord = project.testCases.find((record) => record.id === testCaseId); setExecution({ ...execution, testCaseId, setupId: caseRecord?.setupId ?? execution.setupId, parameterValues: caseRecord ? { ...caseRecord.parameterValues } : {} }); } },
+                                React.createElement("option", { value: "" }, "No specific case"),
+                                project.testCases.filter((value) => value.verificationPlanId === execution.planId && !value.archived).map((value) => React.createElement("option", { key: value.id, value: value.id },
+                                    value.identifier,
+                                    " \u00B7 ",
+                                    value.title)))) : null,
+                        React.createElement(ui_1.Field, { label: "Reusable setup" },
+                            React.createElement(ui_1.Select, { value: execution.setupId, onChange: (event) => setExecution({ ...execution, setupId: event.target.value }) },
+                                React.createElement("option", { value: "" }, "No reusable setup"),
+                                project.verificationSetups.filter((record) => !record.archived).map((value) => React.createElement("option", { key: value.id, value: value.id },
+                                    value.identifier,
+                                    " \u00B7 ",
+                                    value.title,
+                                    " \u00B7 revision ",
+                                    value.revision)))),
+                        React.createElement(ui_1.Field, { label: "Result" },
+                            React.createElement(ui_1.Select, { value: execution.result, onChange: (event) => setExecution({ ...execution, result: event.target.value }) }, RESULTS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                        React.createElement(ui_1.Field, { label: "Date and time" },
+                            React.createElement(ui_1.Input, { type: "datetime-local", value: execution.executedAt, onChange: (event) => setExecution({ ...execution, executedAt: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Operator", required: true },
+                            React.createElement(ui_1.Input, { value: execution.operator, onChange: (event) => setExecution({ ...execution, operator: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Reviewer" },
+                            React.createElement(ui_1.Input, { value: execution.reviewer, onChange: (event) => setExecution({ ...execution, reviewer: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Reviewer disposition" },
+                            React.createElement(ui_1.Select, { value: execution.reviewerDisposition, onChange: (event) => setExecution({ ...execution, reviewerDisposition: event.target.value }) }, REVIEW_DISPOSITIONS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                        React.createElement(ui_1.Field, { label: "Disposition notes", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: execution.dispositionNotes, onChange: (event) => setExecution({ ...execution, dispositionNotes: event.target.value }) })),
+                        React.createElement("div", { className: "field--wide checkbox-grid" },
+                            React.createElement(ui_1.Checkbox, { label: "Acceptance criteria satisfied", description: "This as-run record explicitly confirms the planned criteria.", checked: execution.acceptanceCriteriaSatisfied, onChange: (event) => setExecution({ ...execution, acceptanceCriteriaSatisfied: event.target.checked }) })))),
+                React.createElement("section", null,
+                    React.createElement("h3", null, "As-run configuration"),
+                    React.createElement("div", { className: "form-grid" },
+                        React.createElement(ui_1.Field, { label: "System configuration", required: true, className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 3, value: execution.systemConfiguration, onChange: (event) => setExecution({ ...execution, systemConfiguration: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Configuration conformance" },
+                            React.createElement(ui_1.Select, { value: execution.configurationConformance, onChange: (event) => setExecution({ ...execution, configurationConformance: event.target.value }) }, CONFIGURATION_STATES.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                        React.createElement(ui_1.Field, { label: "Hardware revision" },
+                            React.createElement(ui_1.Input, { value: execution.hardwareRevision, onChange: (event) => setExecution({ ...execution, hardwareRevision: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Software version" },
+                            React.createElement(ui_1.Input, { value: execution.softwareVersion, onChange: (event) => setExecution({ ...execution, softwareVersion: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Firmware version" },
+                            React.createElement(ui_1.Input, { value: execution.firmwareVersion, onChange: (event) => setExecution({ ...execution, firmwareVersion: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Environment" },
+                            React.createElement(ui_1.Input, { value: execution.environment, onChange: (event) => setExecution({ ...execution, environment: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Equipment" },
+                            React.createElement(ui_1.Input, { value: execution.equipment, onChange: (event) => setExecution({ ...execution, equipment: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Calibration reference" },
+                            React.createElement(ui_1.Input, { value: execution.calibrationReference, onChange: (event) => setExecution({ ...execution, calibrationReference: event.target.value }) })))),
+                selectedCase?.parameterDefinitions.length ? React.createElement("section", null,
+                    React.createElement("h3", null, "Parameterized values"),
+                    React.createElement("div", { className: "form-grid" }, selectedCase.parameterDefinitions.map((definition) => React.createElement(ui_1.Field, { key: definition.id, label: `${definition.name}${definition.unit ? ` (${definition.unit})` : ''}`, required: definition.required }, definition.dataType === 'boolean' ? React.createElement(ui_1.Select, { value: String(execution.parameterValues[definition.name] ?? definition.defaultValue), onChange: (event) => setExecution({ ...execution, parameterValues: { ...execution.parameterValues, [definition.name]: event.target.value === 'true' } }) },
+                        React.createElement("option", { value: "true" }, "True"),
+                        React.createElement("option", { value: "false" }, "False")) : React.createElement(ui_1.Input, { type: definition.dataType === 'number' ? 'number' : 'text', value: String(execution.parameterValues[definition.name] ?? definition.defaultValue ?? ''), onChange: (event) => setExecution({ ...execution, parameterValues: { ...execution.parameterValues, [definition.name]: definition.dataType === 'number' ? Number(event.target.value) : event.target.value } }) }))))) : null,
+                selectedPlan && selectedMethodFields.length ? React.createElement("section", null,
+                    React.createElement("h3", null,
+                        (0, text_1.humanize)(selectedPlan.verificationMethod),
+                        "-specific record"),
+                    React.createElement("div", { className: "form-grid" },
+                        selectedMethodFields.map(({ key, label }) => React.createElement(ui_1.Field, { key: key, label: label, className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: String(execution.methodDetails[key] ?? ''), onChange: (event) => setExecution({ ...execution, methodDetails: { ...execution.methodDetails, [key]: event.target.value } }) }))),
+                        selectedPlan.verificationMethod === 'combination' ? React.createElement("div", { className: "field--wide" },
+                            React.createElement("span", { className: "field__label" }, "Contributing methods"),
+                            React.createElement("div", { className: "checkbox-grid" }, METHODS.filter((method) => !['combination', 'not-yet-determined'].includes(method)).map((method) => React.createElement(ui_1.Checkbox, { key: method, label: (0, text_1.humanize)(method), checked: execution.methodDetails.combinedMethods.includes(method), onChange: () => setExecution({ ...execution, methodDetails: { ...execution.methodDetails, combinedMethods: execution.methodDetails.combinedMethods.includes(method) ? execution.methodDetails.combinedMethods.filter((value) => value !== method) : [...execution.methodDetails.combinedMethods, method] } }) })))) : null)) : null,
+                selectedPlan?.verificationLevel === 'operational' ? React.createElement("section", null,
+                    React.createElement("h3", null, "Operational validation context"),
+                    React.createElement("div", { className: "form-grid" },
+                        React.createElement(ui_1.Field, { label: "Stakeholder need", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: execution.operationalValidation.stakeholderNeed, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, stakeholderNeed: event.target.value } }) })),
+                        React.createElement(ui_1.Field, { label: "Operational scenario", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: execution.operationalValidation.operationalScenario, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, operationalScenario: event.target.value } }) })),
+                        React.createElement(ui_1.Field, { label: "Representative user" },
+                            React.createElement(ui_1.Input, { value: execution.operationalValidation.representativeUser, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, representativeUser: event.target.value } }) })),
+                        React.createElement(ui_1.Field, { label: "Mission or use objective" },
+                            React.createElement(ui_1.Input, { value: execution.operationalValidation.missionObjective, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, missionObjective: event.target.value } }) })),
+                        React.createElement(ui_1.Field, { label: "Suitability observations", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 3, value: execution.operationalValidation.suitabilityObservations, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, suitabilityObservations: event.target.value } }) })),
+                        React.createElement(ui_1.Field, { label: "Acceptance recommendation" },
+                            React.createElement(ui_1.Select, { value: execution.operationalValidation.acceptanceRecommendation, onChange: (event) => setExecution({ ...execution, operationalValidation: { ...execution.operationalValidation, acceptanceRecommendation: event.target.value } }) }, OPERATIONAL_RECOMMENDATIONS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))))) : null,
+                React.createElement("section", null,
+                    React.createElement("h3", null, "Data, observations, and evidence"),
+                    React.createElement("div", { className: "form-grid" },
+                        React.createElement(ui_1.Field, { label: "Input data", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: execution.inputData, onChange: (event) => setExecution({ ...execution, inputData: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Output data", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 2, value: execution.outputData, onChange: (event) => setExecution({ ...execution, outputData: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Observations", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 3, value: execution.observations, onChange: (event) => setExecution({ ...execution, observations: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Deviations from plan", className: "field--wide" },
+                            React.createElement(ui_1.Textarea, { rows: 3, value: execution.deviations, onChange: (event) => setExecution({ ...execution, deviations: event.target.value }) })),
+                        React.createElement(ui_1.Field, { label: "Retest state" },
+                            React.createElement(ui_1.Select, { value: execution.retestState, onChange: (event) => setExecution({ ...execution, retestState: event.target.value }) }, RETEST_STATES.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                        React.createElement(ui_1.Field, { label: "Retest reason" },
+                            React.createElement(ui_1.Input, { value: execution.retestReason, onChange: (event) => setExecution({ ...execution, retestReason: event.target.value }) })),
+                        React.createElement("div", { className: "field--wide" },
+                            React.createElement("span", { className: "field__label" }, "Existing evidence artifacts"),
+                            React.createElement("div", { className: "selection-list selection-list--compact" }, project.documents.length ? project.documents.map((document) => React.createElement("label", { key: document.id, className: execution.evidenceIds.includes(document.id) ? 'is-selected' : '' },
+                                React.createElement("input", { type: "checkbox", checked: execution.evidenceIds.includes(document.id), onChange: () => toggleDocument(execution, setExecution, document.id, 'evidenceIds') }),
+                                React.createElement("span", null,
+                                    React.createElement("strong", null,
+                                        document.identifier,
+                                        " \u00B7 ",
+                                        document.title),
+                                    React.createElement("small", null,
+                                        (0, text_1.humanize)(document.status),
+                                        " \u00B7 revision ",
+                                        document.revision)))) : React.createElement("p", { className: "muted-text" }, "No evidence artifacts exist yet. Add them in the Evidence library."))))))),
+        React.createElement(Modal_1.Modal, { open: exceptionModal, onClose: () => setExceptionModal(false), title: "Create verification exception", description: "Capture a deviation, anomaly, defect, or observation without editing the historical execution result.", width: "large", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setExceptionModal(false) }, "Cancel"),
+                React.createElement(ui_1.Button, { variant: "primary", onClick: addException }, "Create exception")) },
+            React.createElement("div", { className: "form-grid" },
+                React.createElement(ui_1.Field, { label: "Execution", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Select, { value: exception.executionId, onChange: (event) => setException({ ...exception, executionId: event.target.value }) },
+                        React.createElement("option", { value: "" }, "Select execution"),
+                        latestExecutions.map((record) => React.createElement("option", { key: record.id, value: record.id },
+                            record.identifier,
+                            " \u00B7 ",
+                            record.title)))),
+                React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Input, { value: exception.title, onChange: (event) => setException({ ...exception, title: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Kind" },
+                    React.createElement(ui_1.Select, { value: exception.kind, onChange: (event) => setException({ ...exception, kind: event.target.value }) }, EXCEPTION_KINDS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Severity" },
+                    React.createElement(ui_1.Select, { value: exception.severity, onChange: (event) => setException({ ...exception, severity: event.target.value }) }, EXCEPTION_SEVERITIES.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Status" },
+                    React.createElement(ui_1.Select, { value: exception.status, onChange: (event) => setException({ ...exception, status: event.target.value }) }, EXCEPTION_STATUSES.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Due date" },
+                    React.createElement(ui_1.Input, { type: "date", value: exception.dueDate, onChange: (event) => setException({ ...exception, dueDate: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Description", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 3, value: exception.description, onChange: (event) => setException({ ...exception, description: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Disposition", className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 3, value: exception.disposition, onChange: (event) => setException({ ...exception, disposition: event.target.value }) })),
+                React.createElement("div", { className: "field--wide" },
+                    React.createElement(ui_1.Checkbox, { label: "Retest required", description: "The originating execution remains failed or conditional until a controlled rerun is linked or the obligation is waived.", checked: exception.requiresRetest, onChange: (event) => setException({ ...exception, requiresRetest: event.target.checked }) })),
+                React.createElement("div", { className: "field--wide" },
+                    React.createElement("span", { className: "field__label" }, "Supporting evidence"),
+                    React.createElement("div", { className: "selection-list selection-list--compact" }, project.documents.map((document) => React.createElement("label", { key: document.id, className: exception.evidenceIds.includes(document.id) ? 'is-selected' : '' },
+                        React.createElement("input", { type: "checkbox", checked: exception.evidenceIds.includes(document.id), onChange: () => toggleDocument(exception, setException, document.id, 'evidenceIds') }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null,
+                                document.identifier,
+                                " \u00B7 ",
+                                document.title),
+                            React.createElement("small", null, (0, text_1.humanize)(document.status))))))))),
+        React.createElement(Modal_1.Modal, { open: policyModal, onClose: () => setPolicyModal(false), title: `${(0, text_1.humanize)(selectedReadinessLevel)} readiness policy`, description: "Configure a controlled gate template. Readiness remains derived from stored engineering facts.", width: "wide", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setPolicyModal(false) }, "Cancel"),
+                React.createElement(ui_1.Button, { variant: "primary", onClick: savePolicy }, "Save controlled revision")) },
+            React.createElement("div", { className: "form-grid" },
+                React.createElement(ui_1.Field, { label: "Minimum score" },
+                    React.createElement(ui_1.Input, { type: "number", min: 0, max: 100, value: policyDraft.minimumScore, onChange: (event) => setPolicyDraft({ ...policyDraft, minimumScore: Number(event.target.value) }) })),
+                React.createElement("div", null,
+                    React.createElement(ui_1.Checkbox, { label: "Require every required factor", description: "A high weighted score cannot conceal a failed mandatory gate.", checked: policyDraft.requireAllRequiredFactors, onChange: (event) => setPolicyDraft({ ...policyDraft, requireAllRequiredFactors: event.target.checked }) })),
+                React.createElement("div", { className: "field--wide policy-factor-editor" },
+                    React.createElement("div", { className: "policy-factor-editor__header" },
+                        React.createElement("span", null, "Enabled"),
+                        React.createElement("span", null, "Required"),
+                        React.createElement("span", null, "Factor"),
+                        React.createElement("span", null, "Weight")),
+                    policyDraft.factorRules.map((rule) => React.createElement("div", { key: rule.key },
+                        React.createElement("input", { "aria-label": `${rule.label} enabled`, type: "checkbox", checked: rule.enabled, onChange: (event) => setPolicyDraft({ ...policyDraft, factorRules: policyDraft.factorRules.map((value) => value.key === rule.key ? { ...value, enabled: event.target.checked } : value) }) }),
+                        React.createElement("input", { "aria-label": `${rule.label} required`, type: "checkbox", checked: rule.required, disabled: !rule.enabled, onChange: (event) => setPolicyDraft({ ...policyDraft, factorRules: policyDraft.factorRules.map((value) => value.key === rule.key ? { ...value, required: event.target.checked } : value) }) }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, rule.label),
+                            React.createElement("small", null, rule.key)),
+                        React.createElement(ui_1.Input, { type: "number", min: 0, max: 10, value: rule.weight, disabled: !rule.enabled, onChange: (event) => setPolicyDraft({ ...policyDraft, factorRules: policyDraft.factorRules.map((value) => value.key === rule.key ? { ...value, weight: Number(event.target.value) } : value) }) })))))),
+        React.createElement(Modal_1.Modal, { open: overrideModal, onClose: () => setOverrideModal(false), title: "Request controlled readiness exception", description: "A waiver or conditional approval does not erase failed factors. It records who accepted the exception, why, for what scope, and for how long.", width: "large", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setOverrideModal(false) }, "Cancel"),
+                React.createElement(ui_1.Button, { variant: "primary", onClick: addOverride }, "Submit for review")) },
+            React.createElement("div", { className: "form-grid" },
+                React.createElement(ui_1.Field, { label: "Target requirement", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Select, { value: override.targetRecordId, onChange: (event) => setOverride({ ...override, targetRecordId: event.target.value }) },
+                        React.createElement("option", { value: "" }, "Select requirement"),
+                        project.requirements.filter((record) => !record.archived).map((record) => React.createElement("option", { key: record.id, value: record.id },
+                            record.identifier,
+                            " \u00B7 ",
+                            record.title)))),
+                React.createElement(ui_1.Field, { label: "Level" },
+                    React.createElement(ui_1.Select, { value: override.verificationLevel, onChange: (event) => setOverride({ ...override, verificationLevel: event.target.value, factorKeys: [] }) }, LEVELS.map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Kind" },
+                    React.createElement(ui_1.Select, { value: override.kind, onChange: (event) => setOverride({ ...override, kind: event.target.value }) }, ['waiver', 'conditional-approval', 'manual-override'].map((value) => React.createElement("option", { key: value, value: value }, (0, text_1.humanize)(value))))),
+                React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Input, { value: override.title, onChange: (event) => setOverride({ ...override, title: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Requested by", required: true },
+                    React.createElement(ui_1.Input, { value: override.requestedBy, onChange: (event) => setOverride({ ...override, requestedBy: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Reviewer" },
+                    React.createElement(ui_1.Input, { value: override.reviewer, onChange: (event) => setOverride({ ...override, reviewer: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Expires" },
+                    React.createElement(ui_1.Input, { type: "date", value: override.expiresAt, onChange: (event) => setOverride({ ...override, expiresAt: event.target.value }) })),
+                React.createElement(ui_1.Field, { label: "Rationale", required: true, className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: 4, value: override.rationale, onChange: (event) => setOverride({ ...override, rationale: event.target.value }) })),
+                React.createElement("div", { className: "field--wide" },
+                    React.createElement("span", { className: "field__label" }, "Factors affected *"),
+                    React.createElement("div", { className: "selection-list selection-list--compact" }, (0, verification_1.defaultReadinessFactorRules)(override.verificationLevel).filter((rule) => rule.enabled).map((rule) => React.createElement("label", { key: rule.key, className: override.factorKeys.includes(rule.key) ? 'is-selected' : '' },
+                        React.createElement("input", { type: "checkbox", checked: override.factorKeys.includes(rule.key), onChange: () => setOverride({ ...override, factorKeys: override.factorKeys.includes(rule.key) ? override.factorKeys.filter((value) => value !== rule.key) : [...override.factorKeys, rule.key] }) }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, rule.label),
+                            React.createElement("small", null, rule.required ? 'Required factor' : 'Weighted factor'))))))))));
 }
 
 }

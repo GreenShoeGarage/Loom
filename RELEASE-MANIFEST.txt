@@ -1,38 +1,75 @@
-LOOM v0.3.0 release payload manifest
-Generated: 2026-08-20T00:02:50Z
-Control files RELEASE-MANIFEST.txt and SHA256SUMS.txt are intentionally excluded from the payload listing.
+LOOM v0.5.0 — Batch 4 Release Manifest
+=======================================
 
-BYTES        PATH
-4094	CHANGELOG.md
-29866	README.md
-615	README.txt
-1212	THIRD_PARTY_LICENSES.txt
-763040	assets/app.js
-97078	assets/styles.css
-143227	assets/vendor.js
-11720	browser-smoke-results.json
-22725	docs/ARCHITECTURE.md
-6743	docs/BATCH-1-ACCEPTANCE.md
-8263	docs/BATCH-2-ACCEPTANCE.md
-12094	docs/IMPLEMENTATION-COVERAGE.md
-47718	docs/LOOM_BUILD_SPECIFICATION.md
-7154	docs/RECORD-LIFECYCLE.md
-10464	docs/VALIDATION.md
-339287	docs/screenshots/batch1-real-origin-data.png
-532112	docs/screenshots/batch1-recovery-restored.png
-337634	docs/screenshots/batch2-record-revisions.png
-323805	docs/screenshots/batch2-record-studio-initial.png
-216043	docs/screenshots/validation-baselines.png
-309546	docs/screenshots/validation-cockpit.png
-223022	docs/screenshots/validation-evidence.png
-202080	docs/screenshots/validation-execution.png
-336263	docs/screenshots/validation-record-studio-lifecycle.png
-384275	docs/screenshots/validation-record-studio-revisions.png
-20141	domain-test-results.json
-1183	icons/loom-192.png
-3406	icons/loom-512.png
-671	index.html
-683	manifest.webmanifest
-4338	origin-acceptance-results.json
-5292	record-lifecycle-results.json
-2664	sw.js
+Release date: August 20, 2026
+Application version: 0.5.0
+Project schema: 0.5.0
+Release focus: Verification, Validation, and Readiness Closure
+Operation: local-first, single-user, offline-capable
+Required account: none
+Telemetry or analytics: none
+
+Primary capabilities
+--------------------
+- Eight verification methods: test, analysis, inspection, demonstration, similarity, certification, combination, and not yet determined
+- Verification plans, reusable setups, parameterized test cases, and method-neutral as-run executions
+- Exact plan, case, and setup revision capture
+- Retained failed results and controlled reruns
+- Structured deviations, anomalies, defects, observations, and retest control
+- Operational validation in representative use contexts
+- Sixteen visible verification-closure conditions
+- Five level-specific readiness policies using sixteen explainable factors
+- Controlled readiness waivers, conditional approvals, and overrides
+- Verification cross-reference, exceptions, status, readiness, and operational-validation reports
+- All Batch 1–3 storage, lifecycle, impact, inheritance, evidence-currency, and digital-thread capability retained
+
+Controlled record collections: 22
+---------------------------------
+requirements; functions; implementation objects; interfaces; verification plans; verification setups; test cases; verification executions; verification exceptions; readiness policies; readiness overrides; failure modes; work items; project budget lines; technical budgets; evidence documents; impact reviews; decisions; assumptions; issues and actions; baselines; change requests
+
+Accepted validation evidence
+----------------------------
+Offline production build: passed
+Generated JavaScript syntax: passed
+Domain/migration/lifecycle/impact/verification/readiness suite: 250 of 250 passed
+General Chromium interaction and layout suite: 67 of 67 passed
+Controlled-record lifecycle regression suite: 37 of 37 passed
+Change-impact and inheritance regression suite: 76 of 76 passed
+Dedicated Batch 4 verification and readiness suite: 91 of 91 passed
+Accepted automated checks: 521 of 521 passed
+Browser page exceptions in accepted suites: 0
+Browser console errors in accepted suites: 0
+
+Recorded boundaries
+-------------------
+Real loopback-origin v0.5.0 acceptance: browser and server harness started, but managed Chromium blocked application navigation with ERR_BLOCKED_BY_ADMINISTRATOR; not counted as passed.
+Conventional TypeScript/Vite check and build: attempted, but the constrained environment lacked registry-installed React type declarations, Vite, and the Vite React plug-in; not claimed as passed.
+Firefox and WebKit/Safari acceptance: not executed in this environment.
+
+Important release fix
+---------------------
+Creating a valid rerun no longer marks the new execution or its newly attached evidence potentially stale merely because execution creation added its own traceability references. The execution-creation transaction suppresses impact generation for bookkeeping links while preserving normal controlled revisions, persistence, and later substantive impact detection.
+
+Production startup
+------------------
+Serve the extracted production directory from HTTP or HTTPS:
+
+  python3 -m http.server 4173
+
+Open:
+
+  http://localhost:4173
+
+Do not rely on file:// for IndexedDB, service workers, offline caching, installation, or full file behavior.
+
+Principal documentation
+-----------------------
+README.md
+CHANGELOG.md
+docs/BATCH-4-ACCEPTANCE.md
+docs/VERIFICATION-READINESS.md
+docs/VALIDATION.md
+docs/IMPLEMENTATION-COVERAGE.md
+docs/ARCHITECTURE.md
+docs/RECORD-LIFECYCLE.md
+docs/IMPACT-AND-INHERITANCE.md
