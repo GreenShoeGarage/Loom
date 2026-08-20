@@ -1,0 +1,349 @@
+{
+  "checks": [
+    {
+      "name": "Application renders",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Visible version",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Eight primary sections",
+      "passed": true,
+      "detail": "8"
+    },
+    {
+      "name": "Sample project selected",
+      "passed": true,
+      "detail": "project_mt0r9i7i_z9p50yki"
+    },
+    {
+      "name": "Navigate: Cockpit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Requirements",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Architecture",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Verification",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Failure Analysis",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Execution",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Evidence",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Navigate: Baselines",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Requirement filters use a compact desktop row",
+      "passed": true,
+      "detail": "[{'x': 302, 'y': 285.46875, 'width': 654.390625, 'height': 40}, {'x': 968.390625, 'y': 286.46875, 'width': 230, 'height': 38}, {'x': 1210.390625, 'y': 286.46875, 'width': 230, 'height': 38}, {'x': 1452.390625, 'y': 295.96875, 'width': 113.609375, 'height': 19}]"
+    },
+    {
+      "name": "Evidence summary has four cards",
+      "passed": true,
+      "detail": "4"
+    },
+    {
+      "name": "Evidence summary cards align in one row",
+      "passed": true,
+      "detail": "[{'x': 302, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 620.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 939, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 1257.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}]"
+    },
+    {
+      "name": "Evidence summary cards do not overlap",
+      "passed": true,
+      "detail": "[{'x': 302, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 620.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 939, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 1257.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}]"
+    },
+    {
+      "name": "Evidence summary cards remain compact",
+      "passed": true,
+      "detail": "[{'x': 302, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 620.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 939, 'y': 252.875, 'width': 308.5, 'height': 62.421875}, {'x': 1257.5, 'y': 252.875, 'width': 308.5, 'height': 62.421875}]"
+    },
+    {
+      "name": "Baseline inspector visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Baseline inspector has padded sections",
+      "passed": true,
+      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 890.375}, {'x': 804.1875, 'y': 369.796875, 'width': 760.8125, 'height': 172.984375}, {'x': 819.1875, 'y': 383.796875, 'width': 730.8125, 'height': 20.296875})"
+    },
+    {
+      "name": "Baseline header remains inside inspector",
+      "passed": true,
+      "detail": "({'x': 803.1875, 'y': 273.171875, 'width': 762.8125, 'height': 890.375}, {'x': 804.1875, 'y': 274.171875, 'width': 760.8125, 'height': 95.625})"
+    },
+    {
+      "name": "Baseline metadata uses four cards",
+      "passed": true,
+      "detail": "4"
+    },
+    {
+      "name": "Baseline card chevron stays within card",
+      "passed": true,
+      "detail": "({'x': 320, 'y': 361.796875, 'width': 452.1875, 'height': 209.09375}, {'x': 742.1875, 'y': 457.34375, 'width': 18, 'height': 18})"
+    },
+    {
+      "name": "Nine-step requirement wizard",
+      "passed": true,
+      "detail": "9"
+    },
+    {
+      "name": "Wizard creates requirement",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Autosave writes a local project fallback",
+      "passed": true,
+      "detail": "['loom-project:project_mt0r9i7i_z9p50yki', 'loom-last-project-id']"
+    },
+    {
+      "name": "Save indicator reaches Saved",
+      "passed": true,
+      "detail": "Saved"
+    },
+    {
+      "name": "Requirement recovers in a new browser document",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Advanced mode activates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Dark theme activates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Light theme activates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Kanban has six workflow lanes",
+      "passed": true,
+      "detail": "6"
+    },
+    {
+      "name": "Kanban uses five sample work records",
+      "passed": true,
+      "detail": "5"
+    },
+    {
+      "name": "Kanban final lane is visible at desktop width",
+      "passed": true,
+      "detail": "({'x': 1377, 'y': 252.875, 'width': 205, 'height': 750.125}, {'width': 1600, 'height': 1000})"
+    },
+    {
+      "name": "Project menu includes full-fidelity export",
+      "passed": true,
+      "detail": "Portable Environmental Monitor\nStored locally \u00b7 Active\nEdit project details\nControlled Record Studio\nDuplicate project\nExport full project\nImport project\nData safety and recovery\nFresh Start\nLoad sample project\nArchive project\nPermanently delete"
+    },
+    {
+      "name": "Project menu includes Fresh Start",
+      "passed": true,
+      "detail": "Portable Environmental Monitor\nStored locally \u00b7 Active\nEdit project details\nControlled Record Studio\nDuplicate project\nExport full project\nImport project\nData safety and recovery\nFresh Start\nLoad sample project\nArchive project\nPermanently delete"
+    },
+    {
+      "name": "Project menu includes sample loading",
+      "passed": true,
+      "detail": "Portable Environmental Monitor\nStored locally \u00b7 Active\nEdit project details\nControlled Record Studio\nDuplicate project\nExport full project\nImport project\nData safety and recovery\nFresh Start\nLoad sample project\nArchive project\nPermanently delete"
+    },
+    {
+      "name": "Project menu includes archive and duplication",
+      "passed": true,
+      "detail": "Portable Environmental Monitor\nStored locally \u00b7 Active\nEdit project details\nControlled Record Studio\nDuplicate project\nExport full project\nImport project\nData safety and recovery\nFresh Start\nLoad sample project\nArchive project\nPermanently delete"
+    },
+    {
+      "name": "Controlled Record Studio opens from project actions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio exposes all 17 controlled record types",
+      "passed": true,
+      "detail": "17"
+    },
+    {
+      "name": "Record Studio uses a non-overlapping three-column desktop layout",
+      "passed": true,
+      "detail": "({'x': 61, 'y': 131.6875, 'width': 1478, 'height': 760}, {'x': 61, 'y': 131.6875, 'width': 210, 'height': 760}, {'x': 271, 'y': 131.6875, 'width': 300, 'height': 760}, {'x': 571, 'y': 131.6875, 'width': 968, 'height': 760})"
+    },
+    {
+      "name": "New controlled record starts as an unsaved revision-one draft",
+      "passed": true,
+      "detail": "Unsaved record changes\nClose\nCreate Decision"
+    },
+    {
+      "name": "Record Studio creates a decision through the shared lifecycle",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Created record is revision one",
+      "passed": true,
+      "detail": "DEC-001 \u00b7 revision 1\nClose\nArchive\nSave new revision"
+    },
+    {
+      "name": "Record Studio saves a second controlled revision",
+      "passed": true,
+      "detail": "DEC-001 \u00b7 revision 2\nClose\nArchive\nSave new revision"
+    },
+    {
+      "name": "Revision workspace retains two immutable snapshots",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "Revision workspace exposes field-level title comparison",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision workspace includes local audit events",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relationship author offers controlled records as targets",
+      "passed": true,
+      "detail": "[{'value': '', 'text': 'Choose a controlled record\u2026'}, {'value': 'req_mt0r9i7i_mndg2v1f', 'text': 'REQ-001 \u00b7 Continuous field endurance \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_y3c5i3a9', 'text': 'REQ-002 \u00b7 Temperature accuracy \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_deqfylfs', 'text': 'REQ-003 \u00b7 Display update interval \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_brs4i0j9', 'text': 'REQ-004 \u00b7 Environmental enclosure protection \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_saamzsyu', 'text': 'REQ-005 \u00b7 Readable local status \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_w9rel8r8', 'text': 'REQ-101 \u00b7 Battery usable energy \u00b7 Requirement'}, {'value': 'req_mt0r9i7i_9yvcok0w', 'text': 'REQ-102 \u00b7 Average system power \u00b7 Requirement'}]"
+    },
+    {
+      "name": "Record Studio creates an explainable typed relationship",
+      "passed": true,
+      "detail": "1"
+    },
+    {
+      "name": "Relationship retains its rationale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio removes a typed relationship with confirmation",
+      "passed": true,
+      "detail": "0"
+    },
+    {
+      "name": "Archiving retains the selected record and exposes Restore",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archived record is visibly identified without relying on color alone",
+      "passed": true,
+      "detail": "Archived"
+    },
+    {
+      "name": "Restoring returns the same record to active work",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive and restore each produce retained controlled revisions",
+      "passed": true,
+      "detail": "4"
+    },
+    {
+      "name": "Prior revisions can be restored as a new revision",
+      "passed": true,
+      "detail": "4"
+    },
+    {
+      "name": "Revision recovery preserves later history and creates revision five",
+      "passed": true,
+      "detail": "5"
+    },
+    {
+      "name": "Revision recovery restores the original controlled title",
+      "passed": true,
+      "detail": "Select environmental sensor architecture"
+    },
+    {
+      "name": "Session undo becomes available after a controlled mutation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Session redo becomes available after undo",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Session redo completes without disabling future undo",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio keyboard shortcut opens the controlled workspace",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled record remains available after session undo and redo",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled record recovers in a new browser document",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled revision history recovers with the record",
+      "passed": true,
+      "detail": "7"
+    },
+    {
+      "name": "No page exceptions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "No console errors",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "failures": [],
+  "generatedAt": "2026-08-20T00:01:55.262637Z",
+  "applicationVersion": "0.3.0",
+  "summary": {
+    "total": 67,
+    "passed": 67,
+    "failed": 0
+  }
+}

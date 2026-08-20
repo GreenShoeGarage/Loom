@@ -1,0 +1,754 @@
+{
+  "generatedAt": "2026-08-20T00:02:25.670Z",
+  "applicationVersion": "0.3.0",
+  "schemaVersion": "0.3.0",
+  "passed": true,
+  "summary": {
+    "total": 148,
+    "passed": 148,
+    "failed": 0
+  },
+  "transpileDiagnostics": [],
+  "checks": [
+    {
+      "name": "Sample requirements count",
+      "passed": true,
+      "detail": "expected 9, received 9"
+    },
+    {
+      "name": "Sample functions count",
+      "passed": true,
+      "detail": "expected 6, received 6"
+    },
+    {
+      "name": "Sample objects count",
+      "passed": true,
+      "detail": "expected 15, received 15"
+    },
+    {
+      "name": "Sample interfaces count",
+      "passed": true,
+      "detail": "expected 4, received 4"
+    },
+    {
+      "name": "Sample verificationPlans count",
+      "passed": true,
+      "detail": "expected 5, received 5"
+    },
+    {
+      "name": "Sample testCases count",
+      "passed": true,
+      "detail": "expected 0, received 0"
+    },
+    {
+      "name": "Sample testExecutions count",
+      "passed": true,
+      "detail": "expected 5, received 5"
+    },
+    {
+      "name": "Sample failureModes count",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Sample workItems count",
+      "passed": true,
+      "detail": "expected 5, received 5"
+    },
+    {
+      "name": "Sample workDependencies count",
+      "passed": true,
+      "detail": "expected 4, received 4"
+    },
+    {
+      "name": "Sample projectBudgetLines count",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Sample technicalBudgets count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Sample documents count",
+      "passed": true,
+      "detail": "expected 6, received 6"
+    },
+    {
+      "name": "Sample links count",
+      "passed": true,
+      "detail": "expected 96, received 96"
+    },
+    {
+      "name": "Sample decisions count",
+      "passed": true,
+      "detail": "expected 0, received 0"
+    },
+    {
+      "name": "Sample assumptions count",
+      "passed": true,
+      "detail": "expected 0, received 0"
+    },
+    {
+      "name": "Sample issuesActions count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Sample baselines count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Sample changeRequests count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Sample schema version",
+      "passed": true,
+      "detail": "expected \"0.3.0\", received \"0.3.0\""
+    },
+    {
+      "name": "Sample application version",
+      "passed": true,
+      "detail": "expected \"0.3.0\", received \"0.3.0\""
+    },
+    {
+      "name": "Sample is identified as sample data",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Stable identifiers are unique across the active project model",
+      "passed": true,
+      "detail": "181 identifiers checked"
+    },
+    {
+      "name": "Controlled record identifiers are present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled record histories are retained",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled records retain field-level revision snapshots",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every controlled record has a snapshot for its current revision",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision snapshots preserve stable record identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision numbers are unique within every controlled record",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled records retain a field snapshot for the current revision",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision snapshots preserve stable record identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "All controlled collection descriptors are represented",
+      "passed": true,
+      "detail": "17 descriptors found"
+    },
+    {
+      "name": "Typed traceability links have no dangling endpoints",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Work dependencies have no dangling endpoints",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement parent and child links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement function links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement implementation links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement interface links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement failure links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement verification-plan links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement execution links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement evidence links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Requirement work links resolve",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Object inherited obligations resolve to requirements",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Interface endpoints resolve to architecture objects",
+      "passed": true,
+      "detail": "all references resolve"
+    },
+    {
+      "name": "Sample includes REQ-001, REQ-002, and REQ-004",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "REQ-001 threshold margin exposes the failed endurance result",
+      "passed": true,
+      "detail": "expected approximately -1.2, received -1.1999999999999993"
+    },
+    {
+      "name": "REQ-002 threshold margin exposes passing temperature accuracy",
+      "passed": true,
+      "detail": "expected approximately 0.22, received 0.21999999999999997"
+    },
+    {
+      "name": "REQ-001 derived verification state",
+      "passed": true,
+      "detail": "expected \"failed\", received \"failed\""
+    },
+    {
+      "name": "REQ-002 derived verification state",
+      "passed": true,
+      "detail": "expected \"passed\", received \"passed\""
+    },
+    {
+      "name": "REQ-004 derived evidence state",
+      "passed": true,
+      "detail": "expected \"stale\", received \"stale\""
+    },
+    {
+      "name": "REQ-002 closes only with plan, result, configuration, review, and evidence",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "REQ-001 remains open after a failed result",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "REQ-001 readiness remains explainable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "All sample requirements are allocated",
+      "passed": true,
+      "detail": "expected 9, received 9"
+    },
+    {
+      "name": "Project budget planned total",
+      "passed": true,
+      "detail": "expected 68700, received 68700"
+    },
+    {
+      "name": "Project budget approved total",
+      "passed": true,
+      "detail": "expected 72000, received 72000"
+    },
+    {
+      "name": "Project budget actual total",
+      "passed": true,
+      "detail": "expected 56980, received 56980"
+    },
+    {
+      "name": "Project budget forecast variance",
+      "passed": true,
+      "detail": "expected -2800, received -2800"
+    },
+    {
+      "name": "Mass budget measured roll-up",
+      "passed": true,
+      "detail": "expected approximately 3.16, received 3.16"
+    },
+    {
+      "name": "Mass budget remaining margin",
+      "passed": true,
+      "detail": "expected approximately 0.09, received 0.08999999999999986"
+    },
+    {
+      "name": "Power budget measured roll-up",
+      "passed": true,
+      "detail": "expected approximately 3.04, received 3.04"
+    },
+    {
+      "name": "Power budget overrun margin",
+      "passed": true,
+      "detail": "expected approximately -0.74, received -0.74"
+    },
+    {
+      "name": "Power budget utilization exposes over-threshold state",
+      "passed": true,
+      "detail": "expected 122, received 122"
+    },
+    {
+      "name": "Sample schedule is acyclic",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Critical path contains three work items",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Two sample work items retain one day of slack",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Schedule cycle detection rejects a circular plan",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Baseline comparison finds two changed requirements",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Baseline comparison does not fabricate added requirements",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cockpit total requirement count",
+      "passed": true,
+      "detail": "expected 9, received 9"
+    },
+    {
+      "name": "Cockpit allocation coverage",
+      "passed": true,
+      "detail": "expected 100, received 100"
+    },
+    {
+      "name": "Cockpit unverified count",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Cockpit evidence-gap count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Cockpit open high-criticality failure count",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Cockpit late-work count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit stale-evidence count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit pending-review count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Cockpit active change-request count",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Fresh Start produces an empty requirements collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fresh Start produces no sample records in any project collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fresh Start is not marked as sample data",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Valid project candidate is accepted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Malformed project candidate is rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Migration upgrades the schema version",
+      "passed": true,
+      "detail": "expected \"0.3.0\", received \"0.3.0\""
+    },
+    {
+      "name": "Migration supplies all missing collection arrays",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Migration records the v0.1.0 to v0.3.0 transition",
+      "passed": true,
+      "detail": "expected \"0.1.0\", received \"0.1.0\""
+    },
+    {
+      "name": "Migration history records the destination schema",
+      "passed": true,
+      "detail": "expected \"0.3.0\", received \"0.3.0\""
+    },
+    {
+      "name": "Migration preserves unknown top-level fields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Future project schemas are rejected without coercion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Dangling relationships are rejected during import migration",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Duplicate stable identifiers are rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Corrupted revision snapshot identity is rejected during import",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio can create every controlled collection through one lifecycle service",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "New controlled records begin at revision one",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "New controlled records have one immutable creation snapshot",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio generated identifiers are unique",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Creation snapshots do not recursively embed event or revision history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A material controlled edit increments exactly one revision",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "A material edit records changed root fields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A controlled edit retains the prior snapshot",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "An untouched record keeps its original revision",
+      "passed": true,
+      "detail": "expected 1, received 1"
+    },
+    {
+      "name": "Field-level revision comparison identifies title changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Field-level revision comparison identifies owner changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Earlier field snapshots remain immutable after later record mutation",
+      "passed": true,
+      "detail": "expected \"Untitled requirement\", received \"Untitled requirement\""
+    },
+    {
+      "name": "A no-op save does not create a false controlled revision",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "A no-op save does not add audit history",
+      "passed": true,
+      "detail": "expected 2, received 2"
+    },
+    {
+      "name": "Duplicate visible identifiers are rejected within a controlled collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Duplicate typed relationships reuse the existing link",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typed relationship creation adds one authoritative trace link",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typed relationship creation synchronizes requirement allocation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typed relationship creation synchronizes reciprocal function allocation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relationship-driven direct-record edits receive controlled revisions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Removing a typed relationship removes the authoritative link",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Removing a typed relationship synchronizes both direct arrays",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive retains the controlled record in its collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive marks the record inactive without deleting its identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive records actor and timestamp metadata",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive state remains orthogonal to the engineering lifecycle",
+      "passed": true,
+      "detail": "expected \"draft\", received \"draft\""
+    },
+    {
+      "name": "Archive creates a new controlled revision",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive action is explicit in the audit history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Editing an archived record preserves the original archive actor",
+      "passed": true,
+      "detail": "expected \"Lifecycle tester\", received \"Lifecycle tester\""
+    },
+    {
+      "name": "Editing an archived record preserves the original archive timestamp",
+      "passed": true,
+      "detail": "expected \"2026-08-20T00:02:25.625Z\", received \"2026-08-20T00:02:25.625Z\""
+    },
+    {
+      "name": "Restoring old field values does not reactivate an archived record",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restoring old field values preserves archive ownership",
+      "passed": true,
+      "detail": "expected \"Lifecycle tester\", received \"Lifecycle tester\""
+    },
+    {
+      "name": "Restore returns the same stable record to active work",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore clears archive metadata",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore preserves the engineering lifecycle disposition",
+      "passed": true,
+      "detail": "expected \"draft\", received \"draft\""
+    },
+    {
+      "name": "Restore creates a new controlled revision",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore action is explicit in the audit history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision recovery restores an earlier edited field value",
+      "passed": true,
+      "detail": "expected \"Controlled lifecycle requirement\", received \"Controlled lifecycle requirement\""
+    },
+    {
+      "name": "Revision recovery creates a new revision instead of erasing history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision recovery retains the intervening edited snapshot",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing controlled records are reinserted rather than destructively deleted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Destructive deletion attempts are converted to archived revisions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive-instead-of-delete preserves the original stable identity and history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Specialist-view edits use the shared controlled lifecycle",
+      "passed": true,
+      "detail": "expected 3, received 3"
+    },
+    {
+      "name": "Specialist-view edits retain a field-level snapshot",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A v0.2.0 project migrates to the Batch 2 schema",
+      "passed": true,
+      "detail": "expected \"0.3.0\", received \"0.3.0\""
+    },
+    {
+      "name": "Batch 2 migration seeds revision history for every controlled record",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 2 migration preserves unknown project extensions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Batch 2 migration records the exact source and destination schemas",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Evidence revision snapshots do not duplicate embedded file payloads",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Baseline revision snapshots store compact project summaries rather than recursive collections",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Criticality threshold categorizes 240 as critical",
+      "passed": true,
+      "detail": "expected \"critical\", received \"critical\""
+    },
+    {
+      "name": "Criticality threshold categorizes 84 as moderate",
+      "passed": true,
+      "detail": "expected \"moderate\", received \"moderate\""
+    },
+    {
+      "name": "Exact-value metric reports negative absolute error",
+      "passed": true,
+      "detail": "expected approximately -2, received -2"
+    },
+    {
+      "name": "Range metric reports nearest in-range margin",
+      "passed": true,
+      "detail": "expected approximately 1, received 1"
+    }
+  ]
+}

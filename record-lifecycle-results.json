@@ -1,0 +1,199 @@
+{
+  "applicationVersion": "0.3.0",
+  "checks": [
+    {
+      "name": "Batch 2 application version is visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Session undo begins disabled",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Session redo begins disabled",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Controlled Record Studio opens",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Record Studio exposes all 17 controlled collections",
+      "passed": true,
+      "detail": "17"
+    },
+    {
+      "name": "Requirements are the initial controlled collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Sample requirements are projected from authoritative records",
+      "passed": true,
+      "detail": "9"
+    },
+    {
+      "name": "Record Studio uses three non-overlapping work panes",
+      "passed": true,
+      "detail": "[{\"height\": 760, \"width\": 210, \"x\": 61, \"y\": 131.6875}, {\"height\": 760, \"width\": 300, \"x\": 271, \"y\": 131.6875}, {\"height\": 760, \"width\": 968, \"x\": 571, \"y\": 131.6875}]"
+    },
+    {
+      "name": "Record Studio footer remains within the modal",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Selected record retains a stable human identifier",
+      "passed": true,
+      "detail": "REQ-001"
+    },
+    {
+      "name": "Selected record exposes its current revision",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "Editing marks the Record Studio draft unsaved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Saving a material edit creates exactly one new revision",
+      "passed": true,
+      "detail": "{\"after\": 3, \"before\": 2}"
+    },
+    {
+      "name": "The authoritative record list updates immediately",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision workspace retains multiple immutable snapshots",
+      "passed": true,
+      "detail": "3"
+    },
+    {
+      "name": "Revision comparison identifies the title field",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Revision comparison identifies the owner field",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Audit history displays the supplied revision note",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "A controlled edit enables session undo",
+      "passed": true,
+      "detail": "Undo: Validated the common controlled-record editing lifecycle."
+    },
+    {
+      "name": "Undo restores the earlier controlled field value",
+      "passed": true,
+      "detail": "{\"actual\": \"Continuous field endurance\", \"expected\": \"Continuous field endurance\"}"
+    },
+    {
+      "name": "Undo creates a new controlled revision instead of erasing history",
+      "passed": true,
+      "detail": "{\"edited\": 3, \"undo\": 4}"
+    },
+    {
+      "name": "Redo restores the edited controlled field value",
+      "passed": true,
+      "detail": "{\"actual\": \"Continuous field endurance \\u2014 controlled lifecycle\", \"expected\": \"Continuous field endurance \\u2014 controlled lifecycle\"}"
+    },
+    {
+      "name": "Redo also creates a new controlled revision",
+      "passed": true,
+      "detail": "{\"redo\": 5, \"undo\": 4}"
+    },
+    {
+      "name": "A second record type is created through the same lifecycle",
+      "passed": true,
+      "detail": "{\"identifier\": \"DEC-001\", \"revision\": 1}"
+    },
+    {
+      "name": "The new decision appears in its authoritative collection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Typed traceability can be authored from Record Studio",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relationship rationale remains visible and explainable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archiving preserves the selected record and offers restore",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archived state is communicated with text",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restoring returns the same controlled record to active work",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive and restore are retained as controlled snapshots",
+      "passed": true,
+      "detail": "3"
+    },
+    {
+      "name": "Archive action remains in audit history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Restore action remains in audit history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Global search includes newly created controlled records",
+      "passed": true,
+      "detail": "1"
+    },
+    {
+      "name": "Global search opens the authoritative record in Record Studio",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "No Batch 2 browser page exceptions",
+      "passed": true,
+      "detail": "[]"
+    },
+    {
+      "name": "No Batch 2 browser console errors",
+      "passed": true,
+      "detail": "[]"
+    }
+  ],
+  "failures": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "generatedAt": "2026-08-20T00:00:16.052153Z",
+  "summary": {
+    "total": 37,
+    "passed": 37,
+    "failed": 0
+  }
+}

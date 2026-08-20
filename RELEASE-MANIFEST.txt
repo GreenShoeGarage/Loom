@@ -1,0 +1,38 @@
+LOOM v0.3.0 release payload manifest
+Generated: 2026-08-20T00:02:50Z
+Control files RELEASE-MANIFEST.txt and SHA256SUMS.txt are intentionally excluded from the payload listing.
+
+BYTES        PATH
+4094	CHANGELOG.md
+29866	README.md
+615	README.txt
+1212	THIRD_PARTY_LICENSES.txt
+763040	assets/app.js
+97078	assets/styles.css
+143227	assets/vendor.js
+11720	browser-smoke-results.json
+22725	docs/ARCHITECTURE.md
+6743	docs/BATCH-1-ACCEPTANCE.md
+8263	docs/BATCH-2-ACCEPTANCE.md
+12094	docs/IMPLEMENTATION-COVERAGE.md
+47718	docs/LOOM_BUILD_SPECIFICATION.md
+7154	docs/RECORD-LIFECYCLE.md
+10464	docs/VALIDATION.md
+339287	docs/screenshots/batch1-real-origin-data.png
+532112	docs/screenshots/batch1-recovery-restored.png
+337634	docs/screenshots/batch2-record-revisions.png
+323805	docs/screenshots/batch2-record-studio-initial.png
+216043	docs/screenshots/validation-baselines.png
+309546	docs/screenshots/validation-cockpit.png
+223022	docs/screenshots/validation-evidence.png
+202080	docs/screenshots/validation-execution.png
+336263	docs/screenshots/validation-record-studio-lifecycle.png
+384275	docs/screenshots/validation-record-studio-revisions.png
+20141	domain-test-results.json
+1183	icons/loom-192.png
+3406	icons/loom-512.png
+671	index.html
+683	manifest.webmanifest
+4338	origin-acceptance-results.json
+5292	record-lifecycle-results.json
+2664	sw.js

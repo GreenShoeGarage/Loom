@@ -1,4 +1,4 @@
-/* LOOM v0.1.0 production application bundle. */
+/* LOOM v0.3.0 production application bundle. */
 (function (global) {
   'use strict';
   var vendor = global.__LOOM_VENDOR__;
@@ -26,8 +26,10 @@ const RequirementsView_1 = require("./views/RequirementsView");
 const VerificationView_1 = require("./views/VerificationView");
 const Icon_1 = require("./components/Icon");
 const Modal_1 = require("./components/Modal");
+const ControlledRecordStudio_1 = require("./components/ControlledRecordStudio");
 const Toast_1 = require("./components/Toast");
 const ui_1 = require("./components/ui");
+const recordLifecycle_1 = require("./domain/recordLifecycle");
 const navItems = [
     { id: 'cockpit', label: 'Cockpit', icon: 'cockpit', description: 'Decisions and missing work' },
     { id: 'requirements', label: 'Requirements', icon: 'requirements', description: 'Definition and traceability' },
@@ -48,10 +50,30 @@ const views = {
     evidence: EvidenceView_1.EvidenceView,
     baselines: BaselinesView_1.BaselinesView
 };
+function formatBytes(value) {
+    if (value === undefined)
+        return 'Unavailable';
+    if (value < 1024)
+        return `${value} bytes`;
+    if (value < 1024 * 1024)
+        return `${(value / 1024).toFixed(1)} kilobytes`;
+    if (value < 1024 * 1024 * 1024)
+        return `${(value / 1024 / 1024).toFixed(1)} megabytes`;
+    return `${(value / 1024 / 1024 / 1024).toFixed(2)} gigabytes`;
+}
+function recordPrimarySearchTitle(record) {
+    const candidate = record;
+    const named = candidate.name ?? candidate.failureMode ?? candidate.decision ?? candidate.assumption ?? candidate.resourceType ?? candidate.description;
+    return typeof named === 'string' && named.trim() ? named : record.title;
+}
 function App() {
-    const { project, projects, loading, saveState, updateProject, updateSettings, replaceProject, createFreshProject, loadSampleProject, duplicateCurrentProject, archiveCurrentProject, restoreCurrentProject, permanentlyDeleteCurrentProject, switchProject, notify } = (0, ProjectContext_1.useProject)();
+    const { project, projects, loading, saveState, lastSavedAt, storageDiagnostics, recoverySnapshots, canUndo, canRedo, undoLabel, redoLabel, undo, redo, updateProject, updateSettings, replaceProject, createFreshProject, loadSampleProject, duplicateCurrentProject, archiveCurrentProject, restoreCurrentProject, permanentlyDeleteCurrentProject, switchProject, refreshDataSafety, createManualRecoverySnapshot, restoreRecoverySnapshot, removeRecoverySnapshot, requestStoragePersistence, notify } = (0, ProjectContext_1.useProject)();
     const [projectMenuOpen, setProjectMenuOpen] = (0, react_1.useState)(false);
     const [aboutOpen, setAboutOpen] = (0, react_1.useState)(false);
+    const [dataSafetyOpen, setDataSafetyOpen] = (0, react_1.useState)(false);
+    const [recordStudioOpen, setRecordStudioOpen] = (0, react_1.useState)(false);
+    const [recordStudioTarget, setRecordStudioTarget] = (0, react_1.useState)();
+    const [safetyAction, setSafetyAction] = (0, react_1.useState)(null);
     const [projectDetailsOpen, setProjectDetailsOpen] = (0, react_1.useState)(false);
     const [searchOpen, setSearchOpen] = (0, react_1.useState)(false);
     const [searchQuery, setSearchQuery] = (0, react_1.useState)('');
@@ -64,32 +86,64 @@ function App() {
         setProjectDetails({ name: project.name, description: project.description });
     }, [project.id, project.name, project.description]);
     (0, react_1.useEffect)(() => {
+        if (dataSafetyOpen)
+            void refreshDataSafety();
+    }, [dataSafetyOpen, refreshDataSafety]);
+    (0, react_1.useEffect)(() => {
         const handleKey = (event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+            const command = event.metaKey || event.ctrlKey;
+            const key = event.key.toLowerCase();
+            const target = event.target;
+            const editingText = Boolean(target?.closest('input, textarea, select, [contenteditable="true"]'));
+            if (command && key === 'k') {
                 event.preventDefault();
                 setSearchOpen(true);
             }
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+            if (command && event.shiftKey && key === 'r') {
+                event.preventDefault();
+                setRecordStudioTarget(undefined);
+                setRecordStudioOpen(true);
+            }
+            if (command && key === 's') {
                 event.preventDefault();
                 notify(saveState === 'saved' ? 'All changes are already saved locally.' : 'LOOM will save this change automatically.', 'info');
             }
+            if (!editingText && command && key === 'z') {
+                event.preventDefault();
+                if (event.shiftKey)
+                    redo();
+                else
+                    undo();
+            }
+            if (!editingText && command && key === 'y') {
+                event.preventDefault();
+                redo();
+            }
+        };
+        const openRecord = (event) => {
+            const detail = event.detail;
+            setRecordStudioTarget(detail);
+            setRecordStudioOpen(true);
         };
         window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [notify, saveState]);
-    const searchRecords = (0, react_1.useMemo)(() => [
-        ...project.requirements.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Requirement', section: 'requirements', context: record.statement })),
-        ...project.functions.map((record) => ({ id: record.id, identifier: record.identifier, title: record.name, kind: 'Function', section: 'architecture', context: record.description })),
-        ...project.objects.map((record) => ({ id: record.id, identifier: record.identifier, title: record.name, kind: (0, text_1.humanize)(record.domain), section: 'architecture', context: record.description })),
-        ...project.interfaces.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Interface', section: 'architecture', context: `${record.interfaceType} ${record.protocol}` })),
-        ...project.verificationPlans.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Verification plan', section: 'verification', context: record.objective })),
-        ...project.testExecutions.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Test execution', section: 'verification', context: `${record.result} ${record.systemConfiguration}` })),
-        ...project.failureModes.map((record) => ({ id: record.id, identifier: record.identifier, title: record.failureMode, kind: 'Failure mode', section: 'failure', context: `${record.cause} ${record.endEffect}` })),
-        ...project.workItems.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Work item', section: 'execution', context: record.description })),
-        ...project.documents.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Evidence', section: 'evidence', context: record.description })),
-        ...project.baselines.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Baseline', section: 'baselines', context: record.description })),
-        ...project.changeRequests.map((record) => ({ id: record.id, identifier: record.identifier, title: record.title, kind: 'Change request', section: 'baselines', context: `${record.reason} ${record.proposedChange}` }))
-    ], [project]);
+        window.addEventListener('loom:open-record', openRecord);
+        return () => {
+            window.removeEventListener('keydown', handleKey);
+            window.removeEventListener('loom:open-record', openRecord);
+        };
+    }, [notify, redo, saveState, undo]);
+    const searchRecords = (0, react_1.useMemo)(() => (0, recordLifecycle_1.allControlledRecords)(project).map(({ collection, record }) => {
+        const descriptor = (0, recordLifecycle_1.descriptorForCollection)(collection);
+        return {
+            id: record.id,
+            identifier: record.identifier,
+            title: recordPrimarySearchTitle(record),
+            kind: descriptor.singular,
+            section: descriptor.section,
+            collection,
+            context: `${record.owner} ${record.lifecycleState} ${record.tags.join(' ')} ${record.notes}`
+        };
+    }), [project]);
     const filteredSearch = (0, react_1.useMemo)(() => {
         const query = searchQuery.trim().toLowerCase();
         if (!query)
@@ -110,7 +164,10 @@ function App() {
             return;
         try {
             const imported = await (0, files_1.importProject)(file);
-            await replaceProject(imported, `${imported.name} imported successfully.`);
+            await replaceProject(imported, `${imported.name} imported successfully.`, {
+                snapshotCurrent: true,
+                snapshotReason: `Before importing ${file.name}`
+            });
             setProjectMenuOpen(false);
         }
         catch (error) {
@@ -127,6 +184,38 @@ function App() {
         }, 'Project details updated');
         setProjectDetailsOpen(false);
         notify('Project details updated.', 'success');
+    };
+    const executeSafetyAction = async (exportFirst = false) => {
+        const action = safetyAction;
+        if (!action)
+            return;
+        if (exportFirst)
+            (0, files_1.exportProject)(project);
+        setSafetyAction(null);
+        if (action === 'fresh')
+            await createFreshProject();
+        if (action === 'sample')
+            await loadSampleProject();
+        if (action === 'delete')
+            await permanentlyDeleteCurrentProject();
+    };
+    const safetyCopy = {
+        fresh: {
+            title: 'Create a Fresh Start?',
+            description: 'LOOM will save the current project and create a recovery snapshot before opening a truly empty project. The current project also remains in the local project library.',
+            actionLabel: 'Create Fresh Start'
+        },
+        sample: {
+            title: 'Load the sample project?',
+            description: 'LOOM will save the current project and create a recovery snapshot before switching to the portable environmental monitor demonstration.',
+            actionLabel: 'Load Sample Project'
+        },
+        delete: {
+            title: 'Permanently delete this project?',
+            description: 'LOOM will create a recovery snapshot before deleting the active project from the local project library. An external export is still the safest long-term backup.',
+            actionLabel: 'Delete Project',
+            danger: true
+        }
     };
     if (loading) {
         return React.createElement("div", { className: "loading-screen" },
@@ -177,6 +266,9 @@ function App() {
                         React.createElement("button", { role: "menuitem", onClick: () => { setProjectDetailsOpen(true); setProjectMenuOpen(false); } },
                             React.createElement(Icon_1.Icon, { name: "edit" }),
                             "Edit project details"),
+                        React.createElement("button", { role: "menuitem", onClick: () => { setRecordStudioTarget(undefined); setRecordStudioOpen(true); setProjectMenuOpen(false); } },
+                            React.createElement(Icon_1.Icon, { name: "history" }),
+                            "Controlled Record Studio"),
                         React.createElement("button", { role: "menuitem", onClick: () => { void duplicateCurrentProject(); setProjectMenuOpen(false); } },
                             React.createElement(Icon_1.Icon, { name: "copy" }),
                             "Duplicate project"),
@@ -186,11 +278,14 @@ function App() {
                         React.createElement("button", { role: "menuitem", onClick: () => { importInputRef.current?.click(); } },
                             React.createElement(Icon_1.Icon, { name: "upload" }),
                             "Import project"),
+                        React.createElement("button", { role: "menuitem", onClick: () => { setDataSafetyOpen(true); setProjectMenuOpen(false); } },
+                            React.createElement(Icon_1.Icon, { name: "lock" }),
+                            "Data safety and recovery"),
                         React.createElement("div", { className: "project-menu__divider" }),
-                        React.createElement("button", { role: "menuitem", onClick: () => { void createFreshProject(); setProjectMenuOpen(false); } },
+                        React.createElement("button", { role: "menuitem", onClick: () => { setSafetyAction('fresh'); setProjectMenuOpen(false); } },
                             React.createElement(Icon_1.Icon, { name: "plus" }),
                             "Fresh Start"),
-                        React.createElement("button", { role: "menuitem", onClick: () => { void loadSampleProject(); setProjectMenuOpen(false); } },
+                        React.createElement("button", { role: "menuitem", onClick: () => { setSafetyAction('sample'); setProjectMenuOpen(false); } },
                             React.createElement(Icon_1.Icon, { name: "refresh" }),
                             "Load sample project"),
                         React.createElement("button", { role: "menuitem", onClick: () => { if (project.archived)
@@ -200,16 +295,22 @@ function App() {
                             React.createElement(Icon_1.Icon, { name: project.archived ? 'unlock' : 'archive' }),
                             project.archived ? 'Restore project' : 'Archive project'),
                         React.createElement("div", { className: "project-menu__divider" }),
-                        React.createElement("button", { className: "project-menu__danger", role: "menuitem", onClick: () => { if (window.confirm(`Permanently delete “${project.name}” from local storage? Export it first if it must be retained.`))
-                                void permanentlyDeleteCurrentProject(); setProjectMenuOpen(false); } },
+                        React.createElement("button", { className: "project-menu__danger", role: "menuitem", onClick: () => { setSafetyAction('delete'); setProjectMenuOpen(false); } },
                             React.createElement(Icon_1.Icon, { name: "trash" }),
                             "Permanently delete"))) : null,
                 React.createElement("input", { ref: importInputRef, className: "visually-hidden", type: "file", accept: ".json,application/json", onChange: handleImport })),
             React.createElement("div", { className: "topbar__tools" },
-                React.createElement("div", { className: `save-indicator save-indicator--${saveState}`, title: "Local autosave state", role: "status", "aria-live": "polite" },
+                React.createElement("div", { className: `save-indicator save-indicator--${saveState}`, title: lastSavedAt ? `Local autosave state · last saved ${(0, dates_1.formatDateTime)(lastSavedAt)}` : 'Local autosave state', role: "status", "aria-live": "polite" },
                     React.createElement("span", null),
                     React.createElement(Icon_1.Icon, { name: "save", size: 15 }),
                     React.createElement("strong", null, saveLabel[saveState])),
+                React.createElement("div", { className: "session-history-controls", "aria-label": "Session history" },
+                    React.createElement(ui_1.IconButton, { label: canUndo ? `Undo: ${undoLabel ?? 'last change'}` : 'Nothing to undo', icon: "undo", disabled: !canUndo, onClick: undo }),
+                    React.createElement(ui_1.IconButton, { label: canRedo ? `Redo: ${redoLabel ?? 'last undone change'}` : 'Nothing to redo', icon: "redo", disabled: !canRedo, onClick: redo })),
+                React.createElement("button", { className: "record-studio-button", onClick: () => { setRecordStudioTarget(undefined); setRecordStudioOpen(true); } },
+                    React.createElement(Icon_1.Icon, { name: "history", size: 16 }),
+                    React.createElement("span", null, "Record Studio"),
+                    React.createElement(ui_1.Kbd, null, "\u21E7\u2318 R")),
                 React.createElement("button", { className: "global-search-button", onClick: () => setSearchOpen(true) },
                     React.createElement(Icon_1.Icon, { name: "search", size: 16 }),
                     React.createElement("span", null, "Search"),
@@ -258,6 +359,7 @@ function App() {
                 React.createElement("span", null, "It remains readable and can be restored from Project Actions.")) : null,
             React.createElement(ActiveView, { navigate: selectSection })),
         React.createElement(Toast_1.Toast, null),
+        React.createElement(ControlledRecordStudio_1.ControlledRecordStudio, { open: recordStudioOpen, onClose: () => { setRecordStudioOpen(false); setRecordStudioTarget(undefined); }, navigate: selectSection, target: recordStudioTarget }),
         React.createElement(Modal_1.Modal, { open: projectDetailsOpen, onClose: () => setProjectDetailsOpen(false), title: "Project details", description: "Name and describe the current local engineering project.", footer: React.createElement(React.Fragment, null,
                 React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setProjectDetailsOpen(false) }, "Cancel"),
                 React.createElement(ui_1.Button, { variant: "primary", onClick: saveProjectDetails }, "Save details")) },
@@ -271,7 +373,7 @@ function App() {
                 React.createElement(Icon_1.Icon, { name: "search" }),
                 React.createElement(ui_1.Input, { autoFocus: true, value: searchQuery, onChange: (event) => setSearchQuery(event.target.value), placeholder: "Search identifier, title, owner, status, or text\u2026" })),
             React.createElement("div", { className: "search-results" },
-                filteredSearch.map((record) => React.createElement("button", { key: `${record.kind}-${record.id}`, onClick: () => { selectSection(record.section); setSearchOpen(false); setSearchQuery(''); } },
+                filteredSearch.map((record) => React.createElement("button", { key: `${record.kind}-${record.id}`, onClick: () => { selectSection(record.section); setSearchOpen(false); setSearchQuery(''); setRecordStudioTarget({ collection: record.collection, id: record.id }); setRecordStudioOpen(true); } },
                     React.createElement("span", { className: "search-result__icon" },
                         React.createElement(Icon_1.Icon, { name: navItems.find((item) => item.id === record.section)?.icon ?? 'document' })),
                     React.createElement("span", null,
@@ -285,6 +387,94 @@ function App() {
                     React.createElement(Icon_1.Icon, { name: "search" }),
                     React.createElement("strong", null, "No matching controlled records"),
                     React.createElement("span", null, "Try a requirement identifier, title, owner, or status.")) : null)),
+        React.createElement(Modal_1.Modal, { open: dataSafetyOpen, onClose: () => setDataSafetyOpen(false), title: "Data safety and recovery", description: "Inspect this browser origin, create recovery points, export an external backup, and restore an earlier local project state.", width: "wide", footer: React.createElement(ui_1.Button, { variant: "primary", onClick: () => setDataSafetyOpen(false) }, "Close") },
+            React.createElement("div", { className: "data-safety" },
+                React.createElement("div", { className: "data-safety__status-grid" },
+                    React.createElement("div", { className: "data-safety__status" },
+                        React.createElement(Icon_1.Icon, { name: "save" }),
+                        React.createElement("span", null,
+                            React.createElement("small", null, "Authoritative storage"),
+                            React.createElement("strong", null, storageDiagnostics?.backend === 'indexeddb' ? 'Indexed Database (IndexedDB)' : storageDiagnostics?.backend === 'local-storage' ? 'Local browser storage fallback' : 'Storage unavailable'),
+                            React.createElement("em", null, storageDiagnostics?.origin ?? window.location.origin))),
+                    React.createElement("div", { className: "data-safety__status" },
+                        React.createElement(Icon_1.Icon, { name: "lock" }),
+                        React.createElement("span", null,
+                            React.createElement("small", null, "Persistent storage"),
+                            React.createElement("strong", null, storageDiagnostics?.persistentStorage === 'granted' ? 'Granted' : storageDiagnostics?.persistentStorage === 'not-granted' ? 'Not granted' : (0, text_1.humanize)(storageDiagnostics?.persistentStorage ?? 'checking')),
+                            React.createElement("em", null, storageDiagnostics?.secureContext ? 'Secure browser context' : 'Limited browser context'))),
+                    React.createElement("div", { className: "data-safety__status" },
+                        React.createElement(Icon_1.Icon, { name: "refresh" }),
+                        React.createElement("span", null,
+                            React.createElement("small", null, "Offline application shell"),
+                            React.createElement("strong", null, storageDiagnostics?.serviceWorker === 'controlled' ? 'Active and controlling' : storageDiagnostics?.serviceWorker === 'registered' ? 'Registered; reload to control' : (0, text_1.humanize)(storageDiagnostics?.serviceWorker ?? 'checking')),
+                            React.createElement("em", null,
+                                "Versioned cache: LOOM v",
+                                factory_1.APP_VERSION))),
+                    React.createElement("div", { className: "data-safety__status" },
+                        React.createElement(Icon_1.Icon, { name: "document" }),
+                        React.createElement("span", null,
+                            React.createElement("small", null, "Origin storage estimate"),
+                            React.createElement("strong", null,
+                                formatBytes(storageDiagnostics?.usageBytes),
+                                " used"),
+                            React.createElement("em", null, storageDiagnostics?.quotaBytes ? `${formatBytes(storageDiagnostics.quotaBytes)} available quota` : 'Browser did not report a quota')))),
+                React.createElement("div", { className: "data-safety__actions" },
+                    React.createElement(ui_1.Button, { icon: "save", variant: "primary", onClick: () => void createManualRecoverySnapshot() }, "Create recovery snapshot"),
+                    React.createElement(ui_1.Button, { icon: "download", onClick: () => (0, files_1.exportProject)(project) }, "Export external backup"),
+                    React.createElement(ui_1.Button, { icon: "lock", onClick: () => void requestStoragePersistence(), disabled: storageDiagnostics?.persistentStorage === 'granted' }, storageDiagnostics?.persistentStorage === 'granted' ? 'Persistent storage granted' : 'Request persistent storage'),
+                    React.createElement(ui_1.Button, { icon: "refresh", variant: "ghost", onClick: () => void refreshDataSafety() }, "Refresh diagnostics")),
+                React.createElement("div", { className: "data-safety__notice" },
+                    React.createElement(Icon_1.Icon, { name: "warning" }),
+                    React.createElement("p", null,
+                        React.createElement("strong", null, "Browser storage is not an archival medium."),
+                        " Recovery snapshots protect against accidental project replacement or deletion on this origin. Export project files before clearing browser data, changing hostnames, moving to another browser profile, or relying on a project as a formal record.")),
+                React.createElement("section", { className: "recovery-library" },
+                    React.createElement("header", null,
+                        React.createElement("div", null,
+                            React.createElement("h3", null, "Recovery snapshots"),
+                            React.createElement("p", null, "LOOM retains the eight most recent recovery points per project. Automatic snapshots are created before safety-sensitive project changes.")),
+                        React.createElement("span", null,
+                            recoverySnapshots.length,
+                            " available")),
+                    recoverySnapshots.length ? React.createElement("div", { className: "recovery-list" }, recoverySnapshots.map((snapshot) => React.createElement("article", { className: "recovery-record", key: snapshot.id },
+                        React.createElement("div", { className: "recovery-record__icon" },
+                            React.createElement(Icon_1.Icon, { name: "archive" })),
+                        React.createElement("div", { className: "recovery-record__copy" },
+                            React.createElement("span", null,
+                                React.createElement("strong", null, snapshot.projectName),
+                                React.createElement("em", null,
+                                    "r",
+                                    snapshot.projectRevision)),
+                            React.createElement("b", null, snapshot.reason),
+                            React.createElement("small", null,
+                                (0, dates_1.formatDateTime)(snapshot.capturedAt),
+                                " \u00B7 ",
+                                formatBytes(snapshot.approximateBytes),
+                                " \u00B7 schema ",
+                                snapshot.schemaVersion)),
+                        React.createElement("div", { className: "recovery-record__actions" },
+                            React.createElement(ui_1.Button, { size: "small", icon: "refresh", onClick: () => { if (window.confirm(`Restore “${snapshot.projectName}” revision ${snapshot.projectRevision}? LOOM will snapshot the current project first.`)) {
+                                    setDataSafetyOpen(false);
+                                    void restoreRecoverySnapshot(snapshot.id);
+                                } } }, "Restore"),
+                            React.createElement(ui_1.IconButton, { label: "Remove recovery snapshot", icon: "trash", variant: "danger", onClick: () => { if (window.confirm('Remove this recovery snapshot from the current browser origin?'))
+                                    void removeRecoverySnapshot(snapshot.id); } }))))) : React.createElement("div", { className: "recovery-empty" },
+                        React.createElement(Icon_1.Icon, { name: "archive" }),
+                        React.createElement("strong", null, "No recovery snapshots yet"),
+                        React.createElement("p", null, "Create one manually or continue working; LOOM will create them automatically before replacement and deletion actions."))))),
+        React.createElement(Modal_1.Modal, { open: Boolean(safetyAction), onClose: () => setSafetyAction(null), title: safetyAction ? safetyCopy[safetyAction].title : 'Confirm project action', description: safetyAction ? safetyCopy[safetyAction].description : undefined, width: "medium", footer: React.createElement(React.Fragment, null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: () => setSafetyAction(null) }, "Cancel"),
+                React.createElement(ui_1.Button, { icon: "download", onClick: () => void executeSafetyAction(true) }, "Export and continue"),
+                React.createElement(ui_1.Button, { variant: safetyAction && safetyCopy[safetyAction].danger ? 'danger' : 'primary', icon: safetyAction === 'delete' ? 'trash' : safetyAction === 'sample' ? 'refresh' : 'plus', onClick: () => void executeSafetyAction(false) }, safetyAction ? safetyCopy[safetyAction].actionLabel : 'Continue')) },
+            React.createElement("div", { className: "safety-confirmation" },
+                React.createElement("div", { className: "safety-confirmation__icon" },
+                    React.createElement(Icon_1.Icon, { name: safetyAction === 'delete' ? 'warning' : 'lock', size: 30 })),
+                React.createElement("div", null,
+                    React.createElement("h3", null, "Recovery snapshot included"),
+                    React.createElement("p", null,
+                        "The action will not begin unless LOOM can first save the current project and preserve a local recovery snapshot. Choosing ",
+                        React.createElement("strong", null, "Export and continue"),
+                        " also downloads a full external JavaScript Object Notation (JSON) backup.")))),
         React.createElement(Modal_1.Modal, { open: aboutOpen, onClose: () => setAboutOpen(false), title: `LOOM v${factory_1.APP_VERSION}`, description: "Systems Engineering Project Control", width: "large", footer: React.createElement(ui_1.Button, { variant: "primary", onClick: () => setAboutOpen(false) }, "Close") },
             React.createElement("div", { className: "about-grid" },
                 React.createElement("div", { className: "about-hero" },
@@ -307,8 +497,13 @@ function App() {
                 React.createElement("div", { className: "about-card" },
                     React.createElement(Icon_1.Icon, { name: "refresh" }),
                     React.createElement("div", null,
-                        React.createElement("h4", null, "Complete recovery loop"),
-                        React.createElement("p", null, "Autosave, reload recovery, named projects, duplication, archive and restore, full JavaScript Object Notation (JSON) exchange, sample data, and schema migration are built in."))),
+                        React.createElement("h4", null, "Recovery-safe project changes"),
+                        React.createElement("p", null, "Autosave writes are serialized, project replacements are committed before the interface switches, and Fresh Start, sample loading, import replacement, snapshot restoration, and permanent deletion preserve recovery snapshots."))),
+                React.createElement("div", { className: "about-card" },
+                    React.createElement(Icon_1.Icon, { name: "edit" }),
+                    React.createElement("div", null,
+                        React.createElement("h4", null, "Controlled record lifecycle"),
+                        React.createElement("p", null, "Record Studio provides consistent creation, revision snapshots, field-level comparisons, typed relationships, archive and restore, and safe session undo and redo across the project model."))),
                 React.createElement("div", { className: "about-card" },
                     React.createElement(Icon_1.Icon, { name: "warning" }),
                     React.createElement("div", null,
@@ -329,10 +524,879 @@ function App() {
                         React.createElement("dd", null, project.revision)),
                     React.createElement("div", null,
                         React.createElement("dt", null, "Storage"),
-                        React.createElement("dd", null, "Local browser database")),
+                        React.createElement("dd", null, storageDiagnostics ? (0, text_1.humanize)(storageDiagnostics.backend) : 'Local browser database')),
+                    React.createElement("div", null,
+                        React.createElement("dt", null, "Offline shell"),
+                        React.createElement("dd", null, storageDiagnostics ? (0, text_1.humanize)(storageDiagnostics.serviceWorker) : 'Checking')),
                     React.createElement("div", null,
                         React.createElement("dt", null, "Network transmission"),
                         React.createElement("dd", null, "None without explicit user action")))))));
+}
+
+},
+"src/components/ControlledRecordStudio.tsx": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ControlledRecordStudio = ControlledRecordStudio;
+const react_1 = require("react");
+const recordLifecycle_1 = require("../domain/recordLifecycle");
+const ProjectContext_1 = require("../hooks/ProjectContext");
+const id_1 = require("../utils/id");
+const dates_1 = require("../utils/dates");
+const text_1 = require("../utils/text");
+const Icon_1 = require("./Icon");
+const Modal_1 = require("./Modal");
+const StatusBadge_1 = require("./StatusBadge");
+const ui_1 = require("./ui");
+const linkTypes = [
+    'derives-from', 'decomposes-into', 'refines', 'constrains', 'depends-on', 'conflicts-with',
+    'allocated-to', 'performed-by', 'realized-by', 'interfaces-with', 'verified-by', 'validated-by',
+    'supported-by', 'mitigated-by', 'scheduled-by', 'funded-by', 'changed-by', 'supersedes', 'blocks', 'impacts'
+];
+const commonKeys = new Set([
+    'id', 'identifier', 'title', 'revision', 'owner', 'lifecycleState', 'createdAt', 'updatedAt',
+    'history', 'revisionHistory', 'notes', 'tags', 'archived', 'archivedAt', 'archivedBy'
+]);
+const hiddenDetailKeys = new Set([
+    'contentDataUrl', 'integrityFingerprint', 'fileName', 'fileSize', 'mimeType', 'snapshot'
+]);
+const descriptiveKeys = new Set([
+    'statement', 'description', 'rationale', 'context', 'alternatives', 'objective', 'acceptanceCriteria',
+    'preconditions', 'configuration', 'environment', 'equipment', 'instrumentation', 'personnel',
+    'safetyConsiderations', 'procedure', 'dataToCollect', 'passFailLogic', 'sharedSetup', 'inputData',
+    'outputData', 'observations', 'deviations', 'cause', 'localEffect', 'nextHigherEffect', 'endEffect',
+    'detectionMethod', 'preventionControl', 'detectionControl', 'hazardRelationship', 'recommendedMitigation',
+    'blockedReason', 'proposedChange', 'impactAnalysis', 'scheduleImpact', 'budgetImpact', 'riskImpact',
+    'verificationImpact', 'resolution', 'basis', 'validationMethod', 'localParameters', 'requiredConfiguration',
+    'requiredEnvironment', 'requiredEquipment', 'requiredEvidence', 'operatingCondition', 'measurementCondition',
+    'performanceExpectation', 'mechanicalCharacteristics', 'electricalCharacteristics', 'dataCharacteristics',
+    'timingCharacteristics', 'customFormula'
+]);
+const relationshipArrayKeys = new Set([
+    'childIds', 'dependencyIds', 'decisionIds', 'baselineIds', 'functionIds', 'objectIds', 'interfaceIds',
+    'failureModeIds', 'verificationPlanIds', 'testExecutionIds', 'evidenceIds', 'workItemIds', 'requirementIds',
+    'documentIds', 'testCaseIds', 'predecessorIds', 'successorIds', 'budgetLineIds', 'linkedRecordIds',
+    'affectedRecordIds', 'blockingRecordIds', 'resultingRevisionIds'
+]);
+function labelForKey(key) {
+    const known = {
+        identifier: 'Identifier', lifecycleState: 'Lifecycle state', sourceLocation: 'Source location',
+        requirementType: 'Requirement type', applicableSystemLevel: 'Applicable system level',
+        applicableOperatingMode: 'Applicable operating mode', applicableEnvironment: 'Applicable environment',
+        verificationIntent: 'Verification intent', currentEstimate: 'Current estimate', measuredValue: 'Measured value',
+        comparisonDirection: 'Comparison direction', sourceDocumentId: 'Source document', parentId: 'Parent record',
+        endpointAId: 'Endpoint A', endpointBId: 'Endpoint B', verificationPlanId: 'Verification plan',
+        testCaseId: 'Test case', sourceId: 'Source record', executedAt: 'Executed at', approvedAt: 'Approved at',
+        approvedBy: 'Approved by', applicationVersion: 'Application version', sourceRequirementRevision: 'Source requirement revision',
+        affectedByParentChange: 'Affected by parent change', criticalityCategory: 'Criticality category',
+        residualCriticalityCategory: 'Residual criticality category', approvalState: 'Approval state',
+        implementationStatus: 'Implementation status', resourceType: 'Resource type', totalAvailable: 'Total available',
+        aggregationRule: 'Aggregation rule', applicableScenario: 'Applicable scenario', supersededById: 'Superseded by',
+        purchaseReference: 'Purchase reference', executionNumber: 'Execution number', systemConfiguration: 'System configuration',
+        hardwareRevision: 'Hardware revision', softwareVersion: 'Software version', firmwareVersion: 'Firmware version',
+        calibrationReference: 'Calibration reference', actionOwner: 'Action owner', mitigationStatus: 'Mitigation status',
+        reviewStatus: 'Review status', percentComplete: 'Percent complete', durationDays: 'Duration (days)',
+        plannedStart: 'Planned start', plannedFinish: 'Planned finish', actualStart: 'Actual start',
+        actualFinish: 'Actual finish', forecastFinish: 'Forecast finish', baselineStart: 'Baseline start',
+        baselineFinish: 'Baseline finish', dueDate: 'Due date', reviewDate: 'Review date', plannedDate: 'Planned date'
+    };
+    return known[key] ?? (0, text_1.humanize)(key.replace(/([a-z])([A-Z])/g, '$1-$2'));
+}
+function enumOptions(collection, key) {
+    const common = {
+        priority: ['low', 'normal', 'high', 'critical'],
+        requirementType: ['stakeholder', 'system', 'subsystem', 'functional', 'performance', 'interface', 'physical', 'environmental', 'safety', 'security', 'reliability', 'maintainability', 'manufacturing', 'regulatory', 'operational', 'support', 'disposal', 'user-defined'],
+        comparisonDirection: ['at-least', 'at-most', 'greater-than', 'less-than', 'exact', 'range', 'enumeration', 'boolean', 'date', 'descriptive'],
+        method: ['test', 'analysis', 'inspection', 'demonstration', 'similarity', 'certification', 'combination', 'not-yet-determined'],
+        verificationMethod: ['test', 'analysis', 'inspection', 'demonstration', 'similarity', 'certification', 'combination', 'not-yet-determined'],
+        level: ['unit', 'integration', 'subsystem', 'system', 'operational'],
+        verificationLevel: ['unit', 'integration', 'subsystem', 'system', 'operational'],
+        definition: ['draft', 'under-review', 'approved', 'baselined', 'change-pending', 'retired'],
+        allocation: ['unallocated', 'partially-allocated', 'fully-allocated', 'under-review'],
+        implementation: ['not-started', 'in-progress', 'implemented', 'blocked', 'rework-required'],
+        verification: ['unplanned', 'planned', 'ready', 'running', 'passed', 'failed', 'blocked', 'waived'],
+        validation: ['not-applicable', 'unplanned', 'planned', 'running', 'accepted', 'rejected', 'conditional'],
+        evidence: ['missing', 'incomplete', 'complete', 'stale', 'under-review'],
+        domain: ['hardware', 'software', 'firmware', 'human-process', 'facility', 'external-system'],
+        direction: ['A-to-B', 'B-to-A', 'bidirectional'],
+        interfaceType: ['mechanical', 'electrical', 'data', 'software', 'thermal', 'fluid', 'optical', 'radio-frequency', 'human', 'organizational', 'user-defined'],
+        sourceType: ['requirement', 'function', 'object', 'interface', 'operating-mode', 'test-failure', 'field-observation'],
+        criticalityCategory: ['low', 'moderate', 'high', 'critical'],
+        residualCriticalityCategory: ['low', 'moderate', 'high', 'critical'],
+        mitigationStatus: ['open', 'planned', 'implemented', 'verified', 'accepted'],
+        reviewStatus: ['draft', 'reviewed', 'approved'],
+        result: ['not-run', 'running', 'passed', 'failed', 'blocked', 'inconclusive', 'conditionally-accepted', 'waived', 'superseded'],
+        aggregationRule: ['sum', 'maximum', 'minimum', 'weighted-sum', 'percentage', 'custom-formula'],
+        kind: ['issue', 'action'],
+        disposition: ['draft', 'under-review', 'approved', 'rejected', 'deferred'],
+        state: ['accepted-as-written', 'accepted-with-local-parameters', 'tailored', 'decomposed', 'satisfied-at-parent', 'not-applicable', 'superseded', 'pending-review'],
+        comparisonKind: ['estimate', 'measured']
+    };
+    if (common[key])
+        return common[key];
+    if (key === 'implementationStatus') {
+        if (collection === 'changeRequests')
+            return ['not-started', 'in-progress', 'implemented', 'verified', 'closed'];
+        return ['not-started', 'in-progress', 'implemented', 'blocked', 'rework-required'];
+    }
+    if (key === 'approvalState') {
+        if (collection === 'documents')
+            return ['not-required', 'draft', 'under-review', 'approved'];
+        return ['draft', 'under-review', 'approved', 'superseded'];
+    }
+    if (key === 'status') {
+        const byCollection = {
+            interfaces: ['draft', 'defined', 'ready', 'verified', 'issue'],
+            workItems: ['backlog', 'ready', 'in-progress', 'review', 'blocked', 'done'],
+            documents: ['draft', 'current', 'superseded', 'stale', 'under-review'],
+            assumptions: ['open', 'validated', 'invalidated', 'retired'],
+            issuesActions: ['open', 'in-progress', 'blocked', 'resolved', 'closed']
+        };
+        return byCollection[collection];
+    }
+    if (key === 'kind' && collection === 'issuesActions')
+        return ['issue', 'action'];
+    return undefined;
+}
+function isDateField(key) {
+    return /(?:Date|Start|Finish)$/.test(key) || ['date', 'dueDate', 'reviewDate', 'plannedDate', 'baselineStart', 'baselineFinish'].includes(key);
+}
+function isDateTimeField(key) {
+    return ['executedAt', 'approvedAt'].includes(key);
+}
+function toDateTimeLocal(value) {
+    if (!value)
+        return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf()))
+        return value.slice(0, 16);
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.valueOf() - offset).toISOString().slice(0, 16);
+}
+function fromDateTimeLocal(value) {
+    return value ? new Date(value).toISOString() : '';
+}
+function updateAtPath(source, path, value) {
+    const copy = structuredClone(source);
+    let cursor = copy;
+    path.slice(0, -1).forEach((segment) => {
+        cursor = cursor[segment];
+    });
+    cursor[path[path.length - 1]] = value;
+    return copy;
+}
+function removeAtPath(source, path) {
+    const copy = structuredClone(source);
+    let cursor = copy;
+    path.slice(0, -1).forEach((segment) => {
+        cursor = cursor[segment];
+    });
+    const key = path[path.length - 1];
+    if (Array.isArray(cursor) && typeof key === 'number')
+        cursor.splice(key, 1);
+    else
+        delete cursor[key];
+    return copy;
+}
+function valueAtPath(source, path) {
+    return path.reduce((current, segment) => current === undefined || current === null ? undefined : current[segment], source);
+}
+function emptyStructuredItem(key, existing) {
+    if (existing.length && existing[0] && typeof existing[0] === 'object') {
+        const copy = structuredClone(existing[0]);
+        Object.keys(copy).forEach((field) => {
+            const value = copy[field];
+            if (field === 'id')
+                copy[field] = (0, id_1.createId)(key.replace(/s$/, '') || 'row');
+            else if (typeof value === 'string')
+                copy[field] = '';
+            else if (typeof value === 'number')
+                copy[field] = 0;
+            else if (typeof value === 'boolean')
+                copy[field] = false;
+            else if (Array.isArray(value))
+                copy[field] = [];
+        });
+        return copy;
+    }
+    if (key === 'steps')
+        return { id: (0, id_1.createId)('step'), instruction: '', expectedResult: '' };
+    if (key === 'allocations')
+        return { id: (0, id_1.createId)('allocation'), label: '', allocation: 0, estimate: 0, uncertainty: 0, confidence: 50, evidenceIds: [] };
+    if (key === 'inheritedObligations')
+        return { id: (0, id_1.createId)('obligation'), requirementId: '', sourceRequirementRevision: 1, state: 'pending-review', localParameters: '', rationale: '', affectedByParentChange: false };
+    if (key === 'trend')
+        return { at: (0, dates_1.todayIso)(), value: 0, kind: 'estimate' };
+    return { id: (0, id_1.createId)('row') };
+}
+function referenceCandidates(project, key, currentCollection) {
+    const collectionForKey = {
+        parentId: currentCollection,
+        sourceDocumentId: 'documents',
+        requirementId: 'requirements', requirementIds: 'requirements',
+        functionId: 'functions', functionIds: 'functions',
+        objectId: 'objects', objectIds: 'objects',
+        interfaceId: 'interfaces', interfaceIds: 'interfaces',
+        verificationPlanId: 'verificationPlans', verificationPlanIds: 'verificationPlans',
+        testCaseId: 'testCases', testCaseIds: 'testCases',
+        testExecutionId: 'testExecutions', testExecutionIds: 'testExecutions',
+        failureModeId: 'failureModes', failureModeIds: 'failureModes',
+        workItemId: 'workItems', workItemIds: 'workItems',
+        budgetLineId: 'projectBudgetLines', budgetLineIds: 'projectBudgetLines',
+        evidenceId: 'documents', evidenceIds: 'documents', documentIds: 'documents', linkedRecordIds: 'documents',
+        decisionId: 'decisions', decisionIds: 'decisions', baselineIds: 'baselines', supersededById: 'documents'
+    };
+    const collection = collectionForKey[key];
+    const references = collection
+        ? (0, recordLifecycle_1.getControlledCollection)(project, collection).map((record) => ({ collection, record }))
+        : (0, recordLifecycle_1.allControlledRecords)(project);
+    return references.filter((reference) => !reference.record.archived);
+}
+function formatRevisionValue(value) {
+    if (value === undefined)
+        return '—';
+    if (value === null)
+        return 'null';
+    if (typeof value === 'string')
+        return value || '“”';
+    if (typeof value === 'number' || typeof value === 'boolean')
+        return String(value);
+    const serialized = JSON.stringify(value);
+    return serialized.length > 180 ? `${serialized.slice(0, 177)}…` : serialized;
+}
+function DirectReferenceEditor({ project, collection, record, onChange }) {
+    const candidate = record;
+    const keys = Object.keys(candidate).filter((key) => (key.endsWith('Id') || key.endsWith('Ids')) && key !== 'id' && key !== 'revisionIds' && !commonKeys.has(key));
+    if (!keys.length)
+        return React.createElement(ui_1.EmptyState, { icon: "link", title: "No direct reference fields", description: "This record type uses typed traceability links or embedded structure instead of direct reference fields." });
+    return React.createElement("div", { className: "record-reference-grid" }, keys.map((key) => {
+        const value = candidate[key];
+        const choices = referenceCandidates(project, key, collection).filter((reference) => reference.record.id !== record.id);
+        if (Array.isArray(value)) {
+            const selected = value;
+            return React.createElement("section", { className: "record-reference-field", key: key },
+                React.createElement("header", null,
+                    React.createElement("div", null,
+                        React.createElement("strong", null, labelForKey(key)),
+                        React.createElement("small", null,
+                            selected.length,
+                            " linked record",
+                            selected.length === 1 ? '' : 's'))),
+                React.createElement("div", { className: "record-reference-pills" },
+                    selected.map((id) => {
+                        const reference = (0, recordLifecycle_1.findControlledRecord)(project, id);
+                        return React.createElement("span", { key: id },
+                            React.createElement("b", null, reference?.record.identifier ?? id),
+                            React.createElement("em", null, reference ? (0, recordLifecycle_1.recordPrimaryText)(reference.record) : 'Missing record'),
+                            React.createElement("button", { "aria-label": `Remove ${id}`, onClick: () => onChange(updateAtPath(record, [key], selected.filter((candidateId) => candidateId !== id))) },
+                                React.createElement(Icon_1.Icon, { name: "close", size: 12 })));
+                    }),
+                    !selected.length ? React.createElement("small", null, "No direct references assigned.") : null),
+                React.createElement(ui_1.Select, { value: "", onChange: (event) => {
+                        if (!event.target.value || selected.includes(event.target.value))
+                            return;
+                        onChange(updateAtPath(record, [key], [...selected, event.target.value]));
+                    } },
+                    React.createElement("option", { value: "" }, "Add reference\u2026"),
+                    choices.filter((choice) => !selected.includes(choice.record.id)).map((choice) => React.createElement("option", { value: choice.record.id, key: choice.record.id },
+                        choice.record.identifier,
+                        " \u00B7 ",
+                        (0, recordLifecycle_1.recordPrimaryText)(choice.record)))));
+        }
+        return React.createElement("section", { className: "record-reference-field", key: key },
+            React.createElement("header", null,
+                React.createElement("div", null,
+                    React.createElement("strong", null, labelForKey(key)),
+                    React.createElement("small", null, "Single controlled reference"))),
+            React.createElement(ui_1.Select, { value: typeof value === 'string' ? value : '', onChange: (event) => onChange(updateAtPath(record, [key], event.target.value || undefined)) },
+                React.createElement("option", { value: "" }, "Not assigned"),
+                choices.map((choice) => React.createElement("option", { value: choice.record.id, key: choice.record.id },
+                    choice.record.identifier,
+                    " \u00B7 ",
+                    (0, recordLifecycle_1.recordPrimaryText)(choice.record)))));
+    }));
+}
+function RecordSpecificFields({ project, collection, record, onChange }) {
+    const source = record;
+    const renderNode = (key, value, path, depth = 0) => {
+        if (commonKeys.has(key) || hiddenDetailKeys.has(key) || relationshipArrayKeys.has(key) || key.endsWith('Id'))
+            return null;
+        const label = labelForKey(key);
+        const options = enumOptions(collection, key === 'kind' && path.at(-2) === 'trend' ? 'comparisonKind' : key);
+        if (Array.isArray(value)) {
+            if (!value.length || value.every((item) => ['string', 'number', 'boolean'].includes(typeof item))) {
+                const stringValue = value.join('\n');
+                return React.createElement(ui_1.Field, { key: path.join('.'), label: label, hint: "One value per line.", className: "field--wide" },
+                    React.createElement(ui_1.Textarea, { rows: Math.min(6, Math.max(3, value.length + 1)), value: stringValue, onChange: (event) => {
+                            const next = event.target.value.split(/\n/).map((item) => item.trim()).filter(Boolean);
+                            onChange(updateAtPath(record, path, next));
+                        } }));
+            }
+            return React.createElement("section", { className: "structured-field", key: path.join('.') },
+                React.createElement("header", null,
+                    React.createElement("div", null,
+                        React.createElement("strong", null, label),
+                        React.createElement("small", null,
+                            value.length,
+                            " structured row",
+                            value.length === 1 ? '' : 's')),
+                    React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: () => onChange(updateAtPath(record, path, [...value, emptyStructuredItem(key, value)])) }, "Add row")),
+                React.createElement("div", { className: "structured-field__rows" }, value.map((item, index) => React.createElement("article", { key: item?.id ?? `${path.join('.')}-${index}` },
+                    React.createElement("div", { className: "structured-field__row-head" },
+                        React.createElement("span", null,
+                            React.createElement("b", null,
+                                label,
+                                " ",
+                                index + 1),
+                            item?.id ? React.createElement("small", null, item.id) : null),
+                        React.createElement(ui_1.IconButton, { label: `Remove ${label} ${index + 1}`, icon: "trash", variant: "danger", onClick: () => onChange(removeAtPath(record, [...path, index])) })),
+                    React.createElement("div", { className: "form-grid form-grid--compact" }, item && typeof item === 'object'
+                        ? Object.entries(item).map(([childKey, child]) => childKey === 'id' || relationshipArrayKeys.has(childKey)
+                            ? null
+                            : renderNode(childKey, child, [...path, index, childKey], depth + 1))
+                        : null)))));
+        }
+        if (value && typeof value === 'object') {
+            const entries = Object.entries(value);
+            if (!entries.length) {
+                return React.createElement("section", { className: "structured-field structured-field--empty", key: path.join('.') },
+                    React.createElement("header", null,
+                        React.createElement("div", null,
+                            React.createElement("strong", null, label),
+                            React.createElement("small", null, "No values defined"))),
+                    React.createElement("p", null, "This structured map is empty. Its specialized module can add parameter keys when needed."));
+            }
+            return React.createElement("section", { className: "record-field-group", key: path.join('.') },
+                React.createElement("header", null,
+                    React.createElement("strong", null, label),
+                    React.createElement("small", null, "Structured controlled values")),
+                React.createElement("div", { className: "form-grid form-grid--compact" }, entries.map(([childKey, child]) => renderNode(childKey, child, [...path, childKey], depth + 1))));
+        }
+        if (typeof value === 'boolean') {
+            return React.createElement("div", { className: "field field--checkbox", key: path.join('.') },
+                React.createElement(ui_1.Checkbox, { label: label, checked: value, onChange: (event) => onChange(updateAtPath(record, path, event.target.checked)) }));
+        }
+        if (typeof value === 'number') {
+            return React.createElement(ui_1.Field, { key: path.join('.'), label: label },
+                React.createElement(ui_1.Input, { type: "number", step: "any", value: Number.isFinite(value) ? value : 0, onChange: (event) => onChange(updateAtPath(record, path, Number(event.target.value))) }));
+        }
+        if (options) {
+            return React.createElement(ui_1.Field, { key: path.join('.'), label: label },
+                React.createElement(ui_1.Select, { value: typeof value === 'string' ? value : '', onChange: (event) => onChange(updateAtPath(record, path, event.target.value)) }, options.map((option) => React.createElement("option", { key: option, value: option }, (0, text_1.humanize)(option)))));
+        }
+        if (isDateTimeField(key)) {
+            return React.createElement(ui_1.Field, { key: path.join('.'), label: label },
+                React.createElement(ui_1.Input, { type: "datetime-local", value: toDateTimeLocal(String(value ?? '')), onChange: (event) => onChange(updateAtPath(record, path, fromDateTimeLocal(event.target.value))) }));
+        }
+        if (isDateField(key)) {
+            return React.createElement(ui_1.Field, { key: path.join('.'), label: label },
+                React.createElement(ui_1.Input, { type: "date", value: String(value ?? '').slice(0, 10), onChange: (event) => onChange(updateAtPath(record, path, event.target.value || undefined)) }));
+        }
+        const stringValue = value === undefined || value === null ? '' : String(value);
+        if (descriptiveKeys.has(key) || stringValue.length > 90) {
+            return React.createElement(ui_1.Field, { key: path.join('.'), label: label, className: "field--wide" },
+                React.createElement(ui_1.Textarea, { rows: stringValue.length > 250 ? 6 : 3, value: stringValue, onChange: (event) => onChange(updateAtPath(record, path, event.target.value)) }));
+        }
+        return React.createElement(ui_1.Field, { key: path.join('.'), label: label },
+            React.createElement(ui_1.Input, { value: stringValue, onChange: (event) => onChange(updateAtPath(record, path, event.target.value)) }));
+    };
+    const fields = Object.entries(source).map(([key, value]) => renderNode(key, value, [key]));
+    return React.createElement("div", { className: "record-specific-fields" }, fields);
+}
+function RevisionWorkspace({ collection, record, onRevert }) {
+    const revisions = [...(record.revisionHistory ?? [])].sort((a, b) => b.revision - a.revision);
+    const [beforeRevision, setBeforeRevision] = (0, react_1.useState)(revisions.at(-1)?.revision ?? record.revision);
+    const [afterRevision, setAfterRevision] = (0, react_1.useState)(revisions[0]?.revision ?? record.revision);
+    (0, react_1.useEffect)(() => {
+        setBeforeRevision(revisions.at(-1)?.revision ?? record.revision);
+        setAfterRevision(revisions[0]?.revision ?? record.revision);
+    }, [record.id, record.revision]);
+    const before = revisions.find((revision) => revision.revision === beforeRevision);
+    const after = revisions.find((revision) => revision.revision === afterRevision);
+    const differences = before && after ? (0, recordLifecycle_1.compareRevisionSnapshots)(before, after) : [];
+    return React.createElement("div", { className: "revision-workspace" },
+        React.createElement("section", { className: "revision-timeline" },
+            React.createElement("header", null,
+                React.createElement("div", null,
+                    React.createElement("h3", null, "Revision history"),
+                    React.createElement("p", null, "Controlled revisions are immutable field snapshots. Reverting creates a new revision; it never erases later history.")),
+                React.createElement("span", null,
+                    revisions.length,
+                    " snapshots")),
+            React.createElement("div", { className: "revision-list" }, revisions.map((revision) => React.createElement("article", { className: revision.revision === record.revision ? 'is-current' : '', key: revision.id },
+                React.createElement("div", { className: "revision-list__rail" },
+                    React.createElement("span", null,
+                        "r",
+                        revision.revision),
+                    React.createElement("i", null)),
+                React.createElement("div", { className: "revision-list__body" },
+                    React.createElement("span", null,
+                        React.createElement("strong", null, revision.action || 'Revision captured'),
+                        revision.revision === record.revision ? React.createElement("em", null, "Current") : null),
+                    React.createElement("p", null, revision.summary || 'No revision note was recorded.'),
+                    React.createElement("small", null,
+                        (0, dates_1.formatDateTime)(revision.capturedAt),
+                        " \u00B7 ",
+                        revision.capturedBy,
+                        revision.changedFields?.length ? ` · ${revision.changedFields.length} changed fields` : ''),
+                    revision.changedFields?.length ? React.createElement("div", { className: "revision-fields" }, revision.changedFields.map((field) => React.createElement("code", { key: field }, labelForKey(field)))) : null),
+                React.createElement(ui_1.Button, { size: "small", variant: "ghost", disabled: revision.revision === record.revision, onClick: () => onRevert(revision.revision) }, "Restore values"))))),
+        React.createElement("section", { className: "revision-compare" },
+            React.createElement("header", null,
+                React.createElement("div", null,
+                    React.createElement("h3", null, "Field-level comparison"),
+                    React.createElement("p", null,
+                        "Compare any two retained revisions of ",
+                        record.identifier,
+                        ".")),
+                React.createElement(StatusBadge_1.StatusBadge, { value: record.archived ? 'archived' : record.lifecycleState })),
+            React.createElement("div", { className: "revision-compare__selectors" },
+                React.createElement(ui_1.Field, { label: "Earlier revision" },
+                    React.createElement(ui_1.Select, { value: beforeRevision, onChange: (event) => setBeforeRevision(Number(event.target.value)) }, revisions.slice().reverse().map((revision) => React.createElement("option", { value: revision.revision, key: revision.id },
+                        "r",
+                        revision.revision,
+                        " \u00B7 ",
+                        revision.action)))),
+                React.createElement(Icon_1.Icon, { name: "arrow-right" }),
+                React.createElement(ui_1.Field, { label: "Later revision" },
+                    React.createElement(ui_1.Select, { value: afterRevision, onChange: (event) => setAfterRevision(Number(event.target.value)) }, revisions.map((revision) => React.createElement("option", { value: revision.revision, key: revision.id },
+                        "r",
+                        revision.revision,
+                        " \u00B7 ",
+                        revision.action))))),
+            differences.length ? React.createElement("div", { className: "revision-diff-table", role: "table", "aria-label": "Revision field differences" },
+                React.createElement("div", { className: "revision-diff-table__head", role: "row" },
+                    React.createElement("span", { role: "columnheader" }, "Field"),
+                    React.createElement("span", { role: "columnheader" },
+                        "r",
+                        beforeRevision),
+                    React.createElement("span", { role: "columnheader" },
+                        "r",
+                        afterRevision)),
+                differences.map((difference) => React.createElement("div", { role: "row", key: difference.path },
+                    React.createElement("strong", { role: "cell" }, difference.path.split('.').map(labelForKey).join(' › ')),
+                    React.createElement("code", { role: "cell" }, formatRevisionValue(difference.before)),
+                    React.createElement("code", { role: "cell" }, formatRevisionValue(difference.after))))) : React.createElement("div", { className: "revision-no-diff" },
+                React.createElement(Icon_1.Icon, { name: "check" }),
+                React.createElement("strong", null, "No field differences"),
+                React.createElement("p", null, "The selected revision snapshots contain the same controlled values."))),
+        React.createElement("section", { className: "audit-history" },
+            React.createElement("header", null,
+                React.createElement("h3", null, "Audit events"),
+                React.createElement("span", null, record.history.length)),
+            record.history.slice().reverse().map((entry) => React.createElement("div", { key: entry.id },
+                React.createElement("b", null,
+                    "r",
+                    entry.revision),
+                React.createElement("span", null,
+                    React.createElement("strong", null, entry.action),
+                    React.createElement("small", null,
+                        entry.summary || 'No summary',
+                        " \u00B7 ",
+                        entry.by,
+                        " \u00B7 ",
+                        (0, dates_1.formatDateTime)(entry.at))))),
+            React.createElement("p", { className: "audit-history__scope" }, "This is a local single-user audit aid, not a cryptographic signature or enterprise approval record.")));
+}
+function ControlledRecordStudio({ open, onClose, navigate, target }) {
+    const { project, updateProject, notify } = (0, ProjectContext_1.useProject)();
+    const [collection, setCollection] = (0, react_1.useState)('requirements');
+    const [selectedId, setSelectedId] = (0, react_1.useState)();
+    const [draft, setDraft] = (0, react_1.useState)();
+    const [newRecord, setNewRecord] = (0, react_1.useState)(false);
+    const [dirty, setDirty] = (0, react_1.useState)(false);
+    const [query, setQuery] = (0, react_1.useState)('');
+    const [showArchived, setShowArchived] = (0, react_1.useState)(false);
+    const [tab, setTab] = (0, react_1.useState)('details');
+    const [revisionNote, setRevisionNote] = (0, react_1.useState)('');
+    const [linkTargetId, setLinkTargetId] = (0, react_1.useState)('');
+    const [linkType, setLinkType] = (0, react_1.useState)('depends-on');
+    const [linkRationale, setLinkRationale] = (0, react_1.useState)('');
+    const descriptor = (0, recordLifecycle_1.descriptorForCollection)(collection);
+    const records = (0, react_1.useMemo)(() => (0, recordLifecycle_1.getControlledCollection)(project, collection)
+        .filter((record) => showArchived || !record.archived)
+        .filter((record) => !query.trim() || (0, recordLifecycle_1.recordSearchText)({ collection, record }).includes(query.trim().toLowerCase()))
+        .sort((a, b) => a.identifier.localeCompare(b.identifier, undefined, { numeric: true })), [collection, project, query, showArchived]);
+    const selectedRecord = (0, react_1.useMemo)(() => selectedId ? (0, recordLifecycle_1.getControlledCollection)(project, collection).find((record) => record.id === selectedId) : undefined, [collection, project, selectedId]);
+    (0, react_1.useEffect)(() => {
+        if (!open)
+            return;
+        if (target) {
+            const record = (0, recordLifecycle_1.getControlledCollection)(project, target.collection).find((candidate) => candidate.id === target.id);
+            if (record) {
+                setCollection(target.collection);
+                setSelectedId(record.id);
+                setDraft(structuredClone(record));
+                setNewRecord(false);
+                setDirty(false);
+                setTab('details');
+                setRevisionNote('');
+                return;
+            }
+        }
+        if (!selectedId || !(0, recordLifecycle_1.getControlledCollection)(project, collection).some((record) => record.id === selectedId)) {
+            const first = (0, recordLifecycle_1.getControlledCollection)(project, collection).find((record) => !record.archived) ?? (0, recordLifecycle_1.getControlledCollection)(project, collection)[0];
+            setSelectedId(first?.id);
+            setDraft(first ? structuredClone(first) : undefined);
+            setNewRecord(false);
+            setDirty(false);
+        }
+    }, [open, target?.collection, target?.id, project.id]);
+    (0, react_1.useEffect)(() => {
+        if (!selectedRecord || dirty || newRecord)
+            return;
+        setDraft(structuredClone(selectedRecord));
+    }, [selectedRecord, dirty, newRecord]);
+    (0, react_1.useEffect)(() => {
+        if (!open)
+            return;
+        const handleKey = (event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                event.preventDefault();
+                saveRecord();
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    });
+    const linked = (0, react_1.useMemo)(() => draft && !newRecord ? (0, recordLifecycle_1.linksForRecord)(project, draft.id) : [], [draft, newRecord, project]);
+    const targetCandidates = (0, react_1.useMemo)(() => (0, recordLifecycle_1.allControlledRecords)(project).filter((reference) => reference.record.id !== draft?.id && !reference.record.archived), [draft?.id, project]);
+    function confirmDiscard() {
+        return !dirty || window.confirm('Discard the unsaved Record Studio changes?');
+    }
+    function closeStudio() {
+        if (confirmDiscard())
+            onClose();
+    }
+    function chooseCollection(next) {
+        if (!confirmDiscard())
+            return;
+        setCollection(next);
+        const first = (0, recordLifecycle_1.getControlledCollection)(project, next).find((record) => !record.archived) ?? (0, recordLifecycle_1.getControlledCollection)(project, next)[0];
+        setSelectedId(first?.id);
+        setDraft(first ? structuredClone(first) : undefined);
+        setNewRecord(false);
+        setDirty(false);
+        setTab('details');
+        setRevisionNote('');
+    }
+    function chooseRecord(record) {
+        if (!confirmDiscard())
+            return;
+        setSelectedId(record.id);
+        setDraft(structuredClone(record));
+        setNewRecord(false);
+        setDirty(false);
+        setTab('details');
+        setRevisionNote('');
+    }
+    function beginNew() {
+        if (!confirmDiscard())
+            return;
+        const record = (0, recordLifecycle_1.createDefaultControlledRecord)(project, collection);
+        setSelectedId(record.id);
+        setDraft(record);
+        setNewRecord(true);
+        setDirty(true);
+        setTab('details');
+        setRevisionNote(`${descriptor.singular} created in Record Studio.`);
+    }
+    function changeDraft(next) {
+        setDraft(next);
+        setDirty(true);
+    }
+    function normalizedDraft(record) {
+        const next = structuredClone(record);
+        if (collection === 'functions' || collection === 'objects')
+            next.name = next.title;
+        if (collection === 'failureModes' && !String(next.failureMode ?? '').trim())
+            next.failureMode = next.title;
+        if (collection === 'decisions' && !String(next.decision ?? '').trim())
+            next.decision = next.title;
+        if (collection === 'assumptions' && !String(next.assumption ?? '').trim())
+            next.assumption = next.title;
+        return next;
+    }
+    function saveRecord() {
+        if (!draft)
+            return;
+        try {
+            const candidate = normalizedDraft(draft);
+            const summary = revisionNote.trim() || (newRecord ? `${descriptor.singular} created.` : `${candidate.identifier} revised in Record Studio.`);
+            updateProject((projectDraft) => {
+                (0, recordLifecycle_1.commitControlledRecord)(projectDraft, collection, candidate, newRecord ? 'Created' : 'Revised', summary);
+            }, summary);
+            setNewRecord(false);
+            setDirty(false);
+            setRevisionNote('');
+            setDraft(candidate);
+            notify(`${candidate.identifier} ${newRecord ? 'created' : 'revised'} as a controlled record.`, 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'The controlled record could not be saved.', 'danger');
+        }
+    }
+    function toggleArchive() {
+        if (!draft || newRecord)
+            return;
+        const action = draft.archived ? 'restore' : 'archive';
+        if (!window.confirm(`${draft.archived ? 'Restore' : 'Archive'} ${draft.identifier}? ${draft.archived ? 'It will return to active work.' : 'Its revisions and relationships will remain available.'}`))
+            return;
+        try {
+            updateProject((projectDraft) => {
+                if (draft.archived)
+                    (0, recordLifecycle_1.restoreControlledRecord)(projectDraft, collection, draft.id, 'Local user', revisionNote.trim() || 'Record restored from Record Studio.');
+                else
+                    (0, recordLifecycle_1.archiveControlledRecord)(projectDraft, collection, draft.id, 'Local user', revisionNote.trim() || 'Record archived from Record Studio.');
+            }, `${draft.identifier} ${action}d`);
+            // Archive state is orthogonal to the engineering lifecycle state. Restoring a
+            // record must therefore reveal the same lifecycle disposition it had before
+            // archival rather than leaving it in a synthetic "archived" lifecycle lane.
+            const next = { ...draft, archived: !draft.archived };
+            setDraft(next);
+            setDirty(false);
+            setRevisionNote('');
+            notify(`${draft.identifier} ${action}d.`, 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : `The record could not be ${action}d.`, 'danger');
+        }
+    }
+    function revertToRevision(revision) {
+        if (!draft || newRecord)
+            return;
+        if (!window.confirm(`Restore the controlled field values from ${draft.identifier} revision ${revision}? LOOM will create a new revision and retain all later history.`))
+            return;
+        try {
+            updateProject((projectDraft) => {
+                (0, recordLifecycle_1.revertControlledRecord)(projectDraft, collection, draft.id, revision);
+            }, `${draft.identifier} restored from revision ${revision}`);
+            setDirty(false);
+            setRevisionNote('');
+            notify(`${draft.identifier} values restored from revision ${revision}; a new revision was created.`, 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'The revision could not be restored.', 'danger');
+        }
+    }
+    function addLink() {
+        if (!draft || newRecord || !linkTargetId)
+            return;
+        try {
+            updateProject((projectDraft) => {
+                (0, recordLifecycle_1.createControlledLink)(projectDraft, draft.id, linkTargetId, linkType, linkRationale);
+            }, `${draft.identifier} relationship added`);
+            setLinkTargetId('');
+            setLinkRationale('');
+            notify('Typed relationship added to the engineering thread.', 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'The relationship could not be added.', 'danger');
+        }
+    }
+    function removeLink(linkId) {
+        if (!draft || !window.confirm('Remove this typed relationship? Direct reference fields synchronized by LOOM will be updated as well.'))
+            return;
+        updateProject((projectDraft) => { (0, recordLifecycle_1.removeControlledLink)(projectDraft, linkId); }, `${draft.identifier} relationship removed`);
+        notify('Typed relationship removed.', 'success');
+    }
+    function openLinkedRecord(id) {
+        const reference = (0, recordLifecycle_1.findControlledRecord)(project, id);
+        if (!reference || !confirmDiscard())
+            return;
+        setCollection(reference.collection);
+        setSelectedId(reference.record.id);
+        setDraft(structuredClone(reference.record));
+        setNewRecord(false);
+        setDirty(false);
+        setTab('details');
+    }
+    const activeCount = (0, recordLifecycle_1.getControlledCollection)(project, collection).filter((record) => !record.archived).length;
+    const archivedCount = (0, recordLifecycle_1.getControlledCollection)(project, collection).filter((record) => record.archived).length;
+    return React.createElement(Modal_1.Modal, { open: open, onClose: closeStudio, title: "Controlled Record Studio", description: "Create, revise, link, compare, archive, restore, and recover authoritative engineering records through one consistent lifecycle.", width: "wide", footer: React.createElement("div", { className: "record-studio__footer" },
+            React.createElement("span", null, dirty ? React.createElement(React.Fragment, null,
+                React.createElement("i", { className: "record-dirty-dot" }),
+                "Unsaved record changes") : draft ? `${draft.identifier} · revision ${draft.revision}` : 'No record selected'),
+            React.createElement("div", null,
+                React.createElement(ui_1.Button, { variant: "ghost", onClick: closeStudio }, "Close"),
+                draft && !newRecord ? React.createElement(ui_1.Button, { icon: draft.archived ? 'unlock' : 'archive', variant: draft.archived ? 'secondary' : 'quiet', onClick: toggleArchive }, draft.archived ? 'Restore' : 'Archive') : null,
+                React.createElement(ui_1.Button, { icon: "save", variant: "primary", disabled: !draft || !dirty, onClick: saveRecord }, newRecord ? `Create ${descriptor.singular}` : 'Save new revision'))) },
+        React.createElement("div", { className: "record-studio" },
+            React.createElement("aside", { className: "record-studio__types" },
+                React.createElement("header", null,
+                    React.createElement("span", null, "Record types"),
+                    React.createElement("small", null,
+                        (0, recordLifecycle_1.allControlledRecords)(project).length,
+                        " controlled records")),
+                React.createElement("nav", null, recordLifecycle_1.controlledCollectionDescriptors.map((item) => {
+                    const active = (0, recordLifecycle_1.getControlledCollection)(project, item.key).filter((record) => !record.archived).length;
+                    const archived = (0, recordLifecycle_1.getControlledCollection)(project, item.key).filter((record) => record.archived).length;
+                    return React.createElement("button", { className: collection === item.key ? 'is-active' : '', key: item.key, onClick: () => chooseCollection(item.key) },
+                        React.createElement(Icon_1.Icon, { name: item.icon }),
+                        React.createElement("span", null,
+                            React.createElement("strong", null, item.plural),
+                            React.createElement("small", null,
+                                active,
+                                " active",
+                                archived ? ` · ${archived} archived` : '')),
+                        React.createElement("b", null, active));
+                }))),
+            React.createElement("section", { className: "record-studio__library" },
+                React.createElement("header", null,
+                    React.createElement("div", null,
+                        React.createElement("span", null, descriptor.plural),
+                        React.createElement("small", null,
+                            activeCount,
+                            " active \u00B7 ",
+                            archivedCount,
+                            " archived")),
+                    React.createElement(ui_1.Button, { size: "small", icon: "plus", variant: "primary", onClick: beginNew }, "New")),
+                React.createElement("div", { className: "record-library-search" },
+                    React.createElement(Icon_1.Icon, { name: "search" }),
+                    React.createElement(ui_1.Input, { value: query, onChange: (event) => setQuery(event.target.value), placeholder: `Search ${descriptor.plural.toLowerCase()}…` })),
+                React.createElement("label", { className: "record-library-archive-toggle" },
+                    React.createElement("input", { type: "checkbox", checked: showArchived, onChange: (event) => setShowArchived(event.target.checked) }),
+                    React.createElement("span", null, "Show archived records")),
+                React.createElement("div", { className: "record-library-list" },
+                    records.map((record) => React.createElement("button", { className: `${selectedId === record.id ? 'is-active' : ''} ${record.archived ? 'is-archived' : ''}`, key: record.id, onClick: () => chooseRecord(record) },
+                        React.createElement("span", { className: "record-library-list__id" },
+                            React.createElement("b", null, record.identifier),
+                            React.createElement("em", null,
+                                "r",
+                                record.revision)),
+                        React.createElement("strong", null, (0, recordLifecycle_1.recordPrimaryText)(record)),
+                        React.createElement("span", { className: "record-library-list__meta" },
+                            React.createElement(StatusBadge_1.StatusBadge, { value: record.archived ? 'archived' : record.lifecycleState, compact: true }),
+                            React.createElement("small", null, record.owner || 'Unassigned')))),
+                    !records.length ? React.createElement(ui_1.EmptyState, { icon: "document", title: `No ${descriptor.plural.toLowerCase()}`, description: query ? 'No records match this search and archive filter.' : `Create the first ${descriptor.singular.toLowerCase()} through the same controlled lifecycle used throughout LOOM.`, action: React.createElement(ui_1.Button, { size: "small", icon: "plus", onClick: beginNew }, "Create record") }) : null)),
+            React.createElement("section", { className: "record-studio__editor" }, draft ? React.createElement(React.Fragment, null,
+                React.createElement("header", { className: "record-editor-header" },
+                    React.createElement("div", { className: "record-editor-header__identity" },
+                        React.createElement("span", null,
+                            React.createElement(Icon_1.Icon, { name: descriptor.icon }),
+                            newRecord ? `New ${descriptor.singular}` : descriptor.singular),
+                        React.createElement("div", null,
+                            React.createElement("h3", null, draft.identifier),
+                            React.createElement(StatusBadge_1.StatusBadge, { value: draft.archived ? 'archived' : draft.lifecycleState }),
+                            dirty ? React.createElement("em", null, "Modified") : null),
+                        React.createElement("p", null, (0, recordLifecycle_1.recordPrimaryText)(draft))),
+                    React.createElement("div", { className: "record-editor-header__actions" },
+                        React.createElement(ui_1.Button, { size: "small", icon: "arrow-right", onClick: () => { navigate?.(descriptor.section); onClose(); } }, "Open module"))),
+                React.createElement("nav", { className: "record-editor-tabs", "aria-label": "Record editor sections" },
+                    React.createElement("button", { className: tab === 'details' ? 'is-active' : '', onClick: () => setTab('details') },
+                        React.createElement(Icon_1.Icon, { name: "edit" }),
+                        "Details"),
+                    React.createElement("button", { className: tab === 'relationships' ? 'is-active' : '', onClick: () => setTab('relationships') },
+                        React.createElement(Icon_1.Icon, { name: "link" }),
+                        "Relationships ",
+                        React.createElement("span", null, linked.length)),
+                    React.createElement("button", { className: tab === 'revisions' ? 'is-active' : '', onClick: () => setTab('revisions'), disabled: newRecord },
+                        React.createElement(Icon_1.Icon, { name: "baseline" }),
+                        "Revisions ",
+                        React.createElement("span", null, draft.revisionHistory?.length ?? 0))),
+                React.createElement("div", { className: "record-editor-scroll" },
+                    tab === 'details' ? React.createElement("div", { className: "record-details" },
+                        React.createElement("section", { className: "record-detail-section record-detail-section--identity" },
+                            React.createElement("header", null,
+                                React.createElement("div", null,
+                                    React.createElement("h3", null, "Controlled identity"),
+                                    React.createElement("p", null, "Stable identifiers, ownership, lifecycle state, and revision notes are applied consistently across every record type.")),
+                                React.createElement("span", null,
+                                    "r",
+                                    draft.revision)),
+                            React.createElement("div", { className: "form-grid" },
+                                React.createElement(ui_1.Field, { label: "Identifier", required: true },
+                                    React.createElement(ui_1.Input, { value: draft.identifier, onChange: (event) => changeDraft({ ...draft, identifier: event.target.value }) })),
+                                React.createElement(ui_1.Field, { label: "Title", required: true, className: "field--wide" },
+                                    React.createElement(ui_1.Input, { value: draft.title, onChange: (event) => changeDraft({ ...draft, title: event.target.value }) })),
+                                React.createElement(ui_1.Field, { label: "Owner" },
+                                    React.createElement(ui_1.Input, { value: draft.owner, onChange: (event) => changeDraft({ ...draft, owner: event.target.value }) })),
+                                React.createElement(ui_1.Field, { label: "Lifecycle state" },
+                                    React.createElement(ui_1.Input, { value: draft.lifecycleState, onChange: (event) => changeDraft({ ...draft, lifecycleState: event.target.value }) })),
+                                React.createElement(ui_1.Field, { label: "Tags", hint: "Comma-separated controlled tags.", className: "field--wide" },
+                                    React.createElement(ui_1.Input, { value: draft.tags.join(', '), onChange: (event) => changeDraft({ ...draft, tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) }) })),
+                                React.createElement(ui_1.Field, { label: "Revision note", hint: "Stored with the next controlled revision.", className: "field--wide" },
+                                    React.createElement(ui_1.Textarea, { rows: 2, value: revisionNote, onChange: (event) => setRevisionNote(event.target.value), placeholder: "Describe why this record changed\u2026" })),
+                                React.createElement(ui_1.Field, { label: "Supporting notes", className: "field--wide" },
+                                    React.createElement(ui_1.Textarea, { rows: 4, value: draft.notes, onChange: (event) => changeDraft({ ...draft, notes: event.target.value }) }))),
+                            !newRecord ? React.createElement("dl", { className: "record-audit-summary" },
+                                React.createElement("div", null,
+                                    React.createElement("dt", null, "Stable identity"),
+                                    React.createElement("dd", null, draft.id)),
+                                React.createElement("div", null,
+                                    React.createElement("dt", null, "Created"),
+                                    React.createElement("dd", null, (0, dates_1.formatDateTime)(draft.createdAt))),
+                                React.createElement("div", null,
+                                    React.createElement("dt", null, "Last controlled change"),
+                                    React.createElement("dd", null, (0, dates_1.formatDateTime)(draft.updatedAt))),
+                                React.createElement("div", null,
+                                    React.createElement("dt", null, "Archive state"),
+                                    React.createElement("dd", null, draft.archived ? `Archived ${draft.archivedAt ? (0, dates_1.formatDateTime)(draft.archivedAt) : ''}` : 'Active'))) : null),
+                        React.createElement("section", { className: "record-detail-section" },
+                            React.createElement("header", null,
+                                React.createElement("div", null,
+                                    React.createElement("h3", null,
+                                        descriptor.singular,
+                                        " fields"),
+                                    React.createElement("p", null, "Record-specific controlled values remain part of the same authoritative record and revision history."))),
+                            React.createElement(RecordSpecificFields, { project: project, collection: collection, record: draft, onChange: changeDraft }))) : null,
+                    tab === 'relationships' ? React.createElement("div", { className: "record-relationships" },
+                        React.createElement("section", { className: "record-detail-section" },
+                            React.createElement("header", null,
+                                React.createElement("div", null,
+                                    React.createElement("h3", null, "Typed traceability"),
+                                    React.createElement("p", null, "Add an explainable link in the engineering thread. LOOM synchronizes compatible direct reference fields where applicable.")),
+                                React.createElement("span", null,
+                                    linked.length,
+                                    " links")),
+                            !newRecord ? React.createElement("div", { className: "relationship-author" },
+                                React.createElement(ui_1.Field, { label: "Relationship" },
+                                    React.createElement(ui_1.Select, { value: linkType, onChange: (event) => setLinkType(event.target.value) }, linkTypes.map((type) => React.createElement("option", { value: type, key: type }, (0, text_1.humanize)(type))))),
+                                React.createElement(ui_1.Field, { label: "Target record", className: "field--wide" },
+                                    React.createElement(ui_1.Select, { value: linkTargetId, onChange: (event) => setLinkTargetId(event.target.value) },
+                                        React.createElement("option", { value: "" }, "Choose a controlled record\u2026"),
+                                        targetCandidates.map((reference) => React.createElement("option", { value: reference.record.id, key: `${reference.collection}-${reference.record.id}` },
+                                            reference.record.identifier,
+                                            " \u00B7 ",
+                                            (0, recordLifecycle_1.recordPrimaryText)(reference.record),
+                                            " \u00B7 ",
+                                            (0, recordLifecycle_1.descriptorForCollection)(reference.collection).singular)))),
+                                React.createElement(ui_1.Field, { label: "Rationale", className: "field--wide" },
+                                    React.createElement(ui_1.Input, { value: linkRationale, onChange: (event) => setLinkRationale(event.target.value), placeholder: "Why are these records connected?" })),
+                                React.createElement(ui_1.Button, { icon: "link", variant: "primary", disabled: !linkTargetId, onClick: addLink }, "Add relationship")) : React.createElement("div", { className: "relationship-new-notice" },
+                                React.createElement(Icon_1.Icon, { name: "info" }),
+                                React.createElement("p", null, "Create the record before adding typed relationships. Direct reference fields can be prepared now and will be retained when the record is created.")),
+                            React.createElement("div", { className: "relationship-list" },
+                                linked.map((link) => {
+                                    const otherId = link.fromId === draft.id ? link.toId : link.fromId;
+                                    const other = (0, recordLifecycle_1.findControlledRecord)(project, otherId);
+                                    return React.createElement("article", { key: link.id },
+                                        React.createElement("button", { className: "relationship-list__record", onClick: () => openLinkedRecord(otherId) },
+                                            React.createElement("span", null,
+                                                React.createElement("b", null, link.fromId === draft.id ? 'OUT' : 'IN'),
+                                                React.createElement("em", null, (0, text_1.humanize)(link.type))),
+                                            React.createElement("strong", null,
+                                                other?.record.identifier ?? 'Missing endpoint',
+                                                " \u00B7 ",
+                                                other ? (0, recordLifecycle_1.recordPrimaryText)(other.record) : otherId),
+                                            React.createElement("small", null,
+                                                link.rationale || 'No rationale recorded',
+                                                " \u00B7 ",
+                                                (0, dates_1.formatDateTime)(link.createdAt))),
+                                        React.createElement(ui_1.IconButton, { label: "Remove relationship", icon: "trash", variant: "danger", onClick: () => removeLink(link.id) }));
+                                }),
+                                !linked.length ? React.createElement(ui_1.EmptyState, { icon: "link", title: "No typed relationships yet", description: "Connect this record to the requirements, functions, objects, verification, failures, evidence, work, budgets, baselines, or changes it affects." }) : null)),
+                        React.createElement("section", { className: "record-detail-section" },
+                            React.createElement("header", null,
+                                React.createElement("div", null,
+                                    React.createElement("h3", null, "Direct record references"),
+                                    React.createElement("p", null, "Edit the authoritative identifier fields used by high-frequency LOOM calculations and module views."))),
+                            React.createElement(DirectReferenceEditor, { project: project, collection: collection, record: draft, onChange: changeDraft }))) : null,
+                    tab === 'revisions' && !newRecord ? React.createElement(RevisionWorkspace, { collection: collection, record: draft, onRevert: revertToRevision }) : null)) : React.createElement(ui_1.EmptyState, { icon: "document", title: `No ${descriptor.singular.toLowerCase()} selected`, description: `Select an existing ${descriptor.singular.toLowerCase()} or create a new controlled record.`, action: React.createElement(ui_1.Button, { icon: "plus", onClick: beginNew },
+                    "New ",
+                    descriptor.singular) }))));
 }
 
 },
@@ -493,7 +1557,16 @@ const paths = {
         React.createElement("path", { d: "M8 10V7a4 4 0 0 1 7-2.6" })),
     help: React.createElement(React.Fragment, null,
         React.createElement("circle", { cx: "12", cy: "12", r: "9" }),
-        React.createElement("path", { d: "M9.5 9a2.7 2.7 0 1 1 4.6 2c-1.1 1-2.1 1.3-2.1 3M12 18h.01" }))
+        React.createElement("path", { d: "M9.5 9a2.7 2.7 0 1 1 4.6 2c-1.1 1-2.1 1.3-2.1 3M12 18h.01" })),
+    undo: React.createElement(React.Fragment, null,
+        React.createElement("path", { d: "M9 7 4 12l5 5" }),
+        React.createElement("path", { d: "M5 12h8a6 6 0 0 1 6 6" })),
+    redo: React.createElement(React.Fragment, null,
+        React.createElement("path", { d: "m15 7 5 5-5 5" }),
+        React.createElement("path", { d: "M19 12h-8a6 6 0 0 0-6 6" })),
+    history: React.createElement(React.Fragment, null,
+        React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7L3 8" }),
+        React.createElement("path", { d: "M3 3v5h5M12 7v5l3 2" }))
 };
 function Icon({ name, size = 18, ...props }) {
     return (React.createElement("svg", { viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true", ...props }, paths[name]));
@@ -508,31 +1581,77 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Modal = Modal;
 const react_1 = require("react");
 const ui_1 = require("./ui");
+const focusableSelector = [
+    'a[href]',
+    'button:not([disabled])',
+    'textarea:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+].join(',');
 function Modal({ open, onClose, title, description, children, footer, width = 'medium' }) {
+    const dialogRef = (0, react_1.useRef)(null);
     (0, react_1.useEffect)(() => {
         if (!open)
             return;
-        const previous = document.body.style.overflow;
+        const previousOverflow = document.body.style.overflow;
+        const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         document.body.style.overflow = 'hidden';
+        const focusFirst = () => {
+            const dialog = dialogRef.current;
+            if (!dialog)
+                return;
+            const autofocus = dialog.querySelector('[autofocus]');
+            const first = autofocus ?? dialog.querySelector(focusableSelector);
+            (first ?? dialog).focus();
+        };
+        const timer = window.setTimeout(focusFirst, 0);
         const onKey = (event) => {
-            if (event.key === 'Escape')
+            if (event.key === 'Escape') {
+                event.preventDefault();
                 onClose();
+                return;
+            }
+            if (event.key !== 'Tab')
+                return;
+            const dialog = dialogRef.current;
+            if (!dialog)
+                return;
+            const focusable = [...dialog.querySelectorAll(focusableSelector)]
+                .filter((element) => element.offsetParent !== null && !element.hasAttribute('disabled'));
+            if (!focusable.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            }
+            else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         };
         window.addEventListener('keydown', onKey);
         return () => {
-            document.body.style.overflow = previous;
+            window.clearTimeout(timer);
+            document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', onKey);
+            previousFocus?.focus();
         };
     }, [open, onClose]);
     if (!open)
         return null;
     return (React.createElement("div", { className: "modal-backdrop", role: "presentation", onMouseDown: (event) => { if (event.target === event.currentTarget)
             onClose(); } },
-        React.createElement("section", { className: `modal modal--${width}`, role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-title" },
+        React.createElement("section", { ref: dialogRef, tabIndex: -1, className: `modal modal--${width}`, role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-title", "aria-describedby": description ? 'modal-description' : undefined },
             React.createElement("header", { className: "modal__header" },
                 React.createElement("div", null,
                     React.createElement("h2", { id: "modal-title" }, title),
-                    description ? React.createElement("p", null, description) : null),
+                    description ? React.createElement("p", { id: "modal-description" }, description) : null),
                 React.createElement(ui_1.IconButton, { label: "Close", icon: "close", onClick: onClose })),
             React.createElement("div", { className: "modal__body" }, children),
             footer ? React.createElement("footer", { className: "modal__footer" }, footer) : null)));
@@ -686,8 +1805,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RequirementInspector = RequirementInspector;
 const react_1 = require("react");
 const calculations_1 = require("../domain/calculations");
-const factory_1 = require("../domain/factory");
 const ProjectContext_1 = require("../hooks/ProjectContext");
+const recordLifecycle_1 = require("../domain/recordLifecycle");
 const reports_1 = require("../services/reports");
 const dates_1 = require("../utils/dates");
 const text_1 = require("../utils/text");
@@ -752,24 +1871,23 @@ function RequirementInspector({ requirementId, onClose }) {
             if (index < 0)
                 return;
             const next = structuredClone(draft);
-            next.revision = requirement.revision + 1;
-            next.updatedAt = new Date().toISOString();
-            next.history = [...requirement.history, (0, factory_1.historyEntry)('Requirement revised', next.revision, 'Edited in the requirement dossier.')];
+            next.id = requirement.id;
+            next.createdAt = requirement.createdAt;
+            next.revision = requirement.revision;
+            next.updatedAt = requirement.updatedAt;
+            next.history = requirement.history;
+            next.revisionHistory = requirement.revisionHistory;
             projectDraft.requirements[index] = next;
         }, `Revised ${requirement.identifier}`);
         notify(`${requirement.identifier} revised.`, 'success');
     };
     const archive = () => {
         updateProject((projectDraft) => {
-            const record = projectDraft.requirements.find((candidate) => candidate.id === requirement.id);
-            if (!record)
-                return;
-            record.archived = !record.archived;
-            record.lifecycleState = record.archived ? 'retired' : 'draft';
-            record.revision += 1;
-            record.updatedAt = new Date().toISOString();
-            record.history.push((0, factory_1.historyEntry)(record.archived ? 'Requirement archived' : 'Requirement restored', record.revision));
-        });
+            if (requirement.archived)
+                (0, recordLifecycle_1.restoreControlledRecord)(projectDraft, 'requirements', requirement.id, 'Local user', 'Requirement restored from its dossier.');
+            else
+                (0, recordLifecycle_1.archiveControlledRecord)(projectDraft, 'requirements', requirement.id, 'Local user', 'Requirement archived from its dossier.');
+        }, `${requirement.archived ? 'Restored' : 'Archived'} ${requirement.identifier}`);
         notify(requirement.archived ? 'Requirement restored.' : 'Requirement archived.', 'success');
     };
     const functions = project.functions.filter((record) => requirement.functionIds.includes(record.id));
@@ -805,6 +1923,7 @@ function RequirementInspector({ requirementId, onClose }) {
         React.createElement("div", { className: "inspector__body" },
             tab === 'dossier' ? React.createElement("div", { className: "inspector-stack" },
                 React.createElement("div", { className: "inspector-actions" },
+                    React.createElement(ui_1.Button, { icon: "edit", size: "small", onClick: () => window.dispatchEvent(new CustomEvent('loom:open-record', { detail: { collection: 'requirements', id: requirement.id } })) }, "Record Studio"),
                     React.createElement(ui_1.Button, { icon: "download", size: "small", onClick: () => (0, reports_1.downloadRequirementDossier)(project, requirement) }, "Dossier"),
                     React.createElement(ui_1.Button, { icon: requirement.archived ? 'refresh' : 'archive', size: "small", variant: "ghost", onClick: archive }, requirement.archived ? 'Restore' : 'Archive')),
                 React.createElement(ui_1.Field, { label: "Short title" },
@@ -2930,7 +4049,7 @@ function createSampleProject() {
         record.baselineIds = [baselineTwo.id, ...(record.baselineIds ?? [])];
     });
     project.updatedAt = (0, dates_1.nowIso)();
-    return project;
+    return (0, factory_1.initializeProjectRevisionHistory)(project);
 }
 
 },
@@ -3204,6 +4323,9 @@ function comparableRecord(record) {
     const clone = structuredClone(record);
     delete clone.updatedAt;
     delete clone.history;
+    delete clone.revisionHistory;
+    delete clone.archivedAt;
+    delete clone.archivedBy;
     return clone;
 }
 function changedFields(before, after) {
@@ -3301,7 +4423,7 @@ function plansForRequirement(project, requirement) {
 const React = require('react');
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SCHEMA_VERSION = exports.APP_VERSION = void 0;
+exports.CONTROLLED_COLLECTION_KEYS = exports.SCHEMA_VERSION = exports.APP_VERSION = void 0;
 exports.historyEntry = historyEntry;
 exports.controlledRecord = controlledRecord;
 exports.defaultRequirementStatuses = defaultRequirementStatuses;
@@ -3309,20 +4431,46 @@ exports.defaultVerificationIntent = defaultVerificationIntent;
 exports.emptyRequirement = emptyRequirement;
 exports.defaultSettings = defaultSettings;
 exports.createEmptyProject = createEmptyProject;
+exports.snapshotRecordData = snapshotRecordData;
+exports.rootChangedFields = rootChangedFields;
+exports.recordRevisionSnapshot = recordRevisionSnapshot;
+exports.initializeRecordRevision = initializeRecordRevision;
+exports.initializeProjectRevisionHistory = initializeProjectRevisionHistory;
+exports.reconcileProjectControlledRecords = reconcileProjectControlledRecords;
 exports.touchProject = touchProject;
 exports.reviseRecord = reviseRecord;
 const id_1 = require("../utils/id");
 const dates_1 = require("../utils/dates");
-exports.APP_VERSION = '0.1.0';
-exports.SCHEMA_VERSION = '0.1.0';
-function historyEntry(action, revision = 1, summary = '', by = 'Local user') {
+exports.APP_VERSION = '0.3.0';
+exports.SCHEMA_VERSION = '0.3.0';
+exports.CONTROLLED_COLLECTION_KEYS = [
+    'requirements',
+    'functions',
+    'objects',
+    'interfaces',
+    'verificationPlans',
+    'testCases',
+    'testExecutions',
+    'failureModes',
+    'workItems',
+    'projectBudgetLines',
+    'technicalBudgets',
+    'documents',
+    'decisions',
+    'assumptions',
+    'issuesActions',
+    'baselines',
+    'changeRequests'
+];
+function historyEntry(action, revision = 1, summary = '', by = 'Local user', changedFields = []) {
     return {
         id: (0, id_1.createId)('hist'),
         at: (0, dates_1.nowIso)(),
         by,
         action,
         revision,
-        summary
+        summary,
+        changedFields
     };
 }
 function controlledRecord(prefix, identifier, title, owner = 'Unassigned', lifecycleState = 'draft') {
@@ -3336,7 +4484,8 @@ function controlledRecord(prefix, identifier, title, owner = 'Unassigned', lifec
         lifecycleState,
         createdAt: now,
         updatedAt: now,
-        history: [historyEntry('Created', 1)],
+        history: [historyEntry('Created', 1, '', owner || 'Local user')],
+        revisionHistory: [],
         notes: '',
         tags: [],
         archived: false
@@ -3365,7 +4514,7 @@ function defaultVerificationIntent(owner = 'Unassigned') {
     };
 }
 function emptyRequirement(identifier) {
-    return {
+    return initializeRecordRevision({
         ...controlledRecord('req', identifier, 'Untitled requirement'),
         statement: '',
         source: '',
@@ -3396,7 +4545,7 @@ function emptyRequirement(identifier) {
         statuses: defaultRequirementStatuses(),
         blockers: [],
         nextAction: 'Complete requirement definition.'
-    };
+    });
 }
 function defaultSettings() {
     return {
@@ -3422,6 +4571,7 @@ function createEmptyProject(name = 'Untitled LOOM Project') {
         updatedAt: now,
         archived: false,
         isSample: false,
+        migrationHistory: [],
         settings: defaultSettings(),
         requirements: [],
         functions: [],
@@ -3444,6 +4594,221 @@ function createEmptyProject(name = 'Untitled LOOM Project') {
         changeRequests: []
     };
 }
+function baselineSnapshotSummary(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return value;
+    const snapshot = value;
+    if (typeof snapshot.projectRevision !== 'number')
+        return value;
+    const count = (key) => Array.isArray(snapshot[key]) ? snapshot[key].length : 0;
+    return {
+        projectRevision: snapshot.projectRevision,
+        requirements: count('requirements'),
+        functions: count('functions'),
+        objects: count('objects'),
+        interfaces: count('interfaces'),
+        verificationPlans: count('verificationPlans'),
+        testCases: count('testCases'),
+        testExecutions: count('testExecutions'),
+        failureModes: count('failureModes'),
+        workItems: count('workItems'),
+        projectBudgetLines: count('projectBudgetLines'),
+        technicalBudgets: count('technicalBudgets'),
+        documents: count('documents'),
+        links: count('links')
+    };
+}
+function snapshotRecordData(record) {
+    const copy = structuredClone(record);
+    delete copy.history;
+    delete copy.revisionHistory;
+    // Evidence payloads and complete baseline snapshots can be very large. The controlled
+    // record keeps the authoritative content; revision comparison retains identifying metadata.
+    if ('contentDataUrl' in copy)
+        delete copy.contentDataUrl;
+    if ('snapshot' in copy)
+        copy.snapshot = baselineSnapshotSummary(copy.snapshot);
+    return copy;
+}
+function rootChangedFields(left, right) {
+    const before = snapshotRecordData(left);
+    const after = snapshotRecordData(right);
+    const ignored = new Set(['revision', 'updatedAt', 'archivedAt', 'archivedBy']);
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    return [...keys]
+        .filter((key) => !ignored.has(key))
+        .filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+        .sort();
+}
+function recordRevisionSnapshot(record, action = 'Revision captured', summary = '', by = record.owner || 'Local user', changedFields = []) {
+    return {
+        id: (0, id_1.createId)('revision'),
+        revision: record.revision,
+        capturedAt: record.updatedAt,
+        capturedBy: by,
+        action,
+        summary,
+        changedFields,
+        data: snapshotRecordData(record)
+    };
+}
+function initializeRecordRevision(record, action = 'Created', summary = '') {
+    const existing = Array.isArray(record.revisionHistory) ? record.revisionHistory : [];
+    if (existing.some((entry) => entry.revision === record.revision))
+        return { ...record, revisionHistory: existing };
+    const history = Array.isArray(record.history) && record.history.length
+        ? record.history
+        : [historyEntry(action, record.revision || 1, summary, record.owner || 'Local user')];
+    const normalized = { ...record, history, revisionHistory: existing };
+    return {
+        ...normalized,
+        revisionHistory: [...existing, recordRevisionSnapshot(normalized, action, summary)]
+    };
+}
+function snapshotCollections(snapshot) {
+    return [
+        snapshot.requirements,
+        snapshot.functions,
+        snapshot.objects,
+        snapshot.interfaces,
+        snapshot.verificationPlans,
+        snapshot.testCases,
+        snapshot.testExecutions,
+        snapshot.failureModes,
+        snapshot.workItems,
+        snapshot.projectBudgetLines,
+        snapshot.technicalBudgets,
+        snapshot.documents
+    ].filter(Array.isArray);
+}
+function historicalCandidates(project, collectionKey, recordId) {
+    const candidates = [];
+    for (const baseline of project.baselines ?? []) {
+        const snapshot = baseline.snapshot;
+        const collection = snapshot?.[collectionKey];
+        if (!Array.isArray(collection))
+            continue;
+        const match = collection.find((candidate) => candidate && typeof candidate === 'object' && candidate.id === recordId);
+        if (match)
+            candidates.push(match);
+    }
+    return candidates;
+}
+function seedRevisionHistory(record, candidates) {
+    const byRevision = new Map();
+    const sourceSnapshots = Array.isArray(record.revisionHistory) ? record.revisionHistory : [];
+    sourceSnapshots.forEach((entry) => byRevision.set(entry.revision, entry));
+    [...candidates, record].forEach((candidate) => {
+        const history = candidate.history?.find((entry) => entry.revision === candidate.revision);
+        if (!byRevision.has(candidate.revision)) {
+            byRevision.set(candidate.revision, recordRevisionSnapshot(candidate, history?.action ?? (candidate === record ? 'Current revision captured' : 'Baseline revision captured'), history?.summary ?? (candidate === record
+                ? 'Field-level revision history initialized for LOOM v0.3.0.'
+                : 'Revision reconstructed from a named baseline.'), history?.by ?? candidate.owner, history?.changedFields ?? []));
+        }
+    });
+    return {
+        ...record,
+        history: Array.isArray(record.history) ? record.history : [],
+        revisionHistory: [...byRevision.values()].sort((a, b) => a.revision - b.revision || a.capturedAt.localeCompare(b.capturedAt))
+    };
+}
+function initializeProjectRevisionHistory(project) {
+    const copy = structuredClone(project);
+    // Normalize records captured inside existing baselines first.
+    for (const baseline of copy.baselines ?? []) {
+        const snapshot = baseline.snapshot;
+        if (!snapshot)
+            continue;
+        snapshotCollections(snapshot).forEach((collection) => {
+            collection.forEach((candidate, index) => {
+                if (!candidate || typeof candidate !== 'object')
+                    return;
+                collection[index] = initializeRecordRevision(candidate, 'Baseline revision captured', 'Field snapshot retained from a named baseline.');
+            });
+        });
+    }
+    exports.CONTROLLED_COLLECTION_KEYS.forEach((key) => {
+        const collection = copy[key];
+        collection.forEach((record, index) => {
+            collection[index] = seedRevisionHistory(record, historicalCandidates(copy, key, record.id));
+        });
+    });
+    return copy;
+}
+function normalizeExistingRecord(before, proposed, summary, by) {
+    const changedFields = rootChangedFields(before, proposed);
+    if (!changedFields.length) {
+        return {
+            ...proposed,
+            revision: before.revision,
+            createdAt: before.createdAt,
+            updatedAt: before.updatedAt,
+            history: before.history,
+            revisionHistory: before.revisionHistory ?? [],
+            archivedAt: before.archivedAt,
+            archivedBy: before.archivedBy
+        };
+    }
+    const now = (0, dates_1.nowIso)();
+    const revision = before.revision + 1;
+    const archivedChanged = before.archived !== proposed.archived;
+    const action = archivedChanged ? (proposed.archived ? 'Archived' : 'Restored') : summary;
+    const normalized = {
+        ...proposed,
+        id: before.id,
+        createdAt: before.createdAt,
+        revision,
+        updatedAt: now,
+        archivedAt: proposed.archived ? (before.archivedAt ?? now) : undefined,
+        archivedBy: proposed.archived ? (before.archivedBy ?? proposed.archivedBy ?? by) : undefined,
+        history: [
+            ...(before.history ?? []),
+            historyEntry(action, revision, summary, by, changedFields)
+        ],
+        revisionHistory: [...(before.revisionHistory ?? [])]
+    };
+    normalized.revisionHistory.push(recordRevisionSnapshot(normalized, action, summary, by, changedFields));
+    return normalized;
+}
+function normalizeNewRecord(record, summary, by) {
+    const now = (0, dates_1.nowIso)();
+    const normalized = {
+        ...record,
+        revision: 1,
+        createdAt: record.createdAt || now,
+        updatedAt: now,
+        history: [historyEntry('Created', 1, summary, by)],
+        revisionHistory: []
+    };
+    normalized.revisionHistory = [recordRevisionSnapshot(normalized, 'Created', summary, by, Object.keys(snapshotRecordData(normalized)).sort())];
+    return normalized;
+}
+function reconcileProjectControlledRecords(before, proposed, summary = 'Controlled record updated', by = 'Local user') {
+    const next = structuredClone(proposed);
+    exports.CONTROLLED_COLLECTION_KEYS.forEach((key) => {
+        const previousCollection = before[key];
+        const nextCollection = next[key];
+        const previousById = new Map(previousCollection.map((record) => [record.id, record]));
+        const normalized = nextCollection.map((record) => {
+            const previous = previousById.get(record.id);
+            previousById.delete(record.id);
+            return previous
+                ? normalizeExistingRecord(previous, record, summary, by)
+                : normalizeNewRecord(record, summary, by);
+        });
+        // Controlled records are archived rather than silently deleted. Missing records are
+        // reinserted as archived revisions so traceability and evidence remain recoverable.
+        previousById.forEach((record) => {
+            const archived = normalizeExistingRecord(record, {
+                ...record,
+                archived: true
+            }, 'Archived instead of destructive deletion', by);
+            normalized.push(archived);
+        });
+        next[key] = normalized;
+    });
+    return next;
+}
 function touchProject(project) {
     return {
         ...project,
@@ -3453,13 +4818,18 @@ function touchProject(project) {
         schemaVersion: exports.SCHEMA_VERSION
     };
 }
-function reviseRecord(record, action, summary = '') {
-    const revision = record.revision + 1;
-    return {
-        ...record,
+function reviseRecord(record, action, summary = '', by = 'Local user') {
+    const previous = initializeRecordRevision(record, 'Current revision imported', 'Field snapshot created before the next controlled revision.');
+    const revision = previous.revision + 1;
+    const revised = {
+        ...previous,
         revision,
         updatedAt: (0, dates_1.nowIso)(),
-        history: [...record.history, historyEntry(action, revision, summary)]
+        history: [...previous.history, historyEntry(action, revision, summary, by)]
+    };
+    return {
+        ...revised,
+        revisionHistory: [...previous.revisionHistory, recordRevisionSnapshot(revised, action, summary, by)]
     };
 }
 
@@ -3472,77 +4842,526 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateProjectCandidate = validateProjectCandidate;
 exports.migrateProject = migrateProject;
 const factory_1 = require("./factory");
+const validation_1 = require("./validation");
+const SUPPORTED_SCHEMA_VERSIONS = new Set(['0.1.0', '0.2.0', factory_1.SCHEMA_VERSION]);
+function parseVersion(value) {
+    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
+    if (!match)
+        throw new Error(`Unsupported schema version format: ${value}.`);
+    return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+function compareVersions(left, right) {
+    const a = parseVersion(left);
+    const b = parseVersion(right);
+    for (let index = 0; index < 3; index += 1) {
+        if (a[index] !== b[index])
+            return a[index] - b[index];
+    }
+    return 0;
+}
 function validateProjectCandidate(candidate) {
-    const errors = [];
-    if (!candidate || typeof candidate !== 'object')
-        return { valid: false, errors: ['The imported file is not an object.'] };
-    const project = candidate;
-    if (!project.id || typeof project.id !== 'string')
-        errors.push('Project identifier is missing.');
-    if (!project.name || typeof project.name !== 'string')
-        errors.push('Project name is missing.');
-    const arrayFields = [
-        'requirements',
-        'functions',
-        'objects',
-        'interfaces',
-        'verificationPlans',
-        'testCases',
-        'testExecutions',
-        'failureModes',
-        'workItems',
-        'workDependencies',
-        'projectBudgetLines',
-        'technicalBudgets',
-        'documents',
-        'links',
-        'decisions',
-        'assumptions',
-        'issuesActions',
-        'baselines',
-        'changeRequests'
-    ];
-    arrayFields.forEach((field) => {
-        if (project[field] !== undefined && !Array.isArray(project[field]))
-            errors.push(`${String(field)} must be an array.`);
-    });
-    return { valid: errors.length === 0, errors };
+    return (0, validation_1.validateProjectShape)(candidate);
 }
 function migrateProject(candidate) {
-    const validation = validateProjectCandidate(candidate);
-    if (!validation.valid)
-        throw new Error(validation.errors.join('\n'));
-    const project = candidate;
-    const settings = { ...(0, factory_1.defaultSettings)(), ...(project.settings ?? {}) };
-    return {
-        ...project,
+    const shape = (0, validation_1.validateProjectShape)(candidate);
+    if (!shape.valid)
+        throw new Error(shape.errors.join('\n'));
+    const source = candidate;
+    const incomingSchemaVersion = typeof source.schemaVersion === 'string' ? source.schemaVersion : '0.1.0';
+    if (compareVersions(incomingSchemaVersion, factory_1.SCHEMA_VERSION) > 0) {
+        throw new Error(`This project uses schema ${incomingSchemaVersion}, which is newer than LOOM ${factory_1.APP_VERSION} supports (${factory_1.SCHEMA_VERSION}).`);
+    }
+    if (!SUPPORTED_SCHEMA_VERSIONS.has(incomingSchemaVersion)) {
+        throw new Error(`LOOM cannot migrate schema ${incomingSchemaVersion}. Supported source schemas are ${[...SUPPORTED_SCHEMA_VERSIONS].join(', ')}.`);
+    }
+    const now = new Date().toISOString();
+    const migrationHistory = Array.isArray(source.migrationHistory)
+        ? structuredClone(source.migrationHistory)
+        : [];
+    if (incomingSchemaVersion !== factory_1.SCHEMA_VERSION) {
+        const alreadyRecorded = migrationHistory.some((entry) => entry?.fromVersion === incomingSchemaVersion && entry?.toVersion === factory_1.SCHEMA_VERSION);
+        if (!alreadyRecorded)
+            migrationHistory.push({ fromVersion: incomingSchemaVersion, toVersion: factory_1.SCHEMA_VERSION, migratedAt: now });
+    }
+    const project = {
+        ...source,
         schemaVersion: factory_1.SCHEMA_VERSION,
         applicationVersion: factory_1.APP_VERSION,
-        revision: project.revision ?? 1,
-        description: project.description ?? '',
-        archived: project.archived ?? false,
-        isSample: project.isSample ?? false,
-        settings,
-        requirements: project.requirements ?? [],
-        functions: project.functions ?? [],
-        objects: project.objects ?? [],
-        interfaces: project.interfaces ?? [],
-        verificationPlans: project.verificationPlans ?? [],
-        testCases: project.testCases ?? [],
-        testExecutions: project.testExecutions ?? [],
-        failureModes: project.failureModes ?? [],
-        workItems: project.workItems ?? [],
-        workDependencies: project.workDependencies ?? [],
-        projectBudgetLines: project.projectBudgetLines ?? [],
-        technicalBudgets: project.technicalBudgets ?? [],
-        documents: project.documents ?? [],
-        links: project.links ?? [],
-        decisions: project.decisions ?? [],
-        assumptions: project.assumptions ?? [],
-        issuesActions: project.issuesActions ?? [],
-        baselines: project.baselines ?? [],
-        changeRequests: project.changeRequests ?? []
+        revision: typeof source.revision === 'number' && source.revision >= 1 ? Math.floor(source.revision) : 1,
+        description: typeof source.description === 'string' ? source.description : '',
+        createdAt: typeof source.createdAt === 'string' ? source.createdAt : now,
+        updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : now,
+        archived: source.archived === true,
+        isSample: source.isSample === true,
+        migrationHistory,
+        settings: { ...(0, factory_1.defaultSettings)(), ...(source.settings ?? {}) },
+        requirements: source.requirements ?? [],
+        functions: source.functions ?? [],
+        objects: source.objects ?? [],
+        interfaces: source.interfaces ?? [],
+        verificationPlans: source.verificationPlans ?? [],
+        testCases: source.testCases ?? [],
+        testExecutions: source.testExecutions ?? [],
+        failureModes: source.failureModes ?? [],
+        workItems: source.workItems ?? [],
+        workDependencies: source.workDependencies ?? [],
+        projectBudgetLines: source.projectBudgetLines ?? [],
+        technicalBudgets: source.technicalBudgets ?? [],
+        documents: source.documents ?? [],
+        links: source.links ?? [],
+        decisions: source.decisions ?? [],
+        assumptions: source.assumptions ?? [],
+        issuesActions: source.issuesActions ?? [],
+        baselines: source.baselines ?? [],
+        changeRequests: source.changeRequests ?? []
     };
+    const normalizedProject = (0, factory_1.initializeProjectRevisionHistory)(project);
+    const relationships = (0, validation_1.validateProjectRelationships)(normalizedProject);
+    if (!relationships.valid)
+        throw new Error(`Project relationship validation failed:\n${relationships.errors.join('\n')}`);
+    return normalizedProject;
+}
+
+},
+"src/domain/recordLifecycle.ts": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.controlledCollectionDescriptors = void 0;
+exports.descriptorForCollection = descriptorForCollection;
+exports.getControlledCollection = getControlledCollection;
+exports.allControlledRecords = allControlledRecords;
+exports.findControlledRecord = findControlledRecord;
+exports.recordPrimaryText = recordPrimaryText;
+exports.recordSearchText = recordSearchText;
+exports.createDefaultControlledRecord = createDefaultControlledRecord;
+exports.commitControlledRecord = commitControlledRecord;
+exports.archiveControlledRecord = archiveControlledRecord;
+exports.restoreControlledRecord = restoreControlledRecord;
+exports.revertControlledRecord = revertControlledRecord;
+exports.compareRevisionSnapshots = compareRevisionSnapshots;
+exports.createControlledLink = createControlledLink;
+exports.removeControlledLink = removeControlledLink;
+exports.linksForRecord = linksForRecord;
+const factory_1 = require("./factory");
+const id_1 = require("../utils/id");
+const dates_1 = require("../utils/dates");
+exports.controlledCollectionDescriptors = [
+    { key: 'requirements', singular: 'Requirement', plural: 'Requirements', prefix: 'REQ', icon: 'requirements', section: 'requirements' },
+    { key: 'functions', singular: 'Function', plural: 'Functions', prefix: 'FUN', icon: 'architecture', section: 'architecture' },
+    { key: 'objects', singular: 'Implementation object', plural: 'Implementation objects', prefix: 'OBJ', icon: 'architecture', section: 'architecture' },
+    { key: 'interfaces', singular: 'Interface', plural: 'Interfaces', prefix: 'IF', icon: 'link', section: 'architecture' },
+    { key: 'verificationPlans', singular: 'Verification plan', plural: 'Verification plans', prefix: 'VP', icon: 'verification', section: 'verification' },
+    { key: 'testCases', singular: 'Test case', plural: 'Test cases', prefix: 'TC', icon: 'verification', section: 'verification' },
+    { key: 'testExecutions', singular: 'Test execution', plural: 'Test executions', prefix: 'RUN', icon: 'play', section: 'verification' },
+    { key: 'failureModes', singular: 'Failure mode', plural: 'Failure modes', prefix: 'FM', icon: 'failure', section: 'failure' },
+    { key: 'workItems', singular: 'Work item', plural: 'Work items', prefix: 'WORK', icon: 'execution', section: 'execution' },
+    { key: 'projectBudgetLines', singular: 'Project budget line', plural: 'Project budget lines', prefix: 'COST', icon: 'budget', section: 'execution' },
+    { key: 'technicalBudgets', singular: 'Technical budget', plural: 'Technical budgets', prefix: 'TB', icon: 'budget', section: 'execution' },
+    { key: 'documents', singular: 'Evidence document', plural: 'Evidence documents', prefix: 'DOC', icon: 'evidence', section: 'evidence' },
+    { key: 'decisions', singular: 'Decision', plural: 'Decisions', prefix: 'DEC', icon: 'check', section: 'execution' },
+    { key: 'assumptions', singular: 'Assumption', plural: 'Assumptions', prefix: 'ASM', icon: 'info', section: 'execution' },
+    { key: 'issuesActions', singular: 'Issue or action', plural: 'Issues and actions', prefix: 'ACTION', icon: 'warning', section: 'execution' },
+    { key: 'baselines', singular: 'Baseline', plural: 'Baselines', prefix: 'BL', icon: 'baseline', section: 'baselines' },
+    { key: 'changeRequests', singular: 'Change request', plural: 'Change requests', prefix: 'CR', icon: 'edit', section: 'baselines' }
+];
+function descriptorForCollection(key) {
+    return exports.controlledCollectionDescriptors.find((descriptor) => descriptor.key === key) ?? exports.controlledCollectionDescriptors[0];
+}
+function getControlledCollection(project, key) {
+    return project[key];
+}
+function allControlledRecords(project) {
+    return exports.controlledCollectionDescriptors.flatMap((descriptor) => getControlledCollection(project, descriptor.key).map((record) => ({ collection: descriptor.key, record })));
+}
+function findControlledRecord(project, id) {
+    return allControlledRecords(project).find((reference) => reference.record.id === id);
+}
+function recordPrimaryText(record) {
+    const candidate = record;
+    return candidate.title || candidate.name || candidate.failureMode || candidate.decision || candidate.assumption || candidate.resourceType || candidate.statement || candidate.description || record.identifier;
+}
+function recordSearchText(reference) {
+    const { record } = reference;
+    return `${record.identifier} ${recordPrimaryText(record)} ${record.owner} ${record.lifecycleState} ${record.tags.join(' ')} ${record.notes}`.toLowerCase();
+}
+function baselineSnapshot(project) {
+    return structuredClone({
+        projectRevision: project.revision,
+        requirements: project.requirements,
+        functions: project.functions,
+        objects: project.objects,
+        interfaces: project.interfaces,
+        verificationPlans: project.verificationPlans,
+        testCases: project.testCases,
+        testExecutions: project.testExecutions,
+        failureModes: project.failureModes,
+        workItems: project.workItems,
+        workDependencies: project.workDependencies,
+        projectBudgetLines: project.projectBudgetLines,
+        technicalBudgets: project.technicalBudgets,
+        documents: project.documents,
+        links: project.links
+    });
+}
+function nextRecordIdentifier(project, key) {
+    const descriptor = descriptorForCollection(key);
+    return (0, id_1.nextIdentifier)(descriptor.prefix, getControlledCollection(project, key).map((record) => record.identifier));
+}
+function createDefaultControlledRecord(project, key) {
+    const identifier = nextRecordIdentifier(project, key);
+    const owner = 'Unassigned';
+    const createdAt = (0, dates_1.nowIso)();
+    let record;
+    switch (key) {
+        case 'requirements':
+            record = {
+                ...(0, factory_1.controlledRecord)('req', identifier, 'Untitled requirement', owner, 'draft'),
+                statement: '', source: '', sourceLocation: '', stakeholder: '', rationale: '', requirementType: 'system', priority: 'normal', reviewer: '', childIds: [],
+                applicableSystemLevel: 'System', applicableOperatingMode: 'All modes', applicableEnvironment: '', assumptions: [], constraints: [], dependencyIds: [], decisionIds: [], baselineIds: [],
+                verificationIntent: (0, factory_1.defaultVerificationIntent)(owner), functionIds: [], objectIds: [], interfaceIds: [], failureModeIds: [], verificationPlanIds: [], testExecutionIds: [], evidenceIds: [], workItemIds: [],
+                statuses: (0, factory_1.defaultRequirementStatuses)(), blockers: [], nextAction: 'Complete requirement definition.'
+            };
+            break;
+        case 'functions':
+            record = { ...(0, factory_1.controlledRecord)('function', identifier, 'Untitled function', owner, 'draft'), name: 'Untitled function', description: '', childIds: [], input: '', output: '', trigger: '', performanceExpectation: '', applicableMode: 'All modes', requirementIds: [], objectIds: [], interfaceIds: [], verificationMethods: [], failureModeIds: [] };
+            break;
+        case 'objects':
+            record = { ...(0, factory_1.controlledRecord)('object', identifier, 'Untitled implementation object', owner, 'draft'), name: 'Untitled implementation object', domain: 'hardware', objectType: 'component', childIds: [], description: '', functionIds: [], requirementIds: [], interfaceIds: [], inheritedObligations: [], implementationStatus: 'not-started' };
+            break;
+        case 'interfaces':
+            record = { ...(0, factory_1.controlledRecord)('interface', identifier, 'Untitled interface', owner, 'draft'), direction: 'bidirectional', interfaceType: 'data', exchangedItem: '', mechanicalCharacteristics: '', electricalCharacteristics: '', dataCharacteristics: '', timingCharacteristics: '', protocol: '', requirementIds: [], verificationPlanIds: [], documentIds: [], status: 'draft' };
+            break;
+        case 'verificationPlans':
+            record = { ...(0, factory_1.controlledRecord)('plan', identifier, 'Untitled verification plan', owner, 'draft'), requirementIds: [], verificationMethod: 'test', verificationLevel: 'system', objective: '', acceptanceCriteria: '', preconditions: '', configuration: '', environment: '', equipment: '', instrumentation: '', personnel: '', safetyConsiderations: '', procedure: '', dataToCollect: '', sampleSize: '', passFailLogic: '', reviewer: '', dependencyIds: [], documentIds: [], approvalState: 'draft', testCaseIds: [] };
+            break;
+        case 'testCases':
+            record = { ...(0, factory_1.controlledRecord)('case', identifier, 'Untitled test case', owner, 'draft'), verificationPlanId: project.verificationPlans[0]?.id ?? '', sharedSetup: '', steps: [], parameterValues: {} };
+            break;
+        case 'testExecutions':
+            record = { ...(0, factory_1.controlledRecord)('run', identifier, 'Untitled test execution', owner, 'not-run'), verificationPlanId: project.verificationPlans[0]?.id ?? '', requirementIds: [], executionNumber: 1, executedAt: createdAt, operator: '', reviewer: '', systemConfiguration: '', hardwareRevision: '', softwareVersion: '', firmwareVersion: '', environment: '', equipment: '', calibrationReference: '', inputData: '', outputData: '', observations: '', deviations: '', result: 'not-run', evidenceIds: [] };
+            break;
+        case 'failureModes':
+            record = { ...(0, factory_1.controlledRecord)('failure', identifier, 'Untitled failure mode', owner, 'draft'), sourceType: 'requirement', operatingMode: 'All modes', failureMode: 'Untitled failure mode', cause: '', localEffect: '', nextHigherEffect: '', endEffect: '', detectionMethod: '', preventionControl: '', detectionControl: '', severity: 1, likelihood: 1, detectability: 1, criticalityCategory: 'low', hazardRelationship: '', requirementIds: [], interfaceIds: [], verificationPlanIds: [], recommendedMitigation: '', actionOwner: owner, mitigationStatus: 'open', residualSeverity: 1, residualLikelihood: 1, residualCriticalityCategory: 'low', evidenceIds: [], reviewStatus: 'draft' };
+            break;
+        case 'workItems':
+            record = { ...(0, factory_1.controlledRecord)('work', identifier, 'Untitled work item', owner, 'backlog'), description: '', status: 'backlog', priority: 'normal', durationDays: 1, percentComplete: 0, milestone: false, predecessorIds: [], successorIds: [], requirementIds: [], functionIds: [], objectIds: [], verificationPlanIds: [], failureModeIds: [], documentIds: [], budgetLineIds: [], blockedReason: '' };
+            break;
+        case 'projectBudgetLines':
+            record = { ...(0, factory_1.controlledRecord)('cost', identifier, 'Untitled project budget line', owner, 'active'), category: 'Other', planned: 0, approved: 0, committed: 0, actual: 0, forecast: 0, currency: 'USD', vendor: '', purchaseReference: '', workItemIds: [], requirementIds: [], objectIds: [], verificationPlanIds: [], documentIds: [] };
+            break;
+        case 'technicalBudgets':
+            record = { ...(0, factory_1.controlledRecord)('tb', identifier, 'Untitled technical budget', owner, 'active'), resourceType: 'User-defined resource', unit: '', aggregationRule: 'sum', totalAvailable: 0, reserve: 0, applicableMode: 'All modes', applicableScenario: 'Nominal', customFormula: '', allocations: [] };
+            break;
+        case 'documents':
+            record = { ...(0, factory_1.controlledRecord)('document', identifier, 'Untitled evidence document', owner, 'draft'), documentType: 'Supporting document', author: '', date: (0, dates_1.todayIso)(), source: '', status: 'draft', description: '', approvalState: 'not-required', linkedRecordIds: [] };
+            break;
+        case 'decisions':
+            record = { ...(0, factory_1.controlledRecord)('decision', identifier, 'Untitled decision', owner, 'draft'), decision: '', context: '', alternatives: '', rationale: '', date: (0, dates_1.todayIso)(), affectedRecordIds: [], evidenceIds: [] };
+            break;
+        case 'assumptions':
+            record = { ...(0, factory_1.controlledRecord)('assumption', identifier, 'Untitled assumption', owner, 'open'), assumption: '', basis: '', validationMethod: '', affectedRecordIds: [], status: 'open' };
+            break;
+        case 'issuesActions':
+            record = { ...(0, factory_1.controlledRecord)('action', identifier, 'Untitled action', owner, 'open'), kind: 'action', description: '', priority: 'normal', status: 'open', blockingRecordIds: [], resolution: '', evidenceIds: [], affectedRecordIds: [] };
+            break;
+        case 'baselines':
+            record = { ...(0, factory_1.controlledRecord)('baseline', identifier, 'Untitled baseline', owner, 'draft'), description: '', approvedBy: '', approvedAt: createdAt, snapshot: baselineSnapshot(project) };
+            break;
+        case 'changeRequests':
+            record = { ...(0, factory_1.controlledRecord)('change', identifier, 'Untitled change request', owner, 'draft'), reason: '', originator: '', proposedChange: '', affectedRecordIds: [], impactAnalysis: '', scheduleImpact: '', budgetImpact: '', riskImpact: '', verificationImpact: '', disposition: 'draft', reviewer: '', approval: '', implementationStatus: 'not-started', resultingRevisionIds: [] };
+            break;
+        default:
+            throw new Error(`Unsupported controlled collection: ${String(key)}`);
+    }
+    return (0, factory_1.initializeRecordRevision)(record, 'Created', `${descriptorForCollection(key).singular} created in Record Studio.`);
+}
+function stableRecordComparable(record) {
+    const value = (0, factory_1.snapshotRecordData)(record);
+    delete value.revision;
+    delete value.updatedAt;
+    return JSON.stringify(value);
+}
+function commitControlledRecord(project, key, candidate, action, summary, by = 'Local user') {
+    const collection = getControlledCollection(project, key);
+    const identifier = candidate.identifier.trim();
+    const title = candidate.title.trim();
+    if (!identifier)
+        throw new Error('Record identifier is required.');
+    if (!title)
+        throw new Error('Record title is required.');
+    const duplicate = collection.find((record) => record.identifier.toLowerCase() === identifier.toLowerCase() && record.id !== candidate.id);
+    if (duplicate)
+        throw new Error(`${identifier} is already used in ${descriptorForCollection(key).plural}.`);
+    const index = collection.findIndex((record) => record.id === candidate.id);
+    if (index < 0) {
+        const created = {
+            ...structuredClone(candidate),
+            identifier,
+            title,
+            owner: candidate.owner.trim() || 'Unassigned',
+            createdAt: candidate.createdAt || (0, dates_1.nowIso)(),
+            updatedAt: candidate.updatedAt || (0, dates_1.nowIso)(),
+            revision: 1,
+            history: candidate.history ?? [],
+            revisionHistory: candidate.revisionHistory ?? []
+        };
+        collection.push(created);
+        return created;
+    }
+    const current = collection[index];
+    const proposed = {
+        ...structuredClone(candidate),
+        id: current.id,
+        identifier,
+        title,
+        owner: candidate.owner.trim() || 'Unassigned',
+        createdAt: current.createdAt,
+        revision: current.revision,
+        updatedAt: current.updatedAt,
+        history: current.history,
+        revisionHistory: current.revisionHistory
+    };
+    collection[index] = proposed;
+    void action;
+    void summary;
+    void by;
+    return proposed;
+}
+function archiveControlledRecord(project, key, id, by = 'Local user', reason = '') {
+    const collection = getControlledCollection(project, key);
+    const current = collection.find((record) => record.id === id);
+    if (!current)
+        throw new Error('Controlled record not found.');
+    if (current.archived)
+        return current;
+    const candidate = structuredClone(current);
+    candidate.archived = true;
+    candidate.archivedAt = (0, dates_1.nowIso)();
+    candidate.archivedBy = by;
+    return commitControlledRecord(project, key, candidate, 'Archived', reason || 'Record archived from active work.', by);
+}
+function restoreControlledRecord(project, key, id, by = 'Local user', reason = '') {
+    const collection = getControlledCollection(project, key);
+    const current = collection.find((record) => record.id === id);
+    if (!current)
+        throw new Error('Controlled record not found.');
+    if (!current.archived)
+        return current;
+    const candidate = structuredClone(current);
+    candidate.archived = false;
+    delete candidate.archivedAt;
+    delete candidate.archivedBy;
+    return commitControlledRecord(project, key, candidate, 'Restored', reason || 'Record restored to active work.', by);
+}
+function revertControlledRecord(project, key, id, revision, by = 'Local user') {
+    const current = getControlledCollection(project, key).find((record) => record.id === id);
+    if (!current)
+        throw new Error('Controlled record not found.');
+    const snapshot = current.revisionHistory.find((entry) => entry.revision === revision);
+    if (!snapshot)
+        throw new Error(`Revision ${revision} is not available for ${current.identifier}.`);
+    const candidate = {
+        ...structuredClone(current),
+        ...structuredClone(snapshot.data),
+        id: current.id,
+        archived: current.archived,
+        archivedAt: current.archivedAt,
+        archivedBy: current.archivedBy,
+        history: current.history,
+        revisionHistory: current.revisionHistory
+    };
+    return commitControlledRecord(project, key, candidate, 'Reverted', `Restored field values from revision ${revision}.`, by);
+}
+function flatten(value, prefix = '', output = new Map()) {
+    if (Array.isArray(value)) {
+        output.set(prefix, value);
+        return output;
+    }
+    if (value && typeof value === 'object') {
+        const entries = Object.entries(value);
+        if (!entries.length)
+            output.set(prefix, value);
+        entries.forEach(([key, child]) => flatten(child, prefix ? `${prefix}.${key}` : key, output));
+        return output;
+    }
+    output.set(prefix, value);
+    return output;
+}
+function compareRevisionSnapshots(before, after) {
+    const left = flatten(before.data);
+    const right = flatten(after.data);
+    const ignored = new Set(['revision', 'updatedAt']);
+    return [...new Set([...left.keys(), ...right.keys()])]
+        .filter((path) => path && !ignored.has(path))
+        .filter((path) => JSON.stringify(left.get(path)) !== JSON.stringify(right.get(path)))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((path) => ({ path, before: left.get(path), after: right.get(path) }));
+}
+function addUnique(target, id) {
+    if (!target.includes(id))
+        target.push(id);
+}
+function removeValue(target, id) {
+    const index = target.indexOf(id);
+    if (index >= 0)
+        target.splice(index, 1);
+}
+function syncDirectRelationship(project, link, adding) {
+    const from = findControlledRecord(project, link.fromId);
+    const to = findControlledRecord(project, link.toId);
+    if (!from || !to)
+        return;
+    const mutate = adding ? addUnique : removeValue;
+    const requirement = (reference) => reference.collection === 'requirements' ? reference.record : undefined;
+    const functionRecord = (reference) => reference.collection === 'functions' ? reference.record : undefined;
+    const object = (reference) => reference.collection === 'objects' ? reference.record : undefined;
+    const interfaceRecord = (reference) => reference.collection === 'interfaces' ? reference.record : undefined;
+    const plan = (reference) => reference.collection === 'verificationPlans' ? reference.record : undefined;
+    const execution = (reference) => reference.collection === 'testExecutions' ? reference.record : undefined;
+    const failure = (reference) => reference.collection === 'failureModes' ? reference.record : undefined;
+    const work = (reference) => reference.collection === 'workItems' ? reference.record : undefined;
+    const document = (reference) => reference.collection === 'documents' ? reference.record : undefined;
+    const projectBudget = (reference) => reference.collection === 'projectBudgetLines' ? reference.record : undefined;
+    const fromRequirement = requirement(from);
+    const toRequirement = requirement(to);
+    const fromFunction = functionRecord(from);
+    const toFunction = functionRecord(to);
+    const fromObject = object(from);
+    const toObject = object(to);
+    const fromInterface = interfaceRecord(from);
+    const toInterface = interfaceRecord(to);
+    const fromPlan = plan(from);
+    const toPlan = plan(to);
+    const fromExecution = execution(from);
+    const toExecution = execution(to);
+    const fromFailure = failure(from);
+    const toFailure = failure(to);
+    const fromWork = work(from);
+    const toWork = work(to);
+    const fromDocument = document(from);
+    const toDocument = document(to);
+    const fromBudget = projectBudget(from);
+    const toBudget = projectBudget(to);
+    if (fromRequirement && toFunction) {
+        mutate(fromRequirement.functionIds, toFunction.id);
+        mutate(toFunction.requirementIds, fromRequirement.id);
+    }
+    if (fromFunction && toRequirement) {
+        mutate(fromFunction.requirementIds, toRequirement.id);
+        mutate(toRequirement.functionIds, fromFunction.id);
+    }
+    if (fromFunction && toObject) {
+        mutate(fromFunction.objectIds, toObject.id);
+        mutate(toObject.functionIds, fromFunction.id);
+    }
+    if (fromObject && toFunction) {
+        mutate(fromObject.functionIds, toFunction.id);
+        mutate(toFunction.objectIds, fromObject.id);
+    }
+    if (fromRequirement && toObject) {
+        mutate(fromRequirement.objectIds, toObject.id);
+        mutate(toObject.requirementIds, fromRequirement.id);
+    }
+    if (fromObject && toRequirement) {
+        mutate(fromObject.requirementIds, toRequirement.id);
+        mutate(toRequirement.objectIds, fromObject.id);
+    }
+    if (fromRequirement && toInterface) {
+        mutate(fromRequirement.interfaceIds, toInterface.id);
+        mutate(toInterface.requirementIds, fromRequirement.id);
+    }
+    if (fromInterface && toRequirement) {
+        mutate(fromInterface.requirementIds, toRequirement.id);
+        mutate(toRequirement.interfaceIds, fromInterface.id);
+    }
+    if (fromRequirement && toPlan) {
+        mutate(fromRequirement.verificationPlanIds, toPlan.id);
+        mutate(toPlan.requirementIds, fromRequirement.id);
+    }
+    if (fromPlan && toRequirement) {
+        mutate(fromPlan.requirementIds, toRequirement.id);
+        mutate(toRequirement.verificationPlanIds, fromPlan.id);
+    }
+    if (fromRequirement && toExecution) {
+        mutate(fromRequirement.testExecutionIds, toExecution.id);
+        mutate(toExecution.requirementIds, fromRequirement.id);
+    }
+    if (fromExecution && toRequirement) {
+        mutate(fromExecution.requirementIds, toRequirement.id);
+        mutate(toRequirement.testExecutionIds, fromExecution.id);
+    }
+    if (fromRequirement && toFailure) {
+        mutate(fromRequirement.failureModeIds, toFailure.id);
+        mutate(toFailure.requirementIds, fromRequirement.id);
+    }
+    if (fromFailure && toRequirement) {
+        mutate(fromFailure.requirementIds, toRequirement.id);
+        mutate(toRequirement.failureModeIds, fromFailure.id);
+    }
+    if (fromRequirement && toWork) {
+        mutate(fromRequirement.workItemIds, toWork.id);
+        mutate(toWork.requirementIds, fromRequirement.id);
+    }
+    if (fromWork && toRequirement) {
+        mutate(fromWork.requirementIds, toRequirement.id);
+        mutate(toRequirement.workItemIds, fromWork.id);
+    }
+    if (fromRequirement && toDocument) {
+        mutate(fromRequirement.evidenceIds, toDocument.id);
+        mutate(toDocument.linkedRecordIds, fromRequirement.id);
+    }
+    if (fromDocument && toRequirement) {
+        mutate(fromDocument.linkedRecordIds, toRequirement.id);
+        mutate(toRequirement.evidenceIds, fromDocument.id);
+    }
+    if (fromFailure && toDocument) {
+        mutate(fromFailure.evidenceIds, toDocument.id);
+        mutate(toDocument.linkedRecordIds, fromFailure.id);
+    }
+    if (fromDocument && toFailure) {
+        mutate(fromDocument.linkedRecordIds, toFailure.id);
+        mutate(toFailure.evidenceIds, fromDocument.id);
+    }
+    if (fromPlan && toDocument) {
+        mutate(fromPlan.documentIds, toDocument.id);
+        mutate(toDocument.linkedRecordIds, fromPlan.id);
+    }
+    if (fromDocument && toPlan) {
+        mutate(fromDocument.linkedRecordIds, toPlan.id);
+        mutate(toPlan.documentIds, fromDocument.id);
+    }
+    if (fromRequirement && toBudget) {
+        mutate(toBudget.requirementIds, fromRequirement.id);
+    }
+    if (fromBudget && toRequirement) {
+        mutate(fromBudget.requirementIds, toRequirement.id);
+    }
+}
+function createControlledLink(project, fromId, toId, type, rationale = '', by = 'Local user') {
+    if (fromId === toId)
+        throw new Error('A record cannot link to itself.');
+    if (!findControlledRecord(project, fromId) || !findControlledRecord(project, toId))
+        throw new Error('Both relationship endpoints must be controlled records.');
+    const duplicate = project.links.find((link) => link.fromId === fromId && link.toId === toId && link.type === type);
+    if (duplicate)
+        return duplicate;
+    const link = { id: (0, id_1.createId)('link'), type, fromId, toId, rationale: rationale.trim(), createdAt: (0, dates_1.nowIso)(), createdBy: by };
+    project.links.push(link);
+    syncDirectRelationship(project, link, true);
+    return link;
+}
+function removeControlledLink(project, linkId) {
+    const link = project.links.find((candidate) => candidate.id === linkId);
+    if (!link)
+        return undefined;
+    syncDirectRelationship(project, link, false);
+    project.links = project.links.filter((candidate) => candidate.id !== linkId);
+    return link;
+}
+function linksForRecord(project, id) {
+    return project.links.filter((link) => link.fromId === id || link.toId === id);
 }
 
 },
@@ -3633,6 +5452,328 @@ const React = require('react');
 Object.defineProperty(exports, "__esModule", { value: true });
 
 },
+"src/domain/validation.ts": function (module, exports, require) {
+'use strict';
+const React = require('react');
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.validateProjectShape = validateProjectShape;
+exports.validateProjectRelationships = validateProjectRelationships;
+const projectArrayFields = [
+    'migrationHistory',
+    'requirements',
+    'functions',
+    'objects',
+    'interfaces',
+    'verificationPlans',
+    'testCases',
+    'testExecutions',
+    'failureModes',
+    'workItems',
+    'workDependencies',
+    'projectBudgetLines',
+    'technicalBudgets',
+    'documents',
+    'links',
+    'decisions',
+    'assumptions',
+    'issuesActions',
+    'baselines',
+    'changeRequests'
+];
+function isRecord(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+function validateProjectShape(candidate) {
+    const errors = [];
+    const warnings = [];
+    if (!isRecord(candidate)) {
+        return { valid: false, errors: ['The imported file is not a project object.'], warnings };
+    }
+    if (typeof candidate.id !== 'string' || !candidate.id.trim())
+        errors.push('Project identifier is missing.');
+    if (typeof candidate.name !== 'string' || !candidate.name.trim())
+        errors.push('Project name is missing.');
+    if (candidate.schemaVersion !== undefined && typeof candidate.schemaVersion !== 'string')
+        errors.push('Schema version must be text.');
+    if (candidate.applicationVersion !== undefined && typeof candidate.applicationVersion !== 'string')
+        errors.push('Application version must be text.');
+    projectArrayFields.forEach((field) => {
+        const value = candidate[String(field)];
+        if (value !== undefined && !Array.isArray(value))
+            errors.push(`${String(field)} must be an array.`);
+    });
+    if (candidate.settings !== undefined && !isRecord(candidate.settings))
+        errors.push('Project settings must be an object.');
+    if (candidate.revision !== undefined && (!Number.isInteger(candidate.revision) || Number(candidate.revision) < 1)) {
+        errors.push('Project revision must be a positive integer.');
+    }
+    return { valid: errors.length === 0, errors, warnings };
+}
+function addReferences(errors, label, references, validIds) {
+    const missing = [...new Set(references.filter((value) => Boolean(value)).filter((id) => !validIds.has(id)))];
+    if (missing.length)
+        errors.push(`${label} contains dangling reference${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}.`);
+}
+function collectRecordIds(errors, warnings, collections) {
+    const ids = new Set();
+    const visibleIdentifiers = new Map();
+    collections.forEach(([collectionName, records]) => {
+        records.forEach((record, index) => {
+            if (!record || typeof record.id !== 'string' || !record.id.trim()) {
+                errors.push(`${collectionName}[${index}] is missing a stable identifier.`);
+                return;
+            }
+            if (ids.has(record.id))
+                errors.push(`Stable identifier ${record.id} is duplicated.`);
+            ids.add(record.id);
+            if (record.identifier) {
+                const key = record.identifier.trim().toLowerCase();
+                if (key)
+                    visibleIdentifiers.set(key, [...(visibleIdentifiers.get(key) ?? []), collectionName]);
+            }
+        });
+    });
+    visibleIdentifiers.forEach((owners, identifier) => {
+        if (owners.length > 1)
+            warnings.push(`Visible identifier ${identifier} appears in multiple records (${owners.join(', ')}). Stable identifiers remain authoritative.`);
+    });
+    return ids;
+}
+function validateControlledRecordLifecycle(errors, warnings, collectionName, record, index) {
+    const label = record.identifier || `${collectionName}[${index}]`;
+    if (!Number.isInteger(record.revision) || record.revision < 1) {
+        errors.push(`${label} revision must be a positive integer.`);
+    }
+    if (!Array.isArray(record.history) || record.history.length === 0) {
+        errors.push(`${label} is missing controlled audit history.`);
+    }
+    else {
+        const historyRevisions = record.history.map((entry) => entry?.revision).filter((revision) => Number.isInteger(revision));
+        if (!historyRevisions.includes(record.revision))
+            errors.push(`${label} audit history does not include current revision ${record.revision}.`);
+        if (historyRevisions.some((revision) => revision > record.revision))
+            errors.push(`${label} audit history contains a revision newer than the record.`);
+    }
+    if (!Array.isArray(record.revisionHistory) || record.revisionHistory.length === 0) {
+        errors.push(`${label} is missing field-level revision history.`);
+        return;
+    }
+    const snapshotRevisions = record.revisionHistory.map((entry) => entry?.revision);
+    const duplicateRevisions = [...new Set(snapshotRevisions.filter((revision, position) => snapshotRevisions.indexOf(revision) !== position))];
+    if (duplicateRevisions.length)
+        errors.push(`${label} contains duplicate revision snapshots: ${duplicateRevisions.join(', ')}.`);
+    if (!snapshotRevisions.includes(record.revision))
+        errors.push(`${label} has no field snapshot for current revision ${record.revision}.`);
+    record.revisionHistory.forEach((entry, revisionIndex) => {
+        const entryLabel = `${label} revision snapshot ${revisionIndex + 1}`;
+        if (!entry || !Number.isInteger(entry.revision) || entry.revision < 1)
+            errors.push(`${entryLabel} has an invalid revision number.`);
+        if (entry?.revision > record.revision)
+            errors.push(`${entryLabel} is newer than the controlled record.`);
+        if (!entry || typeof entry.id !== 'string' || !entry.id.trim())
+            errors.push(`${entryLabel} is missing a stable snapshot identifier.`);
+        if (!entry || typeof entry.capturedAt !== 'string' || !entry.capturedAt.trim())
+            errors.push(`${entryLabel} is missing its capture time.`);
+        if (!entry || !Array.isArray(entry.changedFields))
+            errors.push(`${entryLabel} changed fields must be an array.`);
+        if (!entry || !isRecord(entry.data)) {
+            errors.push(`${entryLabel} is missing controlled field data.`);
+            return;
+        }
+        if (entry.data.id !== record.id)
+            errors.push(`${entryLabel} does not preserve stable record identity ${record.id}.`);
+        if (entry.data.identifier !== record.identifier && entry.revision === record.revision) {
+            errors.push(`${entryLabel} does not preserve the current visible identifier ${record.identifier}.`);
+        }
+    });
+    if (record.archived && (!record.archivedAt || !record.archivedBy)) {
+        warnings.push(`${label} is archived without complete archive actor and time metadata.`);
+    }
+}
+function sourceIdsForFailure(project, failure) {
+    switch (failure.sourceType) {
+        case 'requirement': return new Set(project.requirements.map((record) => record.id));
+        case 'function': return new Set(project.functions.map((record) => record.id));
+        case 'object': return new Set(project.objects.map((record) => record.id));
+        case 'interface': return new Set(project.interfaces.map((record) => record.id));
+        case 'test-failure': return new Set(project.testExecutions.map((record) => record.id));
+        default: return new Set([
+            ...project.requirements.map((record) => record.id),
+            ...project.functions.map((record) => record.id),
+            ...project.objects.map((record) => record.id),
+            ...project.interfaces.map((record) => record.id),
+            ...project.testExecutions.map((record) => record.id)
+        ]);
+    }
+}
+function validateRequirement(errors, requirement, ids) {
+    addReferences(errors, `${requirement.identifier} parent`, [requirement.parentId], ids.requirements);
+    addReferences(errors, `${requirement.identifier} children`, requirement.childIds ?? [], ids.requirements);
+    addReferences(errors, `${requirement.identifier} source document`, [requirement.sourceDocumentId], ids.documents);
+    addReferences(errors, `${requirement.identifier} dependencies`, requirement.dependencyIds ?? [], ids.all);
+    addReferences(errors, `${requirement.identifier} decisions`, requirement.decisionIds ?? [], ids.decisions);
+    addReferences(errors, `${requirement.identifier} baselines`, requirement.baselineIds ?? [], ids.baselines);
+    addReferences(errors, `${requirement.identifier} functions`, requirement.functionIds ?? [], ids.functions);
+    addReferences(errors, `${requirement.identifier} objects`, requirement.objectIds ?? [], ids.objects);
+    addReferences(errors, `${requirement.identifier} interfaces`, requirement.interfaceIds ?? [], ids.interfaces);
+    addReferences(errors, `${requirement.identifier} failure modes`, requirement.failureModeIds ?? [], ids.failures);
+    addReferences(errors, `${requirement.identifier} verification plans`, requirement.verificationPlanIds ?? [], ids.plans);
+    addReferences(errors, `${requirement.identifier} test executions`, requirement.testExecutionIds ?? [], ids.executions);
+    addReferences(errors, `${requirement.identifier} evidence`, requirement.evidenceIds ?? [], ids.documents);
+    addReferences(errors, `${requirement.identifier} work items`, requirement.workItemIds ?? [], ids.work);
+}
+function validateObject(errors, object, ids) {
+    addReferences(errors, `${object.identifier} parent object`, [object.parentId], ids.objects);
+    addReferences(errors, `${object.identifier} child objects`, object.childIds ?? [], ids.objects);
+    addReferences(errors, `${object.identifier} functions`, object.functionIds ?? [], ids.functions);
+    addReferences(errors, `${object.identifier} requirements`, object.requirementIds ?? [], ids.requirements);
+    addReferences(errors, `${object.identifier} interfaces`, object.interfaceIds ?? [], ids.interfaces);
+    (object.inheritedObligations ?? []).forEach((obligation) => {
+        addReferences(errors, `${object.identifier} inherited obligation`, [obligation.requirementId], ids.requirements);
+    });
+}
+function validatePlan(errors, plan, ids) {
+    addReferences(errors, `${plan.identifier} requirements`, plan.requirementIds ?? [], ids.requirements);
+    addReferences(errors, `${plan.identifier} dependencies`, plan.dependencyIds ?? [], ids.all);
+    addReferences(errors, `${plan.identifier} documents`, plan.documentIds ?? [], ids.documents);
+    addReferences(errors, `${plan.identifier} test cases`, plan.testCaseIds ?? [], ids.testCases);
+}
+function validateWorkItem(errors, item, ids) {
+    addReferences(errors, `${item.identifier} parent work package`, [item.parentWorkPackageId], ids.work);
+    addReferences(errors, `${item.identifier} predecessors`, item.predecessorIds ?? [], ids.work);
+    addReferences(errors, `${item.identifier} successors`, item.successorIds ?? [], ids.work);
+    addReferences(errors, `${item.identifier} requirements`, item.requirementIds ?? [], ids.requirements);
+    addReferences(errors, `${item.identifier} functions`, item.functionIds ?? [], ids.functions);
+    addReferences(errors, `${item.identifier} objects`, item.objectIds ?? [], ids.objects);
+    addReferences(errors, `${item.identifier} verification plans`, item.verificationPlanIds ?? [], ids.plans);
+    addReferences(errors, `${item.identifier} failure modes`, item.failureModeIds ?? [], ids.failures);
+    addReferences(errors, `${item.identifier} documents`, item.documentIds ?? [], ids.documents);
+    addReferences(errors, `${item.identifier} budget lines`, item.budgetLineIds ?? [], ids.projectBudgets);
+}
+function validateDocument(errors, document, ids) {
+    addReferences(errors, `${document.identifier} superseded-by record`, [document.supersededById], ids.documents);
+    addReferences(errors, `${document.identifier} linked records`, document.linkedRecordIds ?? [], ids.all);
+}
+function validateProjectRelationships(project) {
+    const errors = [];
+    const warnings = [];
+    const collections = [
+        ['requirements', project.requirements],
+        ['functions', project.functions],
+        ['objects', project.objects],
+        ['interfaces', project.interfaces],
+        ['verificationPlans', project.verificationPlans],
+        ['testCases', project.testCases],
+        ['testExecutions', project.testExecutions],
+        ['failureModes', project.failureModes],
+        ['workItems', project.workItems],
+        ['projectBudgetLines', project.projectBudgetLines],
+        ['technicalBudgets', project.technicalBudgets],
+        ['documents', project.documents],
+        ['decisions', project.decisions],
+        ['assumptions', project.assumptions],
+        ['issuesActions', project.issuesActions],
+        ['baselines', project.baselines],
+        ['changeRequests', project.changeRequests]
+    ];
+    const all = collectRecordIds(errors, warnings, collections);
+    collections.forEach(([collectionName, records]) => {
+        records.forEach((record, index) => validateControlledRecordLifecycle(errors, warnings, collectionName, record, index));
+    });
+    const ids = {
+        all,
+        requirements: new Set(project.requirements.map((record) => record.id)),
+        functions: new Set(project.functions.map((record) => record.id)),
+        objects: new Set(project.objects.map((record) => record.id)),
+        interfaces: new Set(project.interfaces.map((record) => record.id)),
+        plans: new Set(project.verificationPlans.map((record) => record.id)),
+        testCases: new Set(project.testCases.map((record) => record.id)),
+        executions: new Set(project.testExecutions.map((record) => record.id)),
+        failures: new Set(project.failureModes.map((record) => record.id)),
+        work: new Set(project.workItems.map((record) => record.id)),
+        projectBudgets: new Set(project.projectBudgetLines.map((record) => record.id)),
+        technicalBudgets: new Set(project.technicalBudgets.map((record) => record.id)),
+        documents: new Set(project.documents.map((record) => record.id)),
+        decisions: new Set(project.decisions.map((record) => record.id)),
+        assumptions: new Set(project.assumptions.map((record) => record.id)),
+        issuesActions: new Set(project.issuesActions.map((record) => record.id)),
+        baselines: new Set(project.baselines.map((record) => record.id)),
+        changes: new Set(project.changeRequests.map((record) => record.id))
+    };
+    project.requirements.forEach((record) => validateRequirement(errors, record, ids));
+    project.functions.forEach((record) => {
+        addReferences(errors, `${record.identifier} parent function`, [record.parentId], ids.functions);
+        addReferences(errors, `${record.identifier} child functions`, record.childIds ?? [], ids.functions);
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} objects`, record.objectIds ?? [], ids.objects);
+        addReferences(errors, `${record.identifier} interfaces`, record.interfaceIds ?? [], ids.interfaces);
+        addReferences(errors, `${record.identifier} failure modes`, record.failureModeIds ?? [], ids.failures);
+    });
+    project.objects.forEach((record) => validateObject(errors, record, ids));
+    project.interfaces.forEach((record) => {
+        addReferences(errors, `${record.identifier} endpoints`, [record.endpointAId, record.endpointBId], ids.objects);
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} verification plans`, record.verificationPlanIds ?? [], ids.plans);
+        addReferences(errors, `${record.identifier} documents`, record.documentIds ?? [], ids.documents);
+    });
+    project.verificationPlans.forEach((record) => validatePlan(errors, record, ids));
+    project.testCases.forEach((record) => addReferences(errors, `${record.identifier} verification plan`, [record.verificationPlanId], ids.plans));
+    project.testExecutions.forEach((record) => {
+        addReferences(errors, `${record.identifier} verification plan`, [record.verificationPlanId], ids.plans);
+        addReferences(errors, `${record.identifier} test case`, [record.testCaseId], ids.testCases);
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+    });
+    project.failureModes.forEach((record) => {
+        addReferences(errors, `${record.identifier} source`, [record.sourceId], sourceIdsForFailure(project, record));
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} interfaces`, record.interfaceIds ?? [], ids.interfaces);
+        addReferences(errors, `${record.identifier} verification plans`, record.verificationPlanIds ?? [], ids.plans);
+        addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+    });
+    project.workItems.forEach((record) => validateWorkItem(errors, record, ids));
+    project.workDependencies.forEach((record) => {
+        addReferences(errors, `Work dependency ${record.id} predecessor`, [record.predecessorId], ids.work);
+        addReferences(errors, `Work dependency ${record.id} successor`, [record.successorId], ids.work);
+    });
+    project.projectBudgetLines.forEach((record) => {
+        addReferences(errors, `${record.identifier} work items`, record.workItemIds ?? [], ids.work);
+        addReferences(errors, `${record.identifier} requirements`, record.requirementIds ?? [], ids.requirements);
+        addReferences(errors, `${record.identifier} objects`, record.objectIds ?? [], ids.objects);
+        addReferences(errors, `${record.identifier} verification plans`, record.verificationPlanIds ?? [], ids.plans);
+        addReferences(errors, `${record.identifier} documents`, record.documentIds ?? [], ids.documents);
+    });
+    project.technicalBudgets.forEach((record) => {
+        (record.allocations ?? []).forEach((allocation) => {
+            addReferences(errors, `${record.identifier} allocation object`, [allocation.objectId], ids.objects);
+            addReferences(errors, `${record.identifier} allocation requirement`, [allocation.requirementId], ids.requirements);
+            addReferences(errors, `${record.identifier} allocation evidence`, allocation.evidenceIds ?? [], ids.documents);
+        });
+    });
+    project.documents.forEach((record) => validateDocument(errors, record, ids));
+    project.links.forEach((record) => {
+        addReferences(errors, `Trace link ${record.id} source`, [record.fromId], ids.all);
+        addReferences(errors, `Trace link ${record.id} target`, [record.toId], ids.all);
+    });
+    project.decisions.forEach((record) => {
+        addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
+        addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+    });
+    project.assumptions.forEach((record) => addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all));
+    project.issuesActions.forEach((record) => {
+        addReferences(errors, `${record.identifier} blocking records`, record.blockingRecordIds ?? [], ids.all);
+        addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
+        addReferences(errors, `${record.identifier} evidence`, record.evidenceIds ?? [], ids.documents);
+    });
+    project.changeRequests.forEach((record) => {
+        addReferences(errors, `${record.identifier} affected records`, record.affectedRecordIds ?? [], ids.all);
+        addReferences(errors, `${record.identifier} resulting revisions`, record.resultingRevisionIds ?? [], ids.all);
+    });
+    return { valid: errors.length === 0, errors, warnings };
+}
+
+},
 "src/hooks/ProjectContext.tsx": function (module, exports, require) {
 'use strict';
 const React = require('react');
@@ -3647,40 +5788,143 @@ const db_1 = require("../services/db");
 const id_1 = require("../utils/id");
 const ProjectContext = (0, react_1.createContext)(undefined);
 function ProjectProvider({ children }) {
-    const [project, setProject] = (0, react_1.useState)(() => (0, sampleProject_1.createSampleProject)());
+    const [project, setProject] = (0, react_1.useState)(() => (0, factory_1.initializeProjectRevisionHistory)((0, sampleProject_1.createSampleProject)()));
     const [projects, setProjects] = (0, react_1.useState)([]);
     const [loading, setLoading] = (0, react_1.useState)(true);
     const [saveState, setSaveState] = (0, react_1.useState)('saved');
+    const [lastSavedAt, setLastSavedAt] = (0, react_1.useState)();
     const [toast, setToast] = (0, react_1.useState)(null);
+    const [storageDiagnostics, setStorageDiagnostics] = (0, react_1.useState)(null);
+    const [recoverySnapshots, setRecoverySnapshots] = (0, react_1.useState)([]);
     const initialized = (0, react_1.useRef)(false);
     const skipNextAutosave = (0, react_1.useRef)(false);
     const saveTimer = (0, react_1.useRef)(undefined);
+    const saveQueue = (0, react_1.useRef)(Promise.resolve());
+    const projectRef = (0, react_1.useRef)(project);
+    const backendRef = (0, react_1.useRef)();
+    const undoStack = (0, react_1.useRef)([]);
+    const redoStack = (0, react_1.useRef)([]);
+    const [undoState, setUndoState] = (0, react_1.useState)({ canUndo: false, canRedo: false, undoLabel: undefined, redoLabel: undefined });
+    (0, react_1.useEffect)(() => {
+        projectRef.current = project;
+    }, [project]);
     const notify = (0, react_1.useCallback)((message, tone = 'info') => {
         setToast({ id: (0, id_1.createId)('toast'), message, tone });
     }, []);
     const dismissToast = (0, react_1.useCallback)(() => setToast(null), []);
+    const refreshUndoState = (0, react_1.useCallback)(() => {
+        setUndoState({
+            canUndo: undoStack.current.length > 0,
+            canRedo: redoStack.current.length > 0,
+            undoLabel: undoStack.current.at(-1)?.summary,
+            redoLabel: redoStack.current.at(-1)?.summary
+        });
+    }, []);
+    const clearUndoHistory = (0, react_1.useCallback)(() => {
+        undoStack.current = [];
+        redoStack.current = [];
+        refreshUndoState();
+    }, [refreshUndoState]);
     const refreshProjects = (0, react_1.useCallback)(async () => {
         setProjects(await (0, db_1.listProjects)());
     }, []);
+    const refreshDataSafety = (0, react_1.useCallback)(async () => {
+        const [diagnostics, snapshots] = await Promise.all([(0, db_1.getStorageDiagnostics)(), (0, db_1.listRecoverySnapshots)()]);
+        setStorageDiagnostics(diagnostics);
+        setRecoverySnapshots(snapshots);
+    }, []);
+    const queueSave = (0, react_1.useCallback)((snapshot) => {
+        let resolveOutcome;
+        let rejectOutcome;
+        const outcome = new Promise((resolve, reject) => {
+            resolveOutcome = resolve;
+            rejectOutcome = reject;
+        });
+        saveQueue.current = saveQueue.current
+            .then(async () => {
+            try {
+                resolveOutcome(await (0, db_1.saveProject)(snapshot));
+            }
+            catch (error) {
+                rejectOutcome(error);
+            }
+        })
+            .catch(() => {
+            // The public outcome carries the error. Keep the internal queue available for later saves.
+        });
+        return outcome;
+    }, []);
+    const applySaveOutcome = (0, react_1.useCallback)((outcome, snapshot) => {
+        setLastSavedAt(outcome.savedAt);
+        if (backendRef.current && backendRef.current !== outcome.backend) {
+            notify(outcome.backend === 'indexeddb'
+                ? 'Indexed Database (IndexedDB) storage is available again.'
+                : 'IndexedDB is unavailable. LOOM is using local browser storage as a recovery fallback.', outcome.backend === 'indexeddb' ? 'success' : 'warning');
+        }
+        else if (!backendRef.current && outcome.backend === 'local-storage') {
+            notify('IndexedDB is unavailable. LOOM is using local browser storage as a recovery fallback.', 'warning');
+        }
+        backendRef.current = outcome.backend;
+        const current = projectRef.current;
+        if (current.id === snapshot.id && current.revision === snapshot.revision)
+            setSaveState('saved');
+    }, [notify]);
+    const persistNow = (0, react_1.useCallback)(async (snapshot) => {
+        const outcome = await queueSave(structuredClone(snapshot));
+        applySaveOutcome(outcome, snapshot);
+        return outcome;
+    }, [applySaveOutcome, queueSave]);
+    const clearPendingSave = (0, react_1.useCallback)(() => {
+        if (saveTimer.current) {
+            window.clearTimeout(saveTimer.current);
+            saveTimer.current = undefined;
+        }
+    }, []);
+    const handlePersistenceError = (0, react_1.useCallback)(async (error, fallbackMessage) => {
+        let diagnostics = null;
+        try {
+            diagnostics = await (0, db_1.getStorageDiagnostics)();
+            setStorageDiagnostics(diagnostics);
+        }
+        catch {
+            // The original persistence error remains the useful message.
+        }
+        setSaveState(diagnostics?.backend === 'unavailable' ? 'unavailable' : 'error');
+        notify(error instanceof Error ? error.message : fallbackMessage, 'danger');
+    }, [notify]);
     (0, react_1.useEffect)(() => {
         let cancelled = false;
         (async () => {
             try {
-                const lastId = (0, db_1.lastProjectId)();
-                const stored = lastId ? await (0, db_1.loadProject)(lastId) : undefined;
-                const initial = stored ?? (0, sampleProject_1.createSampleProject)();
+                const summaries = await (0, db_1.listProjects)();
+                const preferredId = (0, db_1.lastProjectId)();
+                const targetId = preferredId && summaries.some((summary) => summary.id === preferredId)
+                    ? preferredId
+                    : summaries[0]?.id;
+                const stored = targetId ? await (0, db_1.loadProject)(targetId) : undefined;
+                const initial = (0, factory_1.initializeProjectRevisionHistory)(stored ?? (0, sampleProject_1.createSampleProject)());
                 if (cancelled)
                     return;
                 skipNextAutosave.current = true;
+                projectRef.current = initial;
                 setProject(initial);
-                if (!stored)
-                    await (0, db_1.saveProject)(initial);
-                await refreshProjects();
+                clearUndoHistory();
+                if (!stored) {
+                    const outcome = await (0, db_1.saveProject)(initial);
+                    backendRef.current = outcome.backend;
+                    setLastSavedAt(outcome.savedAt);
+                }
+                else {
+                    setLastSavedAt(initial.updatedAt);
+                }
+                await Promise.all([refreshProjects(), refreshDataSafety()]);
                 setSaveState('saved');
             }
             catch (error) {
                 if (!cancelled) {
-                    setProject((0, sampleProject_1.createSampleProject)());
+                    const recovery = (0, factory_1.initializeProjectRevisionHistory)((0, sampleProject_1.createSampleProject)());
+                    projectRef.current = recovery;
+                    setProject(recovery);
                     setSaveState('recovery');
                     notify(error instanceof Error ? error.message : 'LOOM opened with a recovery project.', 'warning');
                 }
@@ -3695,7 +5939,7 @@ function ProjectProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, [notify, refreshProjects]);
+    }, [clearUndoHistory, notify, refreshDataSafety, refreshProjects]);
     (0, react_1.useEffect)(() => {
         if (!initialized.current || loading)
             return;
@@ -3703,26 +5947,22 @@ function ProjectProvider({ children }) {
             skipNextAutosave.current = false;
             return;
         }
+        const scheduledProject = structuredClone(project);
         setSaveState('unsaved');
-        if (saveTimer.current)
-            window.clearTimeout(saveTimer.current);
+        clearPendingSave();
         saveTimer.current = window.setTimeout(async () => {
+            saveTimer.current = undefined;
             setSaveState('saving');
             try {
-                await (0, db_1.saveProject)(project);
-                setSaveState('saved');
+                await persistNow(scheduledProject);
                 await refreshProjects();
             }
             catch (error) {
-                setSaveState('error');
-                notify(error instanceof Error ? error.message : 'Unable to save the project locally.', 'danger');
+                await handlePersistenceError(error, 'Unable to save the project locally.');
             }
         }, 650);
-        return () => {
-            if (saveTimer.current)
-                window.clearTimeout(saveTimer.current);
-        };
-    }, [project, loading, notify, refreshProjects]);
+        return clearPendingSave;
+    }, [clearPendingSave, handlePersistenceError, loading, persistNow, project, refreshProjects]);
     (0, react_1.useEffect)(() => {
         const root = document.documentElement;
         const theme = project.settings.theme;
@@ -3730,87 +5970,275 @@ function ProjectProvider({ children }) {
         root.dataset.theme = resolved;
         root.style.colorScheme = resolved;
     }, [project.settings.theme]);
-    const updateProject = (0, react_1.useCallback)((mutator, summary = 'Project updated') => {
+    const updateProject = (0, react_1.useCallback)((mutator, summary = 'Project updated', options = {}) => {
         setProject((current) => {
             const draft = structuredClone(current);
             mutator(draft);
-            const touched = (0, factory_1.touchProject)(draft);
-            touched.description = touched.description;
-            void summary;
+            if (JSON.stringify(draft) === JSON.stringify(current))
+                return current;
+            if (options.trackUndo !== false) {
+                const now = Date.now();
+                const coalesceKey = options.coalesceKey ?? (summary === 'Project updated' ? 'inline-project-edit' : undefined);
+                const previous = undoStack.current.at(-1);
+                if (!previous || !coalesceKey || previous.coalesceKey !== coalesceKey || now - previous.at > 900) {
+                    undoStack.current.push({ project: structuredClone(current), summary, at: now, coalesceKey });
+                    if (undoStack.current.length > 50)
+                        undoStack.current.shift();
+                }
+                else {
+                    previous.at = now;
+                    previous.summary = summary;
+                }
+                redoStack.current = [];
+                refreshUndoState();
+            }
+            const reconciled = (0, factory_1.reconcileProjectControlledRecords)(current, draft, summary);
+            const touched = (0, factory_1.touchProject)(reconciled);
+            projectRef.current = touched;
             return touched;
         });
-    }, []);
+    }, [refreshUndoState]);
+    const applySessionHistory = (0, react_1.useCallback)((direction) => {
+        const source = direction === 'undo' ? undoStack.current : redoStack.current;
+        const destination = direction === 'undo' ? redoStack.current : undoStack.current;
+        const entry = source.pop();
+        if (!entry)
+            return;
+        setProject((current) => {
+            destination.push({ project: structuredClone(current), summary: entry.summary, at: Date.now() });
+            if (destination.length > 50)
+                destination.shift();
+            const target = structuredClone(entry.project);
+            target.id = current.id;
+            target.createdAt = current.createdAt;
+            target.migrationHistory = structuredClone(current.migrationHistory);
+            target.settings = structuredClone(current.settings);
+            target.revision = current.revision;
+            target.updatedAt = current.updatedAt;
+            const action = `${direction === 'undo' ? 'Undo' : 'Redo'}: ${entry.summary}`;
+            const reconciled = (0, factory_1.reconcileProjectControlledRecords)(current, target, action);
+            const touched = (0, factory_1.touchProject)(reconciled);
+            projectRef.current = touched;
+            return touched;
+        });
+        refreshUndoState();
+        notify(`${direction === 'undo' ? 'Undid' : 'Redid'}: ${entry.summary}.`, 'info');
+    }, [notify, refreshUndoState]);
+    const undo = (0, react_1.useCallback)(() => applySessionHistory('undo'), [applySessionHistory]);
+    const redo = (0, react_1.useCallback)(() => applySessionHistory('redo'), [applySessionHistory]);
     const updateSettings = (0, react_1.useCallback)((mutator) => {
         setProject((current) => {
             const next = structuredClone(current);
             mutator(next.settings);
             next.updatedAt = new Date().toISOString();
+            next.applicationVersion = current.applicationVersion;
+            projectRef.current = next;
             return next;
         });
     }, []);
-    const replaceProject = (0, react_1.useCallback)(async (nextProject, notice) => {
-        skipNextAutosave.current = true;
-        setProject(nextProject);
+    const replaceProject = (0, react_1.useCallback)(async (nextProject, notice, options = {}) => {
+        clearPendingSave();
+        nextProject = (0, factory_1.initializeProjectRevisionHistory)(nextProject);
+        const current = structuredClone(projectRef.current);
         setSaveState('saving');
-        await (0, db_1.saveProject)(nextProject);
-        setSaveState('saved');
-        await refreshProjects();
-        if (notice)
-            notify(notice, 'success');
-    }, [notify, refreshProjects]);
+        try {
+            if (initialized.current)
+                await persistNow(current);
+            if (options.snapshotCurrent) {
+                await (0, db_1.createRecoverySnapshot)(current, options.snapshotReason ?? `Before replacing ${current.name}`);
+            }
+            const outcome = await persistNow(nextProject);
+            skipNextAutosave.current = true;
+            projectRef.current = nextProject;
+            setProject(nextProject);
+            clearUndoHistory();
+            setLastSavedAt(outcome.savedAt);
+            (0, db_1.rememberLastProject)(nextProject.id);
+            setSaveState('saved');
+            await Promise.all([refreshProjects(), refreshDataSafety()]);
+            if (notice)
+                notify(notice, 'success');
+        }
+        catch (error) {
+            await handlePersistenceError(error, 'The project replacement was cancelled because LOOM could not preserve the current state.');
+            throw error;
+        }
+    }, [clearPendingSave, clearUndoHistory, handlePersistenceError, notify, persistNow, refreshDataSafety, refreshProjects]);
     const createFreshProject = (0, react_1.useCallback)(async () => {
-        const fresh = (0, factory_1.createEmptyProject)('Untitled LOOM Project');
-        await replaceProject(fresh, 'Fresh empty project created.');
+        try {
+            await replaceProject((0, factory_1.createEmptyProject)('Untitled LOOM Project'), 'Fresh empty project created.', {
+                snapshotCurrent: true,
+                snapshotReason: 'Before Fresh Start'
+            });
+        }
+        catch {
+            // replaceProject already reported the safety failure.
+        }
     }, [replaceProject]);
     const loadSampleProject = (0, react_1.useCallback)(async () => {
-        const sample = (0, sampleProject_1.createSampleProject)();
-        await replaceProject(sample, 'Sample project loaded.');
+        try {
+            await replaceProject((0, sampleProject_1.createSampleProject)(), 'Sample project loaded.', {
+                snapshotCurrent: true,
+                snapshotReason: 'Before loading the sample project'
+            });
+        }
+        catch {
+            // replaceProject already reported the safety failure.
+        }
     }, [replaceProject]);
     const duplicateCurrentProject = (0, react_1.useCallback)(async () => {
-        const duplicate = structuredClone(project);
+        const current = projectRef.current;
+        const duplicate = structuredClone(current);
         duplicate.id = (0, id_1.createId)('project');
-        duplicate.name = `${project.name} — Copy`;
+        duplicate.name = `${current.name} — Copy`;
         duplicate.archived = false;
         duplicate.isSample = false;
         duplicate.createdAt = new Date().toISOString();
         duplicate.updatedAt = duplicate.createdAt;
         duplicate.revision = 1;
-        await replaceProject(duplicate, 'Project duplicated.');
-    }, [project, replaceProject]);
-    const archiveCurrentProject = (0, react_1.useCallback)(async () => {
-        const archived = { ...project, archived: true, updatedAt: new Date().toISOString() };
-        await replaceProject(archived, 'Project archived.');
-    }, [project, replaceProject]);
-    const restoreCurrentProject = (0, react_1.useCallback)(async () => {
-        const restored = { ...project, archived: false, updatedAt: new Date().toISOString() };
-        await replaceProject(restored, 'Project restored.');
-    }, [project, replaceProject]);
-    const permanentlyDeleteCurrentProject = (0, react_1.useCallback)(async () => {
-        const id = project.id;
-        await (0, db_1.deleteProject)(id);
-        const remaining = (await (0, db_1.listProjects)()).filter((summary) => summary.id !== id);
-        const next = remaining[0] ? await (0, db_1.loadProject)(remaining[0].id) : undefined;
-        await replaceProject(next ?? (0, factory_1.createEmptyProject)(), 'Project permanently deleted.');
-    }, [project.id, replaceProject]);
-    const switchProject = (0, react_1.useCallback)(async (id) => {
-        if (id === project.id)
-            return;
-        const loaded = await (0, db_1.loadProject)(id);
-        if (!loaded) {
-            notify('The selected local project could not be opened.', 'danger');
-            return;
+        duplicate.migrationHistory = structuredClone(current.migrationHistory ?? []);
+        try {
+            await replaceProject(duplicate, 'Project duplicated.');
         }
-        skipNextAutosave.current = true;
-        setProject(loaded);
-        setSaveState('saved');
-        localStorage.setItem('loom-last-project-id', id);
-    }, [notify, project.id]);
+        catch {
+            // replaceProject already reported the persistence failure.
+        }
+    }, [replaceProject]);
+    const archiveCurrentProject = (0, react_1.useCallback)(async () => {
+        const archived = { ...projectRef.current, archived: true, updatedAt: new Date().toISOString() };
+        try {
+            await replaceProject(archived, 'Project archived.');
+        }
+        catch {
+            // replaceProject already reported the persistence failure.
+        }
+    }, [replaceProject]);
+    const restoreCurrentProject = (0, react_1.useCallback)(async () => {
+        const restored = { ...projectRef.current, archived: false, updatedAt: new Date().toISOString() };
+        try {
+            await replaceProject(restored, 'Project restored.');
+        }
+        catch {
+            // replaceProject already reported the persistence failure.
+        }
+    }, [replaceProject]);
+    const permanentlyDeleteCurrentProject = (0, react_1.useCallback)(async () => {
+        clearPendingSave();
+        const current = structuredClone(projectRef.current);
+        setSaveState('saving');
+        try {
+            await persistNow(current);
+            await (0, db_1.createRecoverySnapshot)(current, 'Before permanent deletion');
+            const remaining = (await (0, db_1.listProjects)()).filter((summary) => summary.id !== current.id);
+            let next = remaining[0] ? await (0, db_1.loadProject)(remaining[0].id) : undefined;
+            if (!next) {
+                next = (0, factory_1.createEmptyProject)();
+                await persistNow(next);
+            }
+            await (0, db_1.deleteProject)(current.id);
+            skipNextAutosave.current = true;
+            projectRef.current = next;
+            setProject(next);
+            clearUndoHistory();
+            (0, db_1.rememberLastProject)(next.id);
+            setSaveState('saved');
+            await Promise.all([refreshProjects(), refreshDataSafety()]);
+            notify('Project permanently deleted. A recovery snapshot was retained.', 'success');
+        }
+        catch (error) {
+            await handlePersistenceError(error, 'The project was not deleted because LOOM could not complete the recovery-safe operation.');
+        }
+    }, [clearPendingSave, clearUndoHistory, handlePersistenceError, notify, persistNow, refreshDataSafety, refreshProjects]);
+    const switchProject = (0, react_1.useCallback)(async (id) => {
+        if (id === projectRef.current.id)
+            return;
+        clearPendingSave();
+        const current = structuredClone(projectRef.current);
+        setSaveState('saving');
+        try {
+            await persistNow(current);
+            const stored = await (0, db_1.loadProject)(id);
+            if (!stored)
+                throw new Error('The selected local project could not be opened.');
+            const loaded = (0, factory_1.initializeProjectRevisionHistory)(stored);
+            skipNextAutosave.current = true;
+            projectRef.current = loaded;
+            setProject(loaded);
+            clearUndoHistory();
+            setLastSavedAt(loaded.updatedAt);
+            setSaveState('saved');
+            (0, db_1.rememberLastProject)(id);
+        }
+        catch (error) {
+            await handlePersistenceError(error, 'The selected local project could not be opened.');
+        }
+    }, [clearPendingSave, clearUndoHistory, handlePersistenceError, persistNow]);
+    const createManualRecoverySnapshot = (0, react_1.useCallback)(async () => {
+        clearPendingSave();
+        const current = structuredClone(projectRef.current);
+        try {
+            setSaveState('saving');
+            await persistNow(current);
+            await (0, db_1.createRecoverySnapshot)(current, 'Manual recovery snapshot');
+            await refreshDataSafety();
+            setSaveState('saved');
+            notify('Recovery snapshot created.', 'success');
+        }
+        catch (error) {
+            await handlePersistenceError(error, 'LOOM could not create the recovery snapshot.');
+        }
+    }, [clearPendingSave, handlePersistenceError, notify, persistNow, refreshDataSafety]);
+    const restoreRecoverySnapshotAction = (0, react_1.useCallback)(async (id) => {
+        try {
+            const recovered = await (0, db_1.loadRecoverySnapshot)(id);
+            recovered.updatedAt = new Date().toISOString();
+            recovered.archived = false;
+            await replaceProject(recovered, `${recovered.name} restored from a recovery snapshot.`, {
+                snapshotCurrent: true,
+                snapshotReason: 'Before restoring a recovery snapshot'
+            });
+        }
+        catch (error) {
+            await handlePersistenceError(error, 'The recovery snapshot could not be restored.');
+        }
+    }, [handlePersistenceError, replaceProject]);
+    const removeRecoverySnapshot = (0, react_1.useCallback)(async (id) => {
+        try {
+            await (0, db_1.deleteRecoverySnapshot)(id);
+            await refreshDataSafety();
+            notify('Recovery snapshot removed.', 'success');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'The recovery snapshot could not be removed.', 'danger');
+        }
+    }, [notify, refreshDataSafety]);
+    const requestStoragePersistenceAction = (0, react_1.useCallback)(async () => {
+        try {
+            const granted = await (0, db_1.requestPersistentStorage)();
+            await refreshDataSafety();
+            notify(granted
+                ? 'The browser granted persistent storage for this LOOM origin.'
+                : 'The browser did not grant persistent storage. Regular project exports remain important.', granted ? 'success' : 'warning');
+        }
+        catch (error) {
+            notify(error instanceof Error ? error.message : 'The persistent-storage request could not be completed.', 'danger');
+        }
+    }, [notify, refreshDataSafety]);
     const value = (0, react_1.useMemo)(() => ({
         project,
         projects,
         loading,
         saveState,
+        lastSavedAt,
         toast,
+        storageDiagnostics,
+        recoverySnapshots,
+        canUndo: undoState.canUndo,
+        canRedo: undoState.canRedo,
+        undoLabel: undoState.undoLabel,
+        redoLabel: undoState.redoLabel,
+        undo,
+        redo,
         updateProject,
         updateSettings,
         replaceProject,
@@ -3821,6 +6249,11 @@ function ProjectProvider({ children }) {
         restoreCurrentProject,
         permanentlyDeleteCurrentProject,
         switchProject,
+        refreshDataSafety,
+        createManualRecoverySnapshot,
+        restoreRecoverySnapshot: restoreRecoverySnapshotAction,
+        removeRecoverySnapshot,
+        requestStoragePersistence: requestStoragePersistenceAction,
         notify,
         dismissToast
     }), [
@@ -3828,7 +6261,13 @@ function ProjectProvider({ children }) {
         projects,
         loading,
         saveState,
+        lastSavedAt,
         toast,
+        storageDiagnostics,
+        recoverySnapshots,
+        undoState,
+        undo,
+        redo,
         updateProject,
         updateSettings,
         replaceProject,
@@ -3839,6 +6278,11 @@ function ProjectProvider({ children }) {
         restoreCurrentProject,
         permanentlyDeleteCurrentProject,
         switchProject,
+        refreshDataSafety,
+        createManualRecoverySnapshot,
+        restoreRecoverySnapshotAction,
+        removeRecoverySnapshot,
+        requestStoragePersistenceAction,
         notify,
         dismissToast
     ]);
@@ -3868,13 +6312,30 @@ require("./styles.css");
 (0, client_1.createRoot)(document.getElementById('root')).render(React.createElement(react_1.StrictMode, null,
     React.createElement(ProjectContext_1.ProjectProvider, null,
         React.createElement(App_1.default, null))));
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {
-            // The application remains functional without service-worker registration.
+async function registerOfflineShell() {
+    if (!('serviceWorker' in navigator) || window.location.protocol === 'file:')
+        return;
+    try {
+        const registration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+        await registration.update().catch(() => undefined);
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.dispatchEvent(new CustomEvent('loom:offline-shell', { detail: { state: 'controlled' } }));
         });
-    });
+        if (navigator.serviceWorker.controller) {
+            window.dispatchEvent(new CustomEvent('loom:offline-shell', { detail: { state: 'controlled' } }));
+        }
+        else {
+            window.dispatchEvent(new CustomEvent('loom:offline-shell', { detail: { state: 'registered' } }));
+        }
+    }
+    catch {
+        window.dispatchEvent(new CustomEvent('loom:offline-shell', { detail: { state: 'unavailable' } }));
+        // LOOM remains fully usable online without a service worker.
+    }
 }
+window.addEventListener('load', () => {
+    void registerOfflineShell();
+});
 
 },
 "src/services/db.ts": function (module, exports, require) {
@@ -3886,29 +6347,77 @@ exports.saveProject = saveProject;
 exports.loadProject = loadProject;
 exports.listProjects = listProjects;
 exports.deleteProject = deleteProject;
+exports.createRecoverySnapshot = createRecoverySnapshot;
+exports.listRecoverySnapshots = listRecoverySnapshots;
+exports.loadRecoverySnapshot = loadRecoverySnapshot;
+exports.deleteRecoverySnapshot = deleteRecoverySnapshot;
+exports.getStorageDiagnostics = getStorageDiagnostics;
+exports.requestPersistentStorage = requestPersistentStorage;
 exports.lastProjectId = lastProjectId;
+exports.rememberLastProject = rememberLastProject;
 const migrations_1 = require("../domain/migrations");
+const id_1 = require("../utils/id");
 const DATABASE_NAME = 'loom-local-projects';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const PROJECT_STORE = 'projects';
+const RECOVERY_STORE = 'recoverySnapshots';
 const FALLBACK_PREFIX = 'loom-project:';
+const RECOVERY_FALLBACK_PREFIX = 'loom-recovery:';
+const LAST_PROJECT_KEY = 'loom-last-project-id';
+const MAX_RECOVERY_SNAPSHOTS_PER_PROJECT = 8;
+function localStorageWorks() {
+    try {
+        const key = `loom-storage-probe:${Date.now()}`;
+        localStorage.setItem(key, '1');
+        localStorage.removeItem(key);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function safeSetLocalStorage(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    }
+    catch {
+        // IndexedDB remains authoritative when the small preference write is unavailable.
+    }
+}
 function openDatabase() {
     return new Promise((resolve, reject) => {
         if (!('indexedDB' in window)) {
-            reject(new Error('IndexedDB is unavailable.'));
+            reject(new Error('Indexed Database (IndexedDB) is unavailable.'));
             return;
         }
         const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
         request.onupgradeneeded = () => {
             const database = request.result;
-            if (!database.objectStoreNames.contains(PROJECT_STORE)) {
-                const store = database.createObjectStore(PROJECT_STORE, { keyPath: 'id' });
-                store.createIndex('updatedAt', 'updatedAt');
-                store.createIndex('archived', 'archived');
-            }
+            const transaction = request.transaction;
+            if (!transaction)
+                throw new Error('IndexedDB upgrade transaction is unavailable.');
+            const projects = database.objectStoreNames.contains(PROJECT_STORE)
+                ? transaction.objectStore(PROJECT_STORE)
+                : database.createObjectStore(PROJECT_STORE, { keyPath: 'id' });
+            if (!projects.indexNames.contains('updatedAt'))
+                projects.createIndex('updatedAt', 'updatedAt');
+            if (!projects.indexNames.contains('archived'))
+                projects.createIndex('archived', 'archived');
+            const snapshots = database.objectStoreNames.contains(RECOVERY_STORE)
+                ? transaction.objectStore(RECOVERY_STORE)
+                : database.createObjectStore(RECOVERY_STORE, { keyPath: 'id' });
+            if (!snapshots.indexNames.contains('projectId'))
+                snapshots.createIndex('projectId', 'projectId');
+            if (!snapshots.indexNames.contains('capturedAt'))
+                snapshots.createIndex('capturedAt', 'capturedAt');
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error ?? new Error('Unable to open local project database.'));
+        request.onsuccess = () => {
+            const database = request.result;
+            database.onversionchange = () => database.close();
+            resolve(database);
+        };
+        request.onblocked = () => reject(new Error('A different LOOM tab is blocking the local database upgrade. Close other LOOM tabs and try again.'));
+        request.onerror = () => reject(request.error ?? new Error('Unable to open the local project database.'));
     });
 }
 function requestResult(request) {
@@ -3926,7 +6435,7 @@ function transactionDone(transaction) {
 }
 function saveFallback(project) {
     localStorage.setItem(`${FALLBACK_PREFIX}${project.id}`, JSON.stringify(project));
-    localStorage.setItem('loom-last-project-id', project.id);
+    localStorage.setItem(LAST_PROJECT_KEY, project.id);
 }
 function loadFallback(id) {
     const raw = localStorage.getItem(`${FALLBACK_PREFIX}${id}`);
@@ -3934,103 +6443,398 @@ function loadFallback(id) {
         return undefined;
     return (0, migrations_1.migrateProject)(JSON.parse(raw));
 }
-async function saveProject(project) {
-    const updated = { ...project, updatedAt: new Date().toISOString() };
+function snapshotSummary(record) {
+    const { project: _project, ...summary } = record;
+    return summary;
+}
+function approximateProjectBytes(project) {
     try {
-        const database = await openDatabase();
-        const transaction = database.transaction(PROJECT_STORE, 'readwrite');
-        transaction.objectStore(PROJECT_STORE).put(updated);
-        await transactionDone(transaction);
-        database.close();
-        localStorage.setItem('loom-last-project-id', project.id);
+        return new Blob([JSON.stringify(project)]).size;
     }
-    catch (error) {
+    catch {
+        return JSON.stringify(project).length;
+    }
+}
+async function pruneIndexedDbSnapshots(projectId) {
+    const database = await openDatabase();
+    try {
+        const readTransaction = database.transaction(RECOVERY_STORE, 'readonly');
+        const records = (await requestResult(readTransaction.objectStore(RECOVERY_STORE).index('projectId').getAll(projectId)));
+        await transactionDone(readTransaction);
+        const excess = records
+            .sort((left, right) => right.capturedAt.localeCompare(left.capturedAt))
+            .slice(MAX_RECOVERY_SNAPSHOTS_PER_PROJECT);
+        if (!excess.length)
+            return;
+        const writeTransaction = database.transaction(RECOVERY_STORE, 'readwrite');
+        excess.forEach((record) => writeTransaction.objectStore(RECOVERY_STORE).delete(record.id));
+        await transactionDone(writeTransaction);
+    }
+    finally {
+        database.close();
+    }
+}
+function pruneFallbackSnapshots(projectId) {
+    const records = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key?.startsWith(RECOVERY_FALLBACK_PREFIX))
+            continue;
         try {
-            saveFallback(updated);
+            const raw = localStorage.getItem(key);
+            if (!raw)
+                continue;
+            const record = JSON.parse(raw);
+            if (record.projectId === projectId)
+                records.push(record);
         }
         catch {
-            throw error;
+            // A damaged recovery entry is left untouched so other entries remain available.
         }
+    }
+    records
+        .sort((left, right) => right.capturedAt.localeCompare(left.capturedAt))
+        .slice(MAX_RECOVERY_SNAPSHOTS_PER_PROJECT)
+        .forEach((record) => localStorage.removeItem(`${RECOVERY_FALLBACK_PREFIX}${record.id}`));
+}
+async function saveProject(project) {
+    const savedAt = new Date().toISOString();
+    const updated = { ...project, updatedAt: project.updatedAt || savedAt };
+    let indexedDbError;
+    try {
+        const database = await openDatabase();
+        try {
+            const transaction = database.transaction(PROJECT_STORE, 'readwrite');
+            transaction.objectStore(PROJECT_STORE).put(updated);
+            await transactionDone(transaction);
+        }
+        finally {
+            database.close();
+        }
+        safeSetLocalStorage(LAST_PROJECT_KEY, project.id);
+        return { backend: 'indexeddb', savedAt };
+    }
+    catch (error) {
+        indexedDbError = error;
+    }
+    try {
+        saveFallback(updated);
+        return { backend: 'local-storage', savedAt };
+    }
+    catch (fallbackError) {
+        const indexedMessage = indexedDbError instanceof Error ? indexedDbError.message : String(indexedDbError);
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        throw new Error(`LOOM could not save locally. IndexedDB: ${indexedMessage} Local browser storage: ${fallbackMessage}`);
     }
 }
 async function loadProject(id) {
+    let indexedDbError;
     try {
         const database = await openDatabase();
-        const transaction = database.transaction(PROJECT_STORE, 'readonly');
-        const result = await requestResult(transaction.objectStore(PROJECT_STORE).get(id));
-        await transactionDone(transaction);
-        database.close();
-        return result ? (0, migrations_1.migrateProject)(result) : loadFallback(id);
+        try {
+            const transaction = database.transaction(PROJECT_STORE, 'readonly');
+            const result = await requestResult(transaction.objectStore(PROJECT_STORE).get(id));
+            await transactionDone(transaction);
+            if (result)
+                return (0, migrations_1.migrateProject)(result);
+        }
+        finally {
+            database.close();
+        }
     }
-    catch {
+    catch (error) {
+        indexedDbError = error;
+    }
+    try {
         return loadFallback(id);
+    }
+    catch (fallbackError) {
+        const indexedMessage = indexedDbError instanceof Error ? indexedDbError.message : String(indexedDbError ?? 'No IndexedDB record');
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        throw new Error(`The local project could not be recovered. IndexedDB: ${indexedMessage} Local browser storage: ${fallbackMessage}`);
     }
 }
 async function listProjects() {
     const summaries = new Map();
     try {
         const database = await openDatabase();
-        const transaction = database.transaction(PROJECT_STORE, 'readonly');
-        const records = (await requestResult(transaction.objectStore(PROJECT_STORE).getAll()));
-        await transactionDone(transaction);
-        database.close();
-        records.forEach((project) => {
-            summaries.set(project.id, {
-                id: project.id,
-                name: project.name,
-                description: project.description,
-                updatedAt: project.updatedAt,
-                archived: project.archived,
-                isSample: project.isSample,
-                revision: project.revision
+        try {
+            const transaction = database.transaction(PROJECT_STORE, 'readonly');
+            const records = (await requestResult(transaction.objectStore(PROJECT_STORE).getAll()));
+            await transactionDone(transaction);
+            records.forEach((rawProject) => {
+                try {
+                    const project = (0, migrations_1.migrateProject)(rawProject);
+                    summaries.set(project.id, {
+                        id: project.id,
+                        name: project.name,
+                        description: project.description,
+                        updatedAt: project.updatedAt,
+                        archived: project.archived,
+                        isSample: project.isSample,
+                        revision: project.revision
+                    });
+                }
+                catch {
+                    // One damaged project must not prevent the remaining library from opening.
+                }
             });
-        });
+        }
+        finally {
+            database.close();
+        }
     }
     catch {
-        // The localStorage fallback is scanned below.
+        // The local browser storage fallback is scanned below.
     }
-    for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
-        if (!key?.startsWith(FALLBACK_PREFIX))
-            continue;
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw)
+    if (localStorageWorks()) {
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (!key?.startsWith(FALLBACK_PREFIX))
                 continue;
-            const project = (0, migrations_1.migrateProject)(JSON.parse(raw));
-            summaries.set(project.id, {
-                id: project.id,
-                name: project.name,
-                description: project.description,
-                updatedAt: project.updatedAt,
-                archived: project.archived,
-                isSample: project.isSample,
-                revision: project.revision
-            });
-        }
-        catch {
-            // Ignore a single damaged fallback entry while retaining other projects.
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw)
+                    continue;
+                const project = (0, migrations_1.migrateProject)(JSON.parse(raw));
+                summaries.set(project.id, {
+                    id: project.id,
+                    name: project.name,
+                    description: project.description,
+                    updatedAt: project.updatedAt,
+                    archived: project.archived,
+                    isSample: project.isSample,
+                    revision: project.revision
+                });
+            }
+            catch {
+                // Ignore a single damaged fallback entry while retaining other projects.
+            }
         }
     }
-    return [...summaries.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return [...summaries.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 async function deleteProject(id) {
+    let indexedDbSucceeded = false;
+    let indexedDbError;
     try {
         const database = await openDatabase();
-        const transaction = database.transaction(PROJECT_STORE, 'readwrite');
-        transaction.objectStore(PROJECT_STORE).delete(id);
-        await transactionDone(transaction);
+        try {
+            const transaction = database.transaction(PROJECT_STORE, 'readwrite');
+            transaction.objectStore(PROJECT_STORE).delete(id);
+            await transactionDone(transaction);
+            indexedDbSucceeded = true;
+        }
+        finally {
+            database.close();
+        }
+    }
+    catch (error) {
+        indexedDbError = error;
+    }
+    const fallbackKey = `${FALLBACK_PREFIX}${id}`;
+    const fallbackExists = localStorageWorks() && localStorage.getItem(fallbackKey) !== null;
+    if (fallbackExists)
+        localStorage.removeItem(fallbackKey);
+    if (!indexedDbSucceeded && !fallbackExists) {
+        throw indexedDbError instanceof Error ? indexedDbError : new Error('The project could not be removed from local storage.');
+    }
+    if (localStorageWorks() && localStorage.getItem(LAST_PROJECT_KEY) === id)
+        localStorage.removeItem(LAST_PROJECT_KEY);
+}
+async function createRecoverySnapshot(project, reason) {
+    const capturedAt = new Date().toISOString();
+    const record = {
+        id: (0, id_1.createId)('recovery'),
+        projectId: project.id,
+        projectName: project.name,
+        projectRevision: project.revision,
+        capturedAt,
+        reason,
+        applicationVersion: project.applicationVersion,
+        schemaVersion: project.schemaVersion,
+        approximateBytes: approximateProjectBytes(project),
+        project: structuredClone(project)
+    };
+    let indexedDbError;
+    try {
+        const database = await openDatabase();
+        try {
+            const transaction = database.transaction(RECOVERY_STORE, 'readwrite');
+            transaction.objectStore(RECOVERY_STORE).put(record);
+            await transactionDone(transaction);
+        }
+        finally {
+            database.close();
+        }
+        await pruneIndexedDbSnapshots(project.id);
+        return snapshotSummary(record);
+    }
+    catch (error) {
+        indexedDbError = error;
+    }
+    try {
+        localStorage.setItem(`${RECOVERY_FALLBACK_PREFIX}${record.id}`, JSON.stringify(record));
+        pruneFallbackSnapshots(project.id);
+        return snapshotSummary(record);
+    }
+    catch (fallbackError) {
+        const indexedMessage = indexedDbError instanceof Error ? indexedDbError.message : String(indexedDbError);
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        throw new Error(`LOOM could not create the required recovery snapshot. IndexedDB: ${indexedMessage} Local browser storage: ${fallbackMessage}`);
+    }
+}
+async function listRecoverySnapshots(projectId) {
+    const snapshots = new Map();
+    try {
+        const database = await openDatabase();
+        try {
+            const transaction = database.transaction(RECOVERY_STORE, 'readonly');
+            const store = transaction.objectStore(RECOVERY_STORE);
+            const records = projectId
+                ? await requestResult(store.index('projectId').getAll(projectId))
+                : await requestResult(store.getAll());
+            await transactionDone(transaction);
+            records.forEach((record) => snapshots.set(record.id, snapshotSummary(record)));
+        }
+        finally {
+            database.close();
+        }
+    }
+    catch {
+        // The local browser storage fallback is scanned below.
+    }
+    if (localStorageWorks()) {
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (!key?.startsWith(RECOVERY_FALLBACK_PREFIX))
+                continue;
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw)
+                    continue;
+                const record = JSON.parse(raw);
+                if (!projectId || record.projectId === projectId)
+                    snapshots.set(record.id, snapshotSummary(record));
+            }
+            catch {
+                // Keep other snapshots available if one fallback entry is damaged.
+            }
+        }
+    }
+    return [...snapshots.values()].sort((left, right) => right.capturedAt.localeCompare(left.capturedAt));
+}
+async function loadRecoverySnapshot(id) {
+    try {
+        const database = await openDatabase();
+        try {
+            const transaction = database.transaction(RECOVERY_STORE, 'readonly');
+            const result = await requestResult(transaction.objectStore(RECOVERY_STORE).get(id));
+            await transactionDone(transaction);
+            if (result)
+                return (0, migrations_1.migrateProject)(result.project);
+        }
+        finally {
+            database.close();
+        }
+    }
+    catch {
+        // Fall through to local browser storage.
+    }
+    if (localStorageWorks()) {
+        const raw = localStorage.getItem(`${RECOVERY_FALLBACK_PREFIX}${id}`);
+        if (raw)
+            return (0, migrations_1.migrateProject)(JSON.parse(raw).project);
+    }
+    throw new Error('The selected recovery snapshot is no longer available.');
+}
+async function deleteRecoverySnapshot(id) {
+    try {
+        const database = await openDatabase();
+        try {
+            const transaction = database.transaction(RECOVERY_STORE, 'readwrite');
+            transaction.objectStore(RECOVERY_STORE).delete(id);
+            await transactionDone(transaction);
+        }
+        finally {
+            database.close();
+        }
+    }
+    catch {
+        // A fallback entry may still be removable.
+    }
+    if (localStorageWorks())
+        localStorage.removeItem(`${RECOVERY_FALLBACK_PREFIX}${id}`);
+}
+async function getStorageDiagnostics() {
+    const checkedAt = new Date().toISOString();
+    const localAvailable = localStorageWorks();
+    let indexedDbAvailable = false;
+    try {
+        const database = await openDatabase();
+        indexedDbAvailable = true;
         database.close();
     }
     catch {
-        // Continue and clear any fallback record.
+        indexedDbAvailable = false;
     }
-    localStorage.removeItem(`${FALLBACK_PREFIX}${id}`);
-    if (localStorage.getItem('loom-last-project-id') === id)
-        localStorage.removeItem('loom-last-project-id');
+    let persistentStorage = 'unknown';
+    let usageBytes;
+    let quotaBytes;
+    if (!navigator.storage) {
+        persistentStorage = 'unsupported';
+    }
+    else {
+        try {
+            persistentStorage = typeof navigator.storage.persisted === 'function' && await navigator.storage.persisted() ? 'granted' : 'not-granted';
+        }
+        catch {
+            persistentStorage = 'unknown';
+        }
+        try {
+            const estimate = await navigator.storage.estimate();
+            usageBytes = estimate.usage;
+            quotaBytes = estimate.quota;
+        }
+        catch {
+            // Quota estimates are optional browser information.
+        }
+    }
+    let serviceWorker = 'unsupported';
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            serviceWorker = navigator.serviceWorker.controller ? 'controlled' : registration ? 'registered' : 'not-registered';
+        }
+        catch {
+            serviceWorker = 'not-registered';
+        }
+    }
+    return {
+        origin: window.location.origin === 'null' ? window.location.protocol : window.location.origin,
+        backend: indexedDbAvailable ? 'indexeddb' : localAvailable ? 'local-storage' : 'unavailable',
+        indexedDbAvailable,
+        localStorageAvailable: localAvailable,
+        persistentStorage,
+        usageBytes,
+        quotaBytes,
+        serviceWorker,
+        secureContext: window.isSecureContext,
+        checkedAt
+    };
+}
+async function requestPersistentStorage() {
+    if (!navigator.storage || typeof navigator.storage.persist !== 'function')
+        return false;
+    return navigator.storage.persist();
 }
 function lastProjectId() {
-    return localStorage.getItem('loom-last-project-id');
+    if (!localStorageWorks())
+        return null;
+    return localStorage.getItem(LAST_PROJECT_KEY);
+}
+function rememberLastProject(id) {
+    safeSetLocalStorage(LAST_PROJECT_KEY, id);
 }
 
 },
@@ -4040,6 +6844,7 @@ const React = require('react');
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.downloadBlob = downloadBlob;
+exports.createProjectExportManifest = createProjectExportManifest;
 exports.exportProject = exportProject;
 exports.importProject = importProject;
 exports.exportCsv = exportCsv;
@@ -4048,6 +6853,7 @@ exports.sha256 = sha256;
 exports.downloadEvidence = downloadEvidence;
 exports.slug = slug;
 const migrations_1 = require("../domain/migrations");
+const MAX_IMPORT_BYTES = 250 * 1024 * 1024;
 function downloadBlob(blob, fileName) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -4058,20 +6864,37 @@ function downloadBlob(blob, fileName) {
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function exportProject(project) {
-    const manifest = {
+function createProjectExportManifest(project) {
+    return {
+        format: 'LOOM project exchange',
+        formatVersion: '1.0.0',
         exportedAt: new Date().toISOString(),
         application: 'LOOM — Systems Engineering Project Control',
         applicationVersion: project.applicationVersion,
         schemaVersion: project.schemaVersion,
-        project
+        project: structuredClone(project)
     };
-    downloadBlob(new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }), `${slug(project.name)}-loom-${project.applicationVersion}.json`);
+}
+function exportProject(project) {
+    const manifest = createProjectExportManifest(project);
+    const fileName = `${slug(project.name)}-loom-${project.applicationVersion}.json`;
+    downloadBlob(new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }), fileName);
+    return fileName;
 }
 async function importProject(file) {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    const candidate = typeof parsed === 'object' && parsed && 'project' in parsed ? parsed.project : parsed;
+    if (file.size > MAX_IMPORT_BYTES) {
+        throw new Error(`The selected project is ${(file.size / 1024 / 1024).toFixed(1)} megabytes. LOOM limits a single JavaScript Object Notation (JSON) import to 250 megabytes.`);
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(await file.text());
+    }
+    catch (error) {
+        throw new Error(error instanceof SyntaxError ? `The file is not valid JSON: ${error.message}` : 'The selected project file could not be read.');
+    }
+    const candidate = typeof parsed === 'object' && parsed && 'project' in parsed
+        ? parsed.project
+        : parsed;
     return (0, migrations_1.migrateProject)(candidate);
 }
 function exportCsv(fileName, rows) {
@@ -4654,10 +7477,7 @@ function ArchitectureView() {
             else
                 obligation[field] = value;
             obligation.reviewedAt = new Date().toISOString();
-            object.revision += 1;
-            object.updatedAt = new Date().toISOString();
-            object.history.push((0, factory_1.historyEntry)('Inherited obligation reviewed', object.revision, `${field} updated.`));
-        });
+        }, `Reviewed inherited obligation: ${field} updated`);
     };
     const toggleRequirementFunction = (requirementId, functionId) => {
         updateProject((draft) => {
@@ -5761,10 +8581,11 @@ function EvidenceView() {
                 id: (0, id_1.createId)('doc'),
                 identifier: (0, id_1.nextIdentifier)('DOC', project.documents.map((document) => document.identifier)),
                 title: oldDocument.title,
-                revision: oldDocument.revision + 1,
+                revision: 1,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                history: [...oldDocument.history, { id: (0, id_1.createId)('hist'), at: new Date().toISOString(), by: oldDocument.owner, action: 'File revised', revision: oldDocument.revision + 1, summary: `Replaced ${oldDocument.fileName ?? 'prior artifact'} with ${file.name}` }],
+                history: [],
+                revisionHistory: [],
                 status: 'current',
                 fileName: file.name,
                 mimeType: file.type,
@@ -5778,7 +8599,6 @@ function EvidenceView() {
                 if (prior) {
                     prior.status = 'superseded';
                     prior.supersededById = replacement.id;
-                    prior.updatedAt = new Date().toISOString();
                 }
                 draft.documents.push(replacement);
                 draft.requirements.forEach((requirement) => {
@@ -5790,7 +8610,7 @@ function EvidenceView() {
                         run.evidenceIds.push(replacement.id);
                 });
                 replacement.linkedRecordIds.forEach((recordId) => draft.links.push({ id: (0, id_1.createId)('link'), type: 'supersedes', fromId: replacement.id, toId: oldDocument.id, rationale: 'Evidence revision', createdAt: new Date().toISOString(), createdBy: replacement.owner }));
-            });
+            }, `Recorded a new evidence file revision for ${oldDocument.identifier}`);
             setSelectedDocumentId(replacement.id);
             notify(`New evidence revision recorded; ${oldDocument.identifier} remains available.`, 'success');
         }
@@ -6238,7 +9058,6 @@ function ExecutionView() {
                 return;
             item.status = status;
             item.lifecycleState = status;
-            item.updatedAt = new Date().toISOString();
             if (status === 'in-progress' && !item.actualStart)
                 item.actualStart = (0, dates_1.todayIso)();
             if (status === 'done') {
@@ -6251,7 +9070,7 @@ function ExecutionView() {
             }
             if (status !== 'blocked')
                 item.blockedReason = '';
-        });
+        }, `Moved work item to ${(0, text_1.humanize)(status)}`);
     };
     const onDropLane = (event, status) => {
         event.preventDefault();
@@ -7250,7 +10069,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RequirementsView = RequirementsView;
 const react_1 = require("react");
 const calculations_1 = require("../domain/calculations");
-const factory_1 = require("../domain/factory");
 const ProjectContext_1 = require("../hooks/ProjectContext");
 const files_1 = require("../services/files");
 const dates_1 = require("../utils/dates");
@@ -7344,11 +10162,8 @@ function RequirementsView() {
                 if (!selectedRows.has(requirement.id))
                     return;
                 requirement.statuses.definition = 'under-review';
-                requirement.revision += 1;
-                requirement.updatedAt = new Date().toISOString();
-                requirement.history.push((0, factory_1.historyEntry)('Bulk status update', requirement.revision, 'Definition state changed to under review.'));
             });
-        });
+        }, `Moved ${selectedRows.size} requirement(s) to under review`);
         notify(`${selectedRows.size} requirement(s) moved to under review.`, 'success');
         setSelectedRows(new Set());
     };
@@ -7358,12 +10173,8 @@ function RequirementsView() {
                 if (!selectedRows.has(requirement.id))
                     return;
                 requirement.archived = true;
-                requirement.statuses.definition = 'retired';
-                requirement.revision += 1;
-                requirement.updatedAt = new Date().toISOString();
-                requirement.history.push((0, factory_1.historyEntry)('Requirement archived', requirement.revision, 'Archived by bulk action.'));
             });
-        });
+        }, `Archived ${selectedRows.size} requirement(s)`);
         notify(`${selectedRows.size} requirement(s) archived.`, 'success');
         setSelectedRows(new Set());
     };
